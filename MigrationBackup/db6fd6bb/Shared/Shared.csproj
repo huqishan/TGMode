@@ -1,0 +1,201 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{CB412C1B-BC82-42E7-9B83-76761289D85A}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>Shared</RootNamespace>
+    <AssemblyName>Shared</AssemblyName>
+    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <Deterministic>true</Deterministic>
+    <NuGetPackageImportStamp>
+    </NuGetPackageImportStamp>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="Autofac, Version=9.1.0.0, Culture=neutral, PublicKeyToken=17863af14b0044da, processorArchitecture=MSIL">
+      <HintPath>..\packages\Autofac.9.1.0\lib\netstandard2.0\Autofac.dll</HintPath>
+    </Reference>
+    <Reference Include="HPSocket.Net, Version=2.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\HPSocket.Net.6.0.3\lib\net48\HPSocket.Net.dll</HintPath>
+    </Reference>
+    <Reference Include="KeraLua, Version=1.4.1.0, Culture=neutral, PublicKeyToken=6a194c04b9c89217, processorArchitecture=MSIL">
+      <HintPath>..\packages\KeraLua.1.4.1\lib\net46\KeraLua.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Bcl.AsyncInterfaces, Version=10.0.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
+      <HintPath>..\packages\Microsoft.Bcl.AsyncInterfaces.10.0.0\lib\net462\Microsoft.Bcl.AsyncInterfaces.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.VisualStudio.DebuggerVisualizers, Version=17.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL" />
+    <Reference Include="Newtonsoft.Json, Version=13.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
+      <HintPath>..\packages\Newtonsoft.Json.13.0.3\lib\net45\Newtonsoft.Json.dll</HintPath>
+    </Reference>
+    <Reference Include="NLua, Version=1.7.3.0, Culture=neutral, PublicKeyToken=6a194c04b9c89217, processorArchitecture=MSIL">
+      <HintPath>..\packages\NLua.1.7.3\lib\net46\NLua.dll</HintPath>
+    </Reference>
+    <Reference Include="RabbitMQ.Client, Version=6.0.0.0, Culture=neutral, PublicKeyToken=89e7d7c5feba84ce, processorArchitecture=MSIL">
+      <HintPath>..\packages\RabbitMQ.Client.6.8.1\lib\net462\RabbitMQ.Client.dll</HintPath>
+    </Reference>
+    <Reference Include="RestSharp, Version=112.1.0.0, Culture=neutral, PublicKeyToken=598062e77f915f75, processorArchitecture=MSIL">
+      <HintPath>..\packages\RestSharp.112.1.0\lib\net48\RestSharp.dll</HintPath>
+    </Reference>
+    <Reference Include="SqlSugar, Version=5.1.4.168, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\SqlSugar.5.1.4.169\lib\SqlSugar.dll</HintPath>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.Buffers, Version=4.0.5.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
+      <HintPath>..\packages\System.Buffers.4.6.1\lib\net462\System.Buffers.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Configuration.Install" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Diagnostics.DiagnosticSource, Version=10.0.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
+      <HintPath>..\packages\System.Diagnostics.DiagnosticSource.10.0.0\lib\net462\System.Diagnostics.DiagnosticSource.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.Memory, Version=4.0.5.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
+      <HintPath>..\packages\System.Memory.4.6.3\lib\net462\System.Memory.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Numerics" />
+    <Reference Include="System.Numerics.Vectors, Version=4.1.6.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <HintPath>..\packages\System.Numerics.Vectors.4.6.1\lib\net462\System.Numerics.Vectors.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Runtime.CompilerServices.Unsafe, Version=6.0.3.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <HintPath>..\packages\System.Runtime.CompilerServices.Unsafe.6.1.2\lib\net462\System.Runtime.CompilerServices.Unsafe.dll</HintPath>
+    </Reference>
+    <Reference Include="System.ServiceProcess" />
+    <Reference Include="System.Text.Encodings.Web, Version=8.0.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
+      <HintPath>..\packages\System.Text.Encodings.Web.8.0.0\lib\net462\System.Text.Encodings.Web.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Text.Json, Version=8.0.0.4, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
+      <HintPath>..\packages\System.Text.Json.8.0.4\lib\net462\System.Text.Json.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Threading.Channels, Version=7.0.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
+      <HintPath>..\packages\System.Threading.Channels.7.0.0\lib\net462\System.Threading.Channels.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Threading.Tasks.Extensions, Version=4.2.4.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
+      <HintPath>..\packages\System.Threading.Tasks.Extensions.4.6.3\lib\net462\System.Threading.Tasks.Extensions.dll</HintPath>
+    </Reference>
+    <Reference Include="System.ValueTuple, Version=4.0.3.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
+      <HintPath>..\packages\System.ValueTuple.4.5.0\lib\net47\System.ValueTuple.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Web" />
+    <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.Xml.Linq" />
+    <Reference Include="System.Data.DataSetExtensions" />
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Net.Http" />
+    <Reference Include="System.Xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Abstractions\Attributes\LuaAttribute.cs" />
+    <Compile Include="Abstractions\Attributes\ShowName.cs" />
+    <Compile Include="Abstractions\DB\DBContext.cs" />
+    <Compile Include="Abstractions\DB\Entity.cs" />
+    <Compile Include="Abstractions\DB\IAggregateRoot.cs" />
+    <Compile Include="Abstractions\DB\IEntity.cs" />
+    <Compile Include="Abstractions\DB\IRepository.cs" />
+    <Compile Include="Abstractions\DB\ITransaction.cs" />
+    <Compile Include="Abstractions\DB\IUnitOfWork.cs" />
+    <Compile Include="Abstractions\DB\Repository.cs" />
+    <Compile Include="Abstractions\DB\ValueObject.cs" />
+    <Compile Include="Abstractions\Enum\CommuniactionType.cs" />
+    <Compile Include="Abstractions\Enum\ConnectStatus.cs" />
+    <Compile Include="Abstractions\Enum\DataType.cs" />
+    <Compile Include="Abstractions\Enum\LogType.cs" />
+    <Compile Include="Abstractions\ICommunication.cs" />
+    <Compile Include="Abstractions\Models\Charging_YLT\ChargingStatus.cs" />
+    <Compile Include="Infrastructure\CSharp\CSharpManage.cs" />
+    <Compile Include="Infrastructure\Events\BackgroundEventSubscription.cs" />
+    <Compile Include="Infrastructure\Events\DataEventArgs.cs" />
+    <Compile Include="Infrastructure\Events\DelegateReference.cs" />
+    <Compile Include="Infrastructure\Events\DispatcherEventSubscription.cs" />
+    <Compile Include="Infrastructure\Events\EventAggregator.cs" />
+    <Compile Include="Infrastructure\Events\EventBase.cs" />
+    <Compile Include="Infrastructure\Events\EventSubscription.cs" />
+    <Compile Include="Infrastructure\Events\IDelegateReference.cs" />
+    <Compile Include="Infrastructure\Events\IEventAggregator.cs" />
+    <Compile Include="Infrastructure\Events\IEventSubscription.cs" />
+    <Compile Include="Infrastructure\Events\PubSubEvent.cs" />
+    <Compile Include="Infrastructure\Events\SubscriptionToken.cs" />
+    <Compile Include="Infrastructure\Events\ThreadOption.cs" />
+    <Compile Include="Infrastructure\Events\WeakDelegatesManager.cs" />
+    <Compile Include="Infrastructure\WindowsServer\WindowsServerManage.cs" />
+    <Compile Include="Models\Communication\CommuniactionConfigModel.cs" />
+    <Compile Include="Models\Communication\ReadWriteModel.cs" />
+    <Compile Include="Models\Log\LogMessageModel.cs" />
+    <Compile Include="Models\MES\MesDataInfoTree.cs" />
+    <Compile Include="Models\MES\MesResult.cs" />
+    <Compile Include="Models\MES\APIConfig.cs" />
+    <Compile Include="Models\MES\TreeModel.cs" />
+    <Compile Include="Models\MES\MesSystemConfig.cs" />
+    <Compile Include="Models\MES\WebApiHeader.cs" />
+    <Compile Include="Models\MES\XMLConfig.cs" />
+    <Compile Include="Global\Global_Data.cs" />
+    <Compile Include="Global\Global_Event.cs" />
+    <Compile Include="Infrastructure\Communication\CommunicationFactory.cs" />
+    <Compile Include="Infrastructure\Communication\RabbitMQRPCClient.cs" />
+    <Compile Include="Infrastructure\Communication\RabbitMQRPCServer.cs" />
+    <Compile Include="Infrastructure\Communication\SerialPortComm.cs" />
+    <Compile Include="Infrastructure\Communication\TCPClient.cs" />
+    <Compile Include="Infrastructure\Communication\TCPServer.cs" />
+    <Compile Include="Infrastructure\Communication\UDPClient.cs" />
+    <Compile Include="Infrastructure\Communication\UDPServer.cs" />
+    <Compile Include="Infrastructure\Extensions\ArrayExtension.cs" />
+    <Compile Include="Infrastructure\Extensions\FileExtension.cs" />
+    <Compile Include="Infrastructure\Extensions\StringExtension.cs" />
+    <Compile Include="Infrastructure\Lua\LuaManage.cs" />
+    <Compile Include="Infrastructure\Lua\LuaMethodManage.cs" />
+    <Compile Include="Infrastructure\PackMethod\CRCHelper.cs" />
+    <Compile Include="Infrastructure\PackMethod\FTPHelper.cs" />
+    <Compile Include="Infrastructure\PackMethod\JsonHelper.cs" />
+    <Compile Include="Infrastructure\PackMethod\MesDataConvert.cs" />
+    <Compile Include="Infrastructure\PackMethod\ServiceCollectionHelper.cs" />
+    <Compile Include="Infrastructure\PackMethod\WebApiHelper.cs" />
+    <Compile Include="Infrastructure\PackMethod\WebServiceHelper.cs" />
+    <Compile Include="Infrastructure\PackMethod\XMLHelper.cs" />
+    <Compile Include="Models\Navigation\ControlInfoDataItem.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Protocol\Charging_YLT.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="app.config" />
+    <None Include="packages.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="HPSocket\hpsocket_cn.txt" />
+    <Content Include="HPSocket\hpsocket_en.txt" />
+  </ItemGroup>
+  <ItemGroup />
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
+    <PropertyGroup>
+      <ErrorText>这台计算机上缺少此项目引用的 NuGet 程序包。使用“NuGet 程序包还原”可下载这些程序包。有关更多信息，请参见 http://go.microsoft.com/fwlink/?LinkID=322105。缺少的文件是 {0}。</ErrorText>
+    </PropertyGroup>
+    <Error Condition="!Exists('..\packages\KeraLua.1.4.1\build\net46\KeraLua.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\KeraLua.1.4.1\build\net46\KeraLua.targets'))" />
+    <Error Condition="!Exists('..\packages\HPSocket.Net.6.0.3\build\HPSocket.Net.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\HPSocket.Net.6.0.3\build\HPSocket.Net.targets'))" />
+  </Target>
+  <Import Project="..\packages\KeraLua.1.4.1\build\net46\KeraLua.targets" Condition="Exists('..\packages\KeraLua.1.4.1\build\net46\KeraLua.targets')" />
+  <Import Project="..\packages\HPSocket.Net.6.0.3\build\HPSocket.Net.targets" Condition="Exists('..\packages\HPSocket.Net.6.0.3\build\HPSocket.Net.targets')" />
+</Project>
