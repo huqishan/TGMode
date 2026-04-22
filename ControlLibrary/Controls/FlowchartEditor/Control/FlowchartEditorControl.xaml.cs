@@ -1,32 +1,43 @@
+﻿using ControlLibrary.Controls.FlowchartEditor.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Data;
+using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
+using System.Windows.Navigation;
 using System.Windows.Shapes;
-using WpfApp.Flowchart;
 
-namespace WpfApp.Controls
+namespace ControlLibrary.Controls.FlowchartEditor.Control
 {
     /// <summary>
     /// FlowchartEditorControl.xaml 的交互逻辑
     /// </summary>
+    // 流程图编辑器的交互和渲染逻辑。
     public partial class FlowchartEditorControl : UserControl
     {
+        // 画布使用一个很大的固定工作区，再通过缩放和平移变换显示局部区域。
         private const double WorkspaceSize = 10000;
         private const double DefaultNodeWidth = 150;
         private const double DefaultNodeHeight = 70;
         private const double AnchorSize = 14;
         private const double MinZoom = 0.25;
         private const double MaxZoom = 3.0;
+        // 连线避障时，节点矩形会向外扩这个距离，避免折线贴着节点边缘走。
+        private const double ConnectionClearance = FlowchartOrthogonalRouter.DefaultClearance;
 
+        // _nodes 是模型数据；_nodeVisuals 和 _nodeOutlines 是模型到界面元素的索引。
         private readonly List<FlowchartNodeModel> _nodes = new List<FlowchartNodeModel>();
         private readonly List<FlowchartConnectionModel> _connections = new List<FlowchartConnectionModel>();
         private readonly Dictionary<Guid, FlowchartNodeModel> _nodesById = new Dictionary<Guid, FlowchartNodeModel>();
         private readonly Dictionary<Guid, FrameworkElement> _nodeVisuals = new Dictionary<Guid, FrameworkElement>();
-        private readonly Dictionary<Guid, Border> _nodeBorders = new Dictionary<Guid, Border>();
+        private readonly Dictionary<Guid, FrameworkElement> _nodeOutlines = new Dictionary<Guid, FrameworkElement>();
 
         private bool _isViewportInitialized;
         private bool _isPanning;
@@ -39,10 +50,11 @@ namespace WpfApp.Controls
         private double _nodeDragStartX;
         private double _nodeDragStartY;
 
+        // 创建连线时记录起点节点和起点锚点，鼠标移动时用它们生成预览折线。
         private bool _isConnecting;
         private FlowchartNodeModel? _connectionSourceNode;
         private FlowchartAnchor _connectionSourceAnchor;
-        private Line? _previewLine;
+        private Polyline? _previewLine;
         private Polygon? _previewArrow;
 
         private Guid? _selectedNodeId;
@@ -110,23 +122,36 @@ namespace WpfApp.Controls
                 return;
             }
 
+            // 新版拖拽数据会直接传节点类型；旧版只传文本时，通过文本兜底识别“判断”节点。
+            FlowchartNodeKind nodeKind = ResolveNodeKind(nodeText);
+            if (e.Data.GetDataPresent(FlowchartDragDataFormats.PaletteNodeKind))
+            {
+                string? nodeKindValue = e.Data.GetData(FlowchartDragDataFormats.PaletteNodeKind)?.ToString();
+                if (Enum.TryParse(nodeKindValue, out FlowchartNodeKind parsedNodeKind))
+                {
+                    nodeKind = parsedNodeKind;
+                }
+            }
+
             _lastProcessedDragId = dragId;
-            AddNode(nodeText, e.GetPosition(Viewport));
+            AddNode(nodeText, nodeKind, e.GetPosition(Viewport));
             e.Handled = true;
         }
 
-        private void AddNode(string text, Point viewportPoint)
+        private void AddNode(string text, FlowchartNodeKind kind, Point viewportPoint)
         {
             Point worldPoint = ViewportToWorld(viewportPoint);
             FlowchartNodeModel node = new FlowchartNodeModel
             {
                 Text = text,
+                Kind = kind,
                 Width = DefaultNodeWidth,
                 Height = DefaultNodeHeight,
                 X = Clamp(worldPoint.X - (DefaultNodeWidth / 2), 0, WorkspaceSize - DefaultNodeWidth),
                 Y = Clamp(worldPoint.Y - (DefaultNodeHeight / 2), 0, WorkspaceSize - DefaultNodeHeight)
             };
 
+            // 节点模型和界面元素分开保存：模型负责坐标/类型，界面元素负责实际绘制和鼠标事件。
             _nodes.Add(node);
             _nodesById[node.Id] = node;
             CreateNodeVisual(node);
@@ -136,6 +161,7 @@ namespace WpfApp.Controls
 
         private void CreateNodeVisual(FlowchartNodeModel node)
         {
+            // Grid 是整个节点的命中区域；内部的 Border/Polygon 只负责外形。
             Grid nodeRoot = new Grid
             {
                 Width = node.Width,
@@ -145,13 +171,10 @@ namespace WpfApp.Controls
                 Tag = node
             };
 
-            Border nodeBorder = new Border
-            {
-                CornerRadius = new CornerRadius(8),
-                BorderThickness = new Thickness(2),
-                BorderBrush = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#B9B9B9")),
-                Background = Brushes.White
-            };
+            // 判断节点用横向菱形，其他节点保持原来的圆角矩形。
+            FrameworkElement nodeOutline = node.Kind == FlowchartNodeKind.Decision
+                ? CreateDecisionOutline(node)
+                : CreateRectangleOutline();
 
             TextBlock textBlock = new TextBlock
             {
@@ -163,7 +186,7 @@ namespace WpfApp.Controls
                 VerticalAlignment = VerticalAlignment.Center
             };
 
-            nodeRoot.Children.Add(nodeBorder);
+            nodeRoot.Children.Add(nodeOutline);
             nodeRoot.Children.Add(textBlock);
             nodeRoot.Children.Add(CreateAnchorHandle(node, FlowchartAnchor.Top));
             nodeRoot.Children.Add(CreateAnchorHandle(node, FlowchartAnchor.Right));
@@ -180,12 +203,43 @@ namespace WpfApp.Controls
 
             NodesCanvas.Children.Add(nodeRoot);
             _nodeVisuals[node.Id] = nodeRoot;
-            _nodeBorders[node.Id] = nodeBorder;
+            _nodeOutlines[node.Id] = nodeOutline;
             UpdateNodeSelectionVisuals();
+        }
+
+        private static Border CreateRectangleOutline()
+        {
+            return new Border
+            {
+                CornerRadius = new CornerRadius(8),
+                BorderThickness = new Thickness(2),
+                BorderBrush = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#B9B9B9")),
+                Background = Brushes.White
+            };
+        }
+
+        private static Polygon CreateDecisionOutline(FlowchartNodeModel node)
+        {
+            return new Polygon
+            {
+                // 四个点分别是上、右、下、左，所以视觉上是横向菱形。
+                Points = new PointCollection(new[]
+                {
+                    new Point(node.Width / 2, 0),
+                    new Point(node.Width, node.Height / 2),
+                    new Point(node.Width / 2, node.Height),
+                    new Point(0, node.Height / 2)
+                }),
+                Fill = Brushes.White,
+                Stroke = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#B9B9B9")),
+                StrokeThickness = 2,
+                Stretch = Stretch.None
+            };
         }
 
         private FrameworkElement CreateAnchorHandle(FlowchartNodeModel node, FlowchartAnchor anchor)
         {
+            // 锚点小圆点放在节点四边中点；拖动它开始创建连线。
             Ellipse handle = new Ellipse
             {
                 Width = AnchorSize,
@@ -297,6 +351,7 @@ namespace WpfApp.Controls
             _connectionSourceNode = sourceNode;
             _connectionSourceAnchor = handleInfo.Anchor;
 
+            // 先画一条长度为 0 的预览线，鼠标移动时再更新成真正的避障折线。
             Point startPoint = sourceNode.GetAnchorPoint(handleInfo.Anchor);
             ShowPreviewConnection(startPoint, startPoint);
             Viewport.CaptureMouse();
@@ -370,6 +425,7 @@ namespace WpfApp.Controls
                 return;
             }
 
+            // 只有鼠标松开时落在另一个节点的锚点上，才会真正创建连接。
             if (!TryGetAnchorHandleAt(viewportPoint, out FlowchartNodeModel? targetNode, out FlowchartAnchor targetAnchor))
             {
                 return;
@@ -409,6 +465,7 @@ namespace WpfApp.Controls
             node = null;
             anchor = FlowchartAnchor.Top;
 
+            // WPF 命中测试拿到的是最内层元素，需要一路向父级查找锚点 Tag。
             HitTestResult? hitTestResult = VisualTreeHelper.HitTest(Viewport, viewportPoint);
             DependencyObject? current = hitTestResult?.VisualHit;
 
@@ -445,6 +502,7 @@ namespace WpfApp.Controls
 
             WorkspaceScaleTransform.ScaleX = nextScale;
             WorkspaceScaleTransform.ScaleY = nextScale;
+            // 缩放时保持鼠标指向的世界坐标不变，用户会感觉是在以鼠标位置为中心缩放。
             WorkspaceTranslateTransform.X = viewportPoint.X - (worldPoint.X * nextScale);
             WorkspaceTranslateTransform.Y = viewportPoint.Y - (worldPoint.Y * nextScale);
             e.Handled = true;
@@ -483,7 +541,7 @@ namespace WpfApp.Controls
                 _nodeVisuals.Remove(nodeId);
             }
 
-            _nodeBorders.Remove(nodeId);
+            _nodeOutlines.Remove(nodeId);
             _selectedNodeId = null;
             _selectedConnectionId = null;
             UpdateNodeSelectionVisuals();
@@ -527,11 +585,20 @@ namespace WpfApp.Controls
             Brush defaultBorderBrush = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#B9B9B9"));
             Brush selectedBackground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#EDF5FF"));
 
-            foreach (KeyValuePair<Guid, Border> item in _nodeBorders)
+            foreach (KeyValuePair<Guid, FrameworkElement> item in _nodeOutlines)
             {
                 bool isSelected = _selectedNodeId == item.Key;
-                item.Value.BorderBrush = isSelected ? selectedBorderBrush : defaultBorderBrush;
-                item.Value.Background = isSelected ? selectedBackground : Brushes.White;
+                // 矩形节点是 Border，判断节点是 Polygon；两种外形分别更新边框和填充。
+                if (item.Value is Border border)
+                {
+                    border.BorderBrush = isSelected ? selectedBorderBrush : defaultBorderBrush;
+                    border.Background = isSelected ? selectedBackground : Brushes.White;
+                }
+                else if (item.Value is Shape shape)
+                {
+                    shape.Stroke = isSelected ? selectedBorderBrush : defaultBorderBrush;
+                    shape.Fill = isSelected ? selectedBackground : Brushes.White;
+                }
             }
         }
 
@@ -549,8 +616,10 @@ namespace WpfApp.Controls
 
                 Point startPoint = sourceNode.GetAnchorPoint(connection.SourceAnchor);
                 Point endPoint = targetNode.GetAnchorPoint(connection.TargetAnchor);
+                // 每次渲染都重新路由，这样拖动节点后折线会自动重新避开所有节点。
+                IReadOnlyList<Point> route = CreateConnectionRoute(sourceNode, connection.SourceAnchor, targetNode, connection.TargetAnchor);
 
-                if ((endPoint - startPoint).Length < 0.1)
+                if ((endPoint - startPoint).Length < 0.1 || route.Count < 2)
                 {
                     continue;
                 }
@@ -560,34 +629,33 @@ namespace WpfApp.Controls
                     ? new SolidColorBrush((Color)ColorConverter.ConvertFromString("#2F80ED"))
                     : new SolidColorBrush((Color)ColorConverter.ConvertFromString("#666666"));
 
-                Line hitTarget = new Line
+                // 透明粗折线专门用来命中鼠标，避免细线很难点中。
+                Polyline hitTarget = new Polyline
                 {
-                    X1 = startPoint.X,
-                    Y1 = startPoint.Y,
-                    X2 = endPoint.X,
-                    Y2 = endPoint.Y,
+                    Points = new PointCollection(route),
                     Stroke = Brushes.Transparent,
                     StrokeThickness = 14,
+                    StrokeLineJoin = PenLineJoin.Round,
                     Tag = connection,
                     Cursor = Cursors.Hand
                 };
                 hitTarget.MouseLeftButtonDown += ConnectionElement_MouseLeftButtonDown;
 
-                Line visibleLine = new Line
+                // 可见折线不参与命中，点击交给上面的透明粗折线处理。
+                Polyline visibleLine = new Polyline
                 {
-                    X1 = startPoint.X,
-                    Y1 = startPoint.Y,
-                    X2 = endPoint.X,
-                    Y2 = endPoint.Y,
+                    Points = new PointCollection(route),
                     Stroke = lineBrush,
                     StrokeThickness = isSelected ? 3 : 2,
+                    StrokeLineJoin = PenLineJoin.Round,
                     IsHitTestVisible = false
                 };
 
                 Polygon arrow = new Polygon
                 {
                     Fill = lineBrush,
-                    Points = CreateArrowHead(startPoint, endPoint),
+                    // 箭头方向取折线最后一段，避免拐弯后的箭头仍按首尾直线方向画。
+                    Points = CreateArrowHead(route),
                     Tag = connection,
                     Cursor = Cursors.Hand
                 };
@@ -619,11 +687,12 @@ namespace WpfApp.Controls
         {
             ClearPreviewConnection();
 
-            _previewLine = new Line
+            _previewLine = new Polyline
             {
                 Stroke = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#7A7A7A")),
                 StrokeThickness = 2,
                 StrokeDashArray = new DoubleCollection(new[] { 5d, 4d }),
+                StrokeLineJoin = PenLineJoin.Round,
                 IsHitTestVisible = false
             };
 
@@ -645,11 +714,10 @@ namespace WpfApp.Controls
                 return;
             }
 
-            _previewLine.X1 = startPoint.X;
-            _previewLine.Y1 = startPoint.Y;
-            _previewLine.X2 = endPoint.X;
-            _previewLine.Y2 = endPoint.Y;
-            _previewArrow.Points = CreateArrowHead(startPoint, endPoint);
+            // 预览线和正式连线使用同一个路由器，只是终点是当前鼠标位置。
+            IReadOnlyList<Point> route = CreatePreviewRoute(startPoint, endPoint);
+            _previewLine.Points = new PointCollection(route);
+            _previewArrow.Points = CreateArrowHead(route);
         }
 
         private void ClearPreviewConnection()
@@ -667,7 +735,27 @@ namespace WpfApp.Controls
             }
         }
 
-        private PointCollection CreateArrowHead(Point startPoint, Point endPoint)
+        private PointCollection CreateArrowHead(IReadOnlyList<Point> route)
+        {
+            if (route.Count < 2)
+            {
+                return new PointCollection();
+            }
+
+            Point endPoint = route[^1];
+            // 从后往前找最后一段非零长度的线段，作为箭头朝向。
+            for (int i = route.Count - 2; i >= 0; i--)
+            {
+                if ((endPoint - route[i]).Length >= 0.1)
+                {
+                    return CreateArrowHead(route[i], endPoint);
+                }
+            }
+
+            return new PointCollection();
+        }
+
+        private static PointCollection CreateArrowHead(Point startPoint, Point endPoint)
         {
             Vector direction = startPoint - endPoint;
             if (direction.Length < 0.1)
@@ -685,6 +773,57 @@ namespace WpfApp.Controls
             Point point2 = basePoint - (perpendicular * arrowWidth);
 
             return new PointCollection(new[] { endPoint, point1, point2 });
+        }
+
+        private IReadOnlyList<Point> CreateConnectionRoute(
+            FlowchartNodeModel sourceNode,
+            FlowchartAnchor sourceAnchor,
+            FlowchartNodeModel targetNode,
+            FlowchartAnchor targetAnchor)
+        {
+            // 路由器只关心几何信息：起终点、锚点方向、所有节点矩形和工作区范围。
+            return FlowchartOrthogonalRouter.Route(
+                sourceNode.GetAnchorPoint(sourceAnchor),
+                sourceAnchor,
+                targetNode.GetAnchorPoint(targetAnchor),
+                targetAnchor,
+                GetNodeBounds(),
+                GetWorkspaceBounds(),
+                ConnectionClearance);
+        }
+
+        private IReadOnlyList<Point> CreatePreviewRoute(Point startPoint, Point endPoint)
+        {
+            // 预览时没有目标锚点，路由器会根据鼠标相对起点的位置推断一个进入方向。
+            return FlowchartOrthogonalRouter.RouteToPoint(
+                startPoint,
+                _connectionSourceAnchor,
+                endPoint,
+                GetNodeBounds(),
+                GetWorkspaceBounds(),
+                ConnectionClearance);
+        }
+
+        private IEnumerable<Rect> GetNodeBounds()
+        {
+            return _nodes.Select(node => node.GetBounds());
+        }
+
+        private static Rect GetWorkspaceBounds()
+        {
+            return new Rect(0, 0, WorkspaceSize, WorkspaceSize);
+        }
+
+        private static FlowchartNodeKind ResolveNodeKind(string text)
+        {
+            // 兼容旧的拖拽数据：如果只传了文本，也能把“判断”识别成菱形节点。
+            return text.Trim() switch
+            {
+                "\u5f00\u59cb" => FlowchartNodeKind.Start,
+                "\u5224\u65ad" => FlowchartNodeKind.Decision,
+                "\u7ed3\u675f" => FlowchartNodeKind.End,
+                _ => FlowchartNodeKind.Process
+            };
         }
 
         private void UpdateNodeVisualPosition(FlowchartNodeModel node)

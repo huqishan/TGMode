@@ -1,6 +1,6 @@
 using System;
 
-namespace WpfApp.Flowchart
+namespace ControlLibrary.Controls.FlowchartEditor.Models
 {
     public class FlowchartConnectionModel
     {

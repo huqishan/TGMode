@@ -4,23 +4,144 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:WpfApp"
-        xmlns:ui="http://schemas.inkore.net/lib/ui/wpf/modern"
+        xmlns:controls="clr-namespace:WpfApp.Controls"
         mc:Ignorable="d" MinWidth="1450" MinHeight="600">
-    <ui:NavigationView x:Name="Navigation" IsPaneOpen="True" PaneTitle="WpfApp" IsBackButtonVisible="Collapsed" IsSettingsVisible="True" SelectionChanged="NavigationViewControl_SelectionChanged" Foreground="White">
-        <ui:NavigationView.AutoSuggestBox>
-            <!--搜索框-->
-            <ui:AutoSuggestBox x:Name="controlsSearchBox" MinWidth="200" VerticalAlignment="Center" x:FieldModifier="public" PlaceholderText="Search">
-                <ui:AutoSuggestBox.QueryIcon>
-                    <ui:FontIcon Icon="{x:Static ui:SegoeFluentIcons.Search}" FontSize="12" RenderTransformOrigin="0.5,0.5">
-                        <ui:FontIcon.RenderTransform>
-                            <ScaleTransform ScaleX="-1"/>
-                        </ui:FontIcon.RenderTransform>
-                    </ui:FontIcon>
-                </ui:AutoSuggestBox.QueryIcon>
-            </ui:AutoSuggestBox>
-        </ui:NavigationView.AutoSuggestBox>
+    <Window.Resources>
+        <LinearGradientBrush x:Key="PanelBrush" StartPoint="0,0" EndPoint="1,1">
+            <GradientStop Color="#CC0F1D31" Offset="0" />
+            <GradientStop Color="#C9111A29" Offset="0.55" />
+            <GradientStop Color="#B50B1320" Offset="1" />
+        </LinearGradientBrush>
 
-        <TabControl x:Name="tabControl" HorizontalAlignment="Stretch">
-        </TabControl>
-    </ui:NavigationView>
+        <LinearGradientBrush x:Key="BoardBrush" StartPoint="0,0" EndPoint="1,1">
+            <GradientStop Color="#0F1B2D" Offset="0" />
+            <GradientStop Color="#0B1320" Offset="0.52" />
+            <GradientStop Color="#08111B" Offset="1" />
+        </LinearGradientBrush>
+
+        <LinearGradientBrush x:Key="PrimaryButtonBrush" StartPoint="0,0" EndPoint="1,1">
+            <GradientStop Color="#4FFFD2" Offset="0" />
+            <GradientStop Color="#2CB7FF" Offset="1" />
+        </LinearGradientBrush>
+
+        <LinearGradientBrush x:Key="SecondaryButtonBrush" StartPoint="0,0" EndPoint="1,1">
+            <GradientStop Color="#26354C" Offset="0" />
+            <GradientStop Color="#1A2434" Offset="1" />
+        </LinearGradientBrush>
+
+        <Style x:Key="GlassCardStyle" TargetType="Border">
+            <Setter Property="CornerRadius" Value="28" />
+            <Setter Property="Padding" Value="24" />
+            <Setter Property="Background" Value="{StaticResource PanelBrush}" />
+            <Setter Property="BorderBrush" Value="#24FFFFFF" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="SnapsToDevicePixels" Value="True" />
+            <Setter Property="Margin" Value="0,0,0,20" />
+        </Style>
+
+        <Style x:Key="ActionButtonStyle" TargetType="Button">
+            <Setter Property="Foreground" Value="#041018" />
+            <Setter Property="FontFamily" Value="Microsoft YaHei UI" />
+            <Setter Property="FontSize" Value="16" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Padding" Value="20,12" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Background" Value="{StaticResource PrimaryButtonBrush}" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Chrome"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="18"
+                                SnapsToDevicePixels="True">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"
+                                              Margin="{TemplateBinding Padding}" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Chrome" Property="Opacity" Value="0.92" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Chrome" Property="Opacity" Value="0.8" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="Chrome" Property="Opacity" Value="0.45" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="SecondaryActionButtonStyle" TargetType="Button" BasedOn="{StaticResource ActionButtonStyle}">
+            <Setter Property="Foreground" Value="#E7F7FF" />
+            <Setter Property="Background" Value="{StaticResource SecondaryButtonBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="BorderBrush" Value="#22FFFFFF" />
+        </Style>
+    </Window.Resources>
+    <Grid>
+        <Grid.Background>
+            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                <GradientStop Color="#08111D" Offset="0" />
+                <GradientStop Color="#0C1521" Offset="0.45" />
+                <GradientStop Color="#09101A" Offset="1" />
+            </LinearGradientBrush>
+        </Grid.Background>
+        <!--圆点-->
+        <Canvas IsHitTestVisible="False">
+            <Ellipse Width="520" Height="520" Canvas.Left="-180" Canvas.Top="-150" Opacity="0.34">
+                <Ellipse.Fill>
+                    <RadialGradientBrush>
+                        <GradientStop Color="#2AA0FF" Offset="0" />
+                        <GradientStop Color="#002AA0FF" Offset="1" />
+                    </RadialGradientBrush>
+                </Ellipse.Fill>
+            </Ellipse>
+            <Ellipse Width="460" Height="460" Canvas.Right="-120" Canvas.Bottom="-120" Opacity="0.28">
+                <Ellipse.Fill>
+                    <RadialGradientBrush>
+                        <GradientStop Color="#14FFD0" Offset="0" />
+                        <GradientStop Color="#0014FFD0" Offset="1" />
+                    </RadialGradientBrush>
+                </Ellipse.Fill>
+            </Ellipse>
+            <Ellipse Width="220" Height="220" Canvas.Left="360" Canvas.Top="72" Opacity="0.22">
+                <Ellipse.Fill>
+                    <RadialGradientBrush>
+                        <GradientStop Color="#4F83FF" Offset="0" />
+                        <GradientStop Color="#004F83FF" Offset="1" />
+                    </RadialGradientBrush>
+                </Ellipse.Fill>
+            </Ellipse>
+        </Canvas>
+        <Grid Margin="24,20,24,24">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="320" />
+                <ColumnDefinition Width="20" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <!-- Left custom navigation pane. -->
+            <controls:ModernNavigationBar x:Name="NavigationBar" />
+
+            <!-- Right content area still uses tabs opened by navigation clicks. -->
+            <Border Grid.Column="2"
+                    Padding="12"
+                    Background="White"
+                    BorderBrush="#24FFFFFF"
+                    BorderThickness="1"
+                    CornerRadius="28">
+                <TabControl x:Name="tabControl"
+                            Background="{x:Null}"
+                            BorderThickness="0" Foreground="White"
+                            HorizontalAlignment="Stretch" />
+            </Border>
+        </Grid>
+    </Grid>
+   
 </Window>

@@ -1,4 +1,4 @@
-namespace WpfApp.Flowchart
+namespace ControlLibrary.Controls.FlowchartEditor.Models
 {
     public enum FlowchartAnchor
     {
