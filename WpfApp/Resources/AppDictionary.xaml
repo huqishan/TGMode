@@ -6,6 +6,36 @@
         Opacity=".25"
         ShadowDepth="3"
         Color="#303030" />
+
+    <Style TargetType="{x:Type TextBlock}">
+        <Setter Property="Foreground" Value="{DynamicResource AppContentTextBrush}" />
+    </Style>
+
+    <Style x:Key="AppTitleTextBlockStyle" TargetType="{x:Type TextBlock}">
+        <Setter Property="Foreground" Value="{DynamicResource AppContentTextBrush}" />
+        <Setter Property="FontSize" Value="22" />
+        <Setter Property="FontWeight" Value="Bold" />
+    </Style>
+
+    <Style x:Key="AppMutedTextBlockStyle" TargetType="{x:Type TextBlock}">
+        <Setter Property="Foreground" Value="{DynamicResource AppMutedTextBrush}" />
+        <Setter Property="FontSize" Value="13" />
+    </Style>
+
+    <Style TargetType="{x:Type Label}">
+        <Setter Property="Foreground" Value="{DynamicResource AppContentTextBrush}" />
+    </Style>
+
+    <Style TargetType="{x:Type RadioButton}">
+        <Setter Property="Foreground" Value="{DynamicResource AppContentTextBrush}" />
+        <Setter Property="Cursor" Value="Hand" />
+    </Style>
+
+    <Style TargetType="{x:Type CheckBox}">
+        <Setter Property="Foreground" Value="{DynamicResource AppContentTextBrush}" />
+        <Setter Property="Cursor" Value="Hand" />
+    </Style>
+
     <Style x:Key="BorderStyle" TargetType="Border">
         <Setter Property="Effect" Value="{StaticResource Shadow}" />
         <Setter Property="BorderThickness" Value="1" />
@@ -18,7 +48,7 @@
         <Setter Property="OverridesDefaultStyle" Value="True" />
         <Setter Property="SnapsToDevicePixels" Value="True" />
         <Setter Property="BorderBrush" Value="{x:Null}" />
-        <Setter Property="Foreground" Value="Black" />
+        <Setter Property="Foreground" Value="{DynamicResource AppContentTextBrush}" />
         <Setter Property="FontSize" Value="20" />
         <Setter Property="MinWidth" Value="150" />
         <Setter Property="Height" Value="40" />

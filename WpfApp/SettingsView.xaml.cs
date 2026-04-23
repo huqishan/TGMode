@@ -1,39 +1,58 @@
-﻿using iNKORE.UI.WPF.Modern;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
 
 namespace WpfApp
 {
     /// <summary>
-    /// SettingsView.xaml 的交互逻辑
+    /// Interaction logic for SettingsView.xaml.
     /// </summary>
     public partial class SettingsView : UserControl
     {
+        private bool _isUpdatingThemeSelection;
+
         public SettingsView()
         {
             InitializeComponent();
+            Loaded += SettingsView_Loaded;
+        }
+
+        private void SettingsView_Loaded(object sender, RoutedEventArgs e)
+        {
+            UpdateSelectedThemeRadioButton();
         }
 
         private void OnThemeRadioButtonChecked(object sender, RoutedEventArgs e)
         {
-            var selectTheme = ((RadioButton)sender)?.Tag?.ToString();
-
-            if (selectTheme != null)
+            if (_isUpdatingThemeSelection)
             {
-                iNKORE.UI.WPF.Modern.ThemeManager.SetRequestedTheme(this, App.GetEnum<ElementTheme>(selectTheme));
+                return;
             }
+
+            if (sender is RadioButton { Tag: string themeName } &&
+                Enum.TryParse(themeName, ignoreCase: true, out AppTheme theme))
+            {
+                AppThemeManager.ApplyTheme(theme);
+                UpdateSelectedThemeRadioButton();
+            }
+        }
+
+        private void UpdateSelectedThemeRadioButton()
+        {
+            _isUpdatingThemeSelection = true;
+
+            foreach (object child in ThemePanel.Children)
+            {
+                if (child is RadioButton radioButton && radioButton.Tag is string themeName)
+                {
+                    radioButton.IsChecked = string.Equals(
+                        themeName,
+                        AppThemeManager.CurrentTheme.ToString(),
+                        StringComparison.OrdinalIgnoreCase);
+                }
+            }
+
+            _isUpdatingThemeSelection = false;
         }
     }
 }

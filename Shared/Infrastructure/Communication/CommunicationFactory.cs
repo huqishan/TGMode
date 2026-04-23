@@ -31,6 +31,9 @@ namespace Shared.Infrastructure.Communication
                 case CommuniactionType.UDPServer:
                     communiaction = new UDPServer(config);
                     break;
+                case CommuniactionType.COM:
+                    communiaction = new SerialPortComm(config);
+                    break;
                 case CommuniactionType.RabbitMQRPCServer:
                     communiaction = new RabbitMQRPCServer(config);
                     break;

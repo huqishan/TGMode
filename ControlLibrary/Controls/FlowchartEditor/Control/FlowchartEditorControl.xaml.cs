@@ -1,8 +1,12 @@
 ﻿using ControlLibrary.Controls.FlowchartEditor.Models;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -29,8 +33,12 @@ namespace ControlLibrary.Controls.FlowchartEditor.Control
         private const double AnchorSize = 14;
         private const double MinZoom = 0.25;
         private const double MaxZoom = 3.0;
+        private const int ExecutionStepDelayMilliseconds = 700;
+        private const int ExecutionPollingIntervalMilliseconds = 50;
+        private const int MaxExecutionSteps = 500;
         // 连线避障时，节点矩形会向外扩这个距离，避免折线贴着节点边缘走。
         private const double ConnectionClearance = FlowchartOrthogonalRouter.DefaultClearance;
+        private static readonly JsonSerializerOptions DocumentJsonOptions = CreateDocumentJsonOptions();
 
         // _nodes 是模型数据；_nodeVisuals 和 _nodeOutlines 是模型到界面元素的索引。
         private readonly List<FlowchartNodeModel> _nodes = new List<FlowchartNodeModel>();
@@ -59,11 +67,163 @@ namespace ControlLibrary.Controls.FlowchartEditor.Control
 
         private Guid? _selectedNodeId;
         private Guid? _selectedConnectionId;
+        private Guid? _executingNodeId;
+        private Guid? _executingConnectionId;
         private string? _lastProcessedDragId;
+        private bool _isExecuting;
+        private bool _isExecutionPaused;
+        private CancellationTokenSource? _executionCancellationTokenSource;
+        private TaskCompletionSource<bool>? _executionResumeSignal;
 
         public FlowchartEditorControl()
         {
             InitializeComponent();
+        }
+
+        public event EventHandler<FlowchartExecutionStepEventArgs>? ExecutionStepChanged;
+
+        public bool IsExecuting => _isExecuting;
+
+        public bool IsExecutionPaused => _isExecuting && _isExecutionPaused;
+
+        public void SaveToFile(string filePath)
+        {
+            // 先把当前画布模型整理成纯数据对象，再统一序列化成 JSON 文件。
+            FlowchartDocument document = CreateDocument();
+            string json = JsonSerializer.Serialize(document, DocumentJsonOptions);
+            File.WriteAllText(filePath, json, Encoding.UTF8);
+        }
+
+        public void LoadFromFile(string filePath)
+        {
+            // 从本地文件读取后直接反序列化，再交给 LoadDocument 重建画布元素。
+            string json = File.ReadAllText(filePath, Encoding.UTF8);
+            FlowchartDocument? document = JsonSerializer.Deserialize<FlowchartDocument>(json, DocumentJsonOptions);
+            if (document is null)
+            {
+                throw new InvalidDataException("流程图文件内容为空或格式不正确。");
+            }
+
+            LoadDocument(document);
+        }
+
+        public async Task<FlowchartExecutionResult> ExecuteFlowAsync()
+        {
+            if (_isExecuting)
+            {
+                return new FlowchartExecutionResult(false, "流程图正在执行中。", Array.Empty<string>());
+            }
+
+            _isExecuting = true;
+            _isExecutionPaused = false;
+            _executionResumeSignal = null;
+            _executionCancellationTokenSource = new CancellationTokenSource();
+            CancellationToken cancellationToken = _executionCancellationTokenSource.Token;
+            List<string> steps = new List<string>();
+
+            try
+            {
+                // 优先从开始节点启动；如果没有开始节点，就按左上到右下的顺序找第一个节点。
+                FlowchartNodeModel? currentNode = GetExecutionStartNode();
+                if (currentNode is null)
+                {
+                    return new FlowchartExecutionResult(false, "流程图为空，无法执行。", steps);
+                }
+
+                for (int stepIndex = 1; stepIndex <= MaxExecutionSteps; stepIndex++)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    await WaitIfExecutionPausedAsync(cancellationToken);
+
+                    SetExecutionHighlight(currentNode.Id, null);
+
+                    string stepMessage = $"步骤 {stepIndex}: {currentNode.Text}";
+                    steps.Add(stepMessage);
+                    ExecutionStepChanged?.Invoke(
+                        this,
+                        new FlowchartExecutionStepEventArgs(stepIndex, currentNode.Id, currentNode.Text, currentNode.Kind, stepMessage));
+
+                    await WaitForExecutionDelayAsync(ExecutionStepDelayMilliseconds, cancellationToken);
+
+                    if (currentNode.Kind == FlowchartNodeKind.End)
+                    {
+                        return new FlowchartExecutionResult(true, $"执行完成，共执行 {stepIndex} 个步骤。", steps);
+                    }
+
+                    // 连线的选择规则统一封装，判断节点优先走右侧“是”，再走左侧“否”。
+                    FlowchartConnectionModel? nextConnection = GetNextExecutionConnection(currentNode);
+                    if (nextConnection is null)
+                    {
+                        return new FlowchartExecutionResult(true, $"执行停止：节点“{currentNode.Text}”没有后续连线。", steps);
+                    }
+
+                    SetExecutionHighlight(currentNode.Id, nextConnection.Id);
+                    await WaitForExecutionDelayAsync(ExecutionStepDelayMilliseconds / 2, cancellationToken);
+
+                    if (!_nodesById.TryGetValue(nextConnection.TargetNodeId, out FlowchartNodeModel? nextNode))
+                    {
+                        return new FlowchartExecutionResult(false, $"执行失败：节点“{currentNode.Text}”的下一节点不存在。", steps);
+                    }
+
+                    currentNode = nextNode;
+                }
+
+                return new FlowchartExecutionResult(false, $"执行停止：超过最大步骤数 {MaxExecutionSteps}，请检查是否存在循环。", steps);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                return new FlowchartExecutionResult(false, $"执行已结束，共执行 {steps.Count} 个步骤。", steps);
+            }
+            finally
+            {
+                _isExecuting = false;
+                _isExecutionPaused = false;
+                _executionResumeSignal = null;
+                _executionCancellationTokenSource?.Dispose();
+                _executionCancellationTokenSource = null;
+                SetExecutionHighlight(null, null);
+            }
+        }
+
+        public bool PauseExecution()
+        {
+            if (!_isExecuting || _isExecutionPaused)
+            {
+                return false;
+            }
+
+            // 暂停时创建一个等待信号，执行循环会在安全点挂起，直到点击继续。
+            _isExecutionPaused = true;
+            _executionResumeSignal = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            return true;
+        }
+
+        public bool ResumeExecution()
+        {
+            if (!_isExecuting || !_isExecutionPaused)
+            {
+                return false;
+            }
+
+            _isExecutionPaused = false;
+            _executionResumeSignal?.TrySetResult(true);
+            _executionResumeSignal = null;
+            return true;
+        }
+
+        public bool StopExecution()
+        {
+            if (!_isExecuting)
+            {
+                return false;
+            }
+
+            // 结束执行要同时取消延时等待，并解除暂停状态，避免卡在暂停点上。
+            _isExecutionPaused = false;
+            _executionResumeSignal?.TrySetResult(true);
+            _executionResumeSignal = null;
+            _executionCancellationTokenSource?.Cancel();
+            return true;
         }
 
         private void FlowchartEditorControl_Loaded(object sender, RoutedEventArgs e)
@@ -88,6 +248,185 @@ namespace ControlLibrary.Controls.FlowchartEditor.Control
             WorkspaceTranslateTransform.X = (Viewport.ActualWidth / 2) - (WorkspaceSize / 2);
             WorkspaceTranslateTransform.Y = (Viewport.ActualHeight / 2) - (WorkspaceSize / 2);
             _isViewportInitialized = true;
+        }
+
+        private static JsonSerializerOptions CreateDocumentJsonOptions()
+        {
+            JsonSerializerOptions options = new JsonSerializerOptions
+            {
+                WriteIndented = true,
+                PropertyNameCaseInsensitive = true
+            };
+            options.Converters.Add(new JsonStringEnumConverter());
+            return options;
+        }
+
+        private FlowchartDocument CreateDocument()
+        {
+            // 节点和连接分开保存，文件里不混入 WPF 控件对象，便于长期兼容和调试。
+            return new FlowchartDocument
+            {
+                Nodes = _nodes.Select(node => new FlowchartNodeDocument
+                {
+                    Id = node.Id,
+                    Text = node.Text,
+                    Kind = node.Kind,
+                    X = node.X,
+                    Y = node.Y,
+                    Width = node.Width,
+                    Height = node.Height
+                }).ToList(),
+                Connections = _connections.Select(connection => new FlowchartConnectionDocument
+                {
+                    Id = connection.Id,
+                    SourceNodeId = connection.SourceNodeId,
+                    SourceAnchor = connection.SourceAnchor,
+                    TargetNodeId = connection.TargetNodeId,
+                    TargetAnchor = connection.TargetAnchor
+                }).ToList()
+            };
+        }
+
+        private void LoadDocument(FlowchartDocument document)
+        {
+            // 先清空现有画布，再按照文件内容重建模型、映射表和可视元素。
+            ClearPreviewConnection();
+            _nodes.Clear();
+            _connections.Clear();
+            _nodesById.Clear();
+            _nodeVisuals.Clear();
+            _nodeOutlines.Clear();
+            NodesCanvas.Children.Clear();
+            ConnectionsCanvas.Children.Clear();
+            _selectedNodeId = null;
+            _selectedConnectionId = null;
+            _executingNodeId = null;
+            _executingConnectionId = null;
+
+            foreach (FlowchartNodeDocument nodeDocument in document.Nodes)
+            {
+                FlowchartNodeModel node = new FlowchartNodeModel
+                {
+                    Id = nodeDocument.Id == Guid.Empty ? Guid.NewGuid() : nodeDocument.Id,
+                    Text = nodeDocument.Text ?? string.Empty,
+                    Kind = Enum.IsDefined(typeof(FlowchartNodeKind), nodeDocument.Kind) ? nodeDocument.Kind : FlowchartNodeKind.Process,
+                    Width = nodeDocument.Width > 0 ? nodeDocument.Width : DefaultNodeWidth,
+                    Height = nodeDocument.Height > 0 ? nodeDocument.Height : DefaultNodeHeight
+                };
+                node.X = Clamp(nodeDocument.X, 0, WorkspaceSize - node.Width);
+                node.Y = Clamp(nodeDocument.Y, 0, WorkspaceSize - node.Height);
+
+                _nodes.Add(node);
+                _nodesById[node.Id] = node;
+                CreateNodeVisual(node);
+            }
+
+            foreach (FlowchartConnectionDocument connectionDocument in document.Connections)
+            {
+                if (!_nodesById.TryGetValue(connectionDocument.SourceNodeId, out FlowchartNodeModel? sourceNode) ||
+                    !_nodesById.TryGetValue(connectionDocument.TargetNodeId, out FlowchartNodeModel? targetNode))
+                {
+                    continue;
+                }
+
+                if (!CanUseAnchor(sourceNode, connectionDocument.SourceAnchor) ||
+                    !CanUseAnchor(targetNode, connectionDocument.TargetAnchor))
+                {
+                    continue;
+                }
+
+                FlowchartConnectionModel connection = new FlowchartConnectionModel
+                {
+                    Id = connectionDocument.Id == Guid.Empty ? Guid.NewGuid() : connectionDocument.Id,
+                    SourceNodeId = connectionDocument.SourceNodeId,
+                    SourceAnchor = connectionDocument.SourceAnchor,
+                    TargetNodeId = connectionDocument.TargetNodeId,
+                    TargetAnchor = connectionDocument.TargetAnchor
+                };
+
+                _connections.Add(connection);
+            }
+
+            UpdateNodeSelectionVisuals();
+            RenderConnections();
+            Focus();
+        }
+
+        private FlowchartNodeModel? GetExecutionStartNode()
+        {
+            return _nodes
+                .OrderByDescending(node => node.Kind == FlowchartNodeKind.Start)
+                .ThenBy(node => node.Y)
+                .ThenBy(node => node.X)
+                .FirstOrDefault();
+        }
+
+        private FlowchartConnectionModel? GetNextExecutionConnection(FlowchartNodeModel node)
+        {
+            // 这里只看当前节点的出边，不会跨节点搜索，保证执行顺序和连线关系一致。
+            List<FlowchartConnectionModel> outgoingConnections = _connections
+                .Where(connection => connection.SourceNodeId == node.Id)
+                .ToList();
+
+            if (outgoingConnections.Count == 0)
+            {
+                return null;
+            }
+
+            if (node.Kind == FlowchartNodeKind.Decision)
+            {
+                return outgoingConnections.FirstOrDefault(connection => connection.SourceAnchor == FlowchartAnchor.Right) ??
+                       outgoingConnections.FirstOrDefault(connection => connection.SourceAnchor == FlowchartAnchor.Left) ??
+                       outgoingConnections.FirstOrDefault();
+            }
+
+            FlowchartAnchor[] priorityOrder = new[]
+            {
+                FlowchartAnchor.Bottom,
+                FlowchartAnchor.Right,
+                FlowchartAnchor.Left,
+                FlowchartAnchor.Top
+            };
+
+            return outgoingConnections
+                .OrderBy(connection => Array.IndexOf(priorityOrder, connection.SourceAnchor))
+                .FirstOrDefault();
+        }
+
+        private void SetExecutionHighlight(Guid? nodeId, Guid? connectionId)
+        {
+            _executingNodeId = nodeId;
+            _executingConnectionId = connectionId;
+            UpdateNodeSelectionVisuals();
+            RenderConnections();
+        }
+
+        private async Task WaitForExecutionDelayAsync(int delayMilliseconds, CancellationToken cancellationToken)
+        {
+            int remainingDelay = delayMilliseconds;
+            while (remainingDelay > 0)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                await WaitIfExecutionPausedAsync(cancellationToken);
+
+                int currentDelay = Math.Min(remainingDelay, ExecutionPollingIntervalMilliseconds);
+                await Task.Delay(currentDelay, cancellationToken);
+                remainingDelay -= currentDelay;
+            }
+        }
+
+        private async Task WaitIfExecutionPausedAsync(CancellationToken cancellationToken)
+        {
+            while (_isExecutionPaused)
+            {
+                TaskCompletionSource<bool>? resumeSignal = _executionResumeSignal;
+                if (resumeSignal is null)
+                {
+                    return;
+                }
+
+                await resumeSignal.Task.WaitAsync(cancellationToken);
+            }
         }
 
         private void Viewport_DragOver(object sender, DragEventArgs e)
@@ -179,19 +518,25 @@ namespace ControlLibrary.Controls.FlowchartEditor.Control
             TextBlock textBlock = new TextBlock
             {
                 Text = node.Text,
-                Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#333333")),
                 FontSize = 15,
                 FontWeight = FontWeights.SemiBold,
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center
             };
+            textBlock.SetResourceReference(TextBlock.ForegroundProperty, "FlowchartNodeTextBrush");
 
             nodeRoot.Children.Add(nodeOutline);
+            if (node.Kind == FlowchartNodeKind.Decision)
+            {
+                nodeRoot.Children.Add(CreateDecisionBranchLabel("\u5426", HorizontalAlignment.Left));
+                nodeRoot.Children.Add(CreateDecisionBranchLabel("\u662f", HorizontalAlignment.Right));
+            }
+
             nodeRoot.Children.Add(textBlock);
-            nodeRoot.Children.Add(CreateAnchorHandle(node, FlowchartAnchor.Top));
-            nodeRoot.Children.Add(CreateAnchorHandle(node, FlowchartAnchor.Right));
-            nodeRoot.Children.Add(CreateAnchorHandle(node, FlowchartAnchor.Bottom));
-            nodeRoot.Children.Add(CreateAnchorHandle(node, FlowchartAnchor.Left));
+            foreach (FlowchartAnchor anchor in GetAvailableAnchors(node))
+            {
+                nodeRoot.Children.Add(CreateAnchorHandle(node, anchor));
+            }
 
             nodeRoot.MouseLeftButtonDown += NodeRoot_MouseLeftButtonDown;
             nodeRoot.MouseMove += NodeRoot_MouseMove;
@@ -235,6 +580,42 @@ namespace ControlLibrary.Controls.FlowchartEditor.Control
                 StrokeThickness = 2,
                 Stretch = Stretch.None
             };
+        }
+
+        private TextBlock CreateDecisionBranchLabel(string text, HorizontalAlignment horizontalAlignment)
+        {
+            TextBlock label = new TextBlock
+            {
+                Text = text,
+                FontSize = 13,
+                FontWeight = FontWeights.Bold,
+                HorizontalAlignment = horizontalAlignment,
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = horizontalAlignment == HorizontalAlignment.Left
+                    ? new Thickness(-25, -25, 0, 0)
+                    : new Thickness(0, -25, -25, 0),
+                IsHitTestVisible = false
+            };
+            label.SetResourceReference(TextBlock.ForegroundProperty, "FlowchartNodeTextBrush");
+            return label;
+        }
+
+        private static IEnumerable<FlowchartAnchor> GetAvailableAnchors(FlowchartNodeModel node)
+        {
+            yield return FlowchartAnchor.Top;
+            yield return FlowchartAnchor.Right;
+
+            if (node.Kind != FlowchartNodeKind.Decision)
+            {
+                yield return FlowchartAnchor.Bottom;
+            }
+
+            yield return FlowchartAnchor.Left;
+        }
+
+        private static bool CanUseAnchor(FlowchartNodeModel node, FlowchartAnchor anchor)
+        {
+            return node.Kind != FlowchartNodeKind.Decision || anchor != FlowchartAnchor.Bottom;
         }
 
         private FrameworkElement CreateAnchorHandle(FlowchartNodeModel node, FlowchartAnchor anchor)
@@ -345,6 +726,11 @@ namespace ControlLibrary.Controls.FlowchartEditor.Control
                 return;
             }
 
+            if (!CanUseAnchor(sourceNode, handleInfo.Anchor))
+            {
+                return;
+            }
+
             Focus();
             SelectNode(sourceNode.Id);
             _isConnecting = true;
@@ -436,6 +822,12 @@ namespace ControlLibrary.Controls.FlowchartEditor.Control
                 return;
             }
 
+            if (!CanUseAnchor(_connectionSourceNode, _connectionSourceAnchor) ||
+                !CanUseAnchor(targetNode, targetAnchor))
+            {
+                return;
+            }
+
             bool exists = _connections.Any(connection =>
                 connection.SourceNodeId == _connectionSourceNode.Id &&
                 connection.SourceAnchor == _connectionSourceAnchor &&
@@ -475,6 +867,11 @@ namespace ControlLibrary.Controls.FlowchartEditor.Control
                 {
                     if (_nodesById.TryGetValue(handleInfo.NodeId, out FlowchartNodeModel? targetNode))
                     {
+                        if (!CanUseAnchor(targetNode, handleInfo.Anchor))
+                        {
+                            return false;
+                        }
+
                         node = targetNode;
                         anchor = handleInfo.Anchor;
                         return true;
@@ -587,7 +984,7 @@ namespace ControlLibrary.Controls.FlowchartEditor.Control
 
             foreach (KeyValuePair<Guid, FrameworkElement> item in _nodeOutlines)
             {
-                bool isSelected = _selectedNodeId == item.Key;
+                bool isSelected = _selectedNodeId == item.Key || _executingNodeId == item.Key;
                 // 矩形节点是 Border，判断节点是 Polygon；两种外形分别更新边框和填充。
                 if (item.Value is Border border)
                 {
@@ -624,7 +1021,7 @@ namespace ControlLibrary.Controls.FlowchartEditor.Control
                     continue;
                 }
 
-                bool isSelected = _selectedConnectionId == connection.Id;
+                bool isSelected = _selectedConnectionId == connection.Id || _executingConnectionId == connection.Id;
                 Brush lineBrush = isSelected
                     ? new SolidColorBrush((Color)ColorConverter.ConvertFromString("#2F80ED"))
                     : new SolidColorBrush((Color)ColorConverter.ConvertFromString("#666666"));

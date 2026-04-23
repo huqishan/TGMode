@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace WpfApp.Navigation
+namespace ControlLibrary.Controls.Navigation.Models
 {
     public class ControlInfoDataItem
     {
@@ -14,7 +14,7 @@ namespace WpfApp.Navigation
             this.UniqueId = Guid.NewGuid().ToString();
             this.Title = title;
             this.Description = description;
-            this.ImageIconPath = imageIconPath.Replace("ms-appx://", string.Empty);
+            this.ImageIconPath = imageIconPath;
             this.Content = content;
             this.IsEnable = isEnable;
             this.IsVisibility = isVisibility;

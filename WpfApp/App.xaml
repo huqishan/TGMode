@@ -7,9 +7,11 @@
     <Application.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
-                <ui:ThemeResources/>
-                <ui:XamlControlsResources/>
+                <!--<ui:ThemeResources/>
+                <ui:XamlControlsResources/>-->
+                <ResourceDictionary Source="Resources/Themes/DarkTheme.xaml" />
                 <ResourceDictionary Source="Resources/AppDictionary.xaml" />
+                <ResourceDictionary Source="Resources/TabControlStyles.xaml" />
             </ResourceDictionary.MergedDictionaries>
             <!--如果存在，您的其他资源在这里-->
 

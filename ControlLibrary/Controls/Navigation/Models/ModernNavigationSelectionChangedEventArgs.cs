@@ -1,6 +1,6 @@
 using System;
 
-namespace WpfApp.Navigation
+namespace ControlLibrary.Controls.Navigation.Models
 {
     /// <summary>
     /// Event payload for the custom navigation control.

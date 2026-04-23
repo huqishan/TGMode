@@ -15,14 +15,23 @@
             <Setter Property="Padding" Value="14,0" />
             <Setter Property="HorizontalContentAlignment" Value="Left" />
             <Setter Property="Cursor" Value="Hand" />
-            <Setter Property="Background" Value="White" />
-            <Setter Property="BorderBrush" Value="#DADADA" />
+            <Setter Property="Background" Value="{DynamicResource TabCardBackgroundBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource TabItemBorderBrush}" />
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="FontSize" Value="15" />
+            <Setter Property="Foreground" Value="{DynamicResource AppContentTextBrush}" />
+        </Style>
+
+        <Style x:Key="ActionButtonStyle"
+               TargetType="Button"
+               BasedOn="{StaticResource PaletteButtonStyle}">
+            <Setter Property="Height" Value="40" />
+            <Setter Property="Padding" Value="10,0" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
         </Style>
     </UserControl.Resources>
 
-    <Grid Margin="12">
+    <Grid>
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="220" />
             <ColumnDefinition Width="12" />
@@ -31,19 +40,50 @@
 
         <Border Grid.Column="0"
                 Padding="14"
-                Background="#FAFAFA"
-                BorderBrush="#DDDDDD"
+                Background="{DynamicResource TabItemBackgroundBrush}"
+                BorderBrush="{DynamicResource TabItemBorderBrush}"
                 BorderThickness="1"
                 CornerRadius="10">
             <StackPanel>
                 <TextBlock FontSize="18" FontWeight="SemiBold" Text="流程图组件" />
                 <TextBlock Margin="0,8,0,18"
-                           Foreground="#666666"
+                           Foreground="{DynamicResource AppMutedTextBrush}"
                            Text="按住左键拖动按钮到右侧画布，创建新的流程节点。" 
                            TextWrapping="Wrap" />
 
+                <UniformGrid Columns="2" Margin="0,0,0,12">
+                    <Button x:Name="SaveButton"
+                            Style="{StaticResource ActionButtonStyle}"
+                            Content="保存"
+                            Click="SaveButton_Click" />
+                    <Button x:Name="OpenButton"
+                            Style="{StaticResource ActionButtonStyle}"
+                            Content="打开"
+                            Click="OpenButton_Click" />
+                    <Button x:Name="ExecuteButton"
+                            Style="{StaticResource ActionButtonStyle}"
+                            Content="执行"
+                            Click="ExecuteButton_Click" />
+                    <Button x:Name="PauseButton"
+                            Style="{StaticResource ActionButtonStyle}"
+                            Content="暂停"
+                            Click="PauseButton_Click"
+                            IsEnabled="False" />
+                    <Button x:Name="StopButton"
+                            Style="{StaticResource ActionButtonStyle}"
+                            Content="结束"
+                            Click="StopButton_Click"
+                            IsEnabled="False" />
+                </UniformGrid>
+
+                <TextBlock x:Name="ExecutionStatusText"
+                           Margin="0,0,0,18"
+                           Foreground="{DynamicResource AppMutedTextBrush}"
+                           Text="状态：等待操作"
+                           TextWrapping="Wrap" />
+
                 <Button Style="{StaticResource PaletteButtonStyle}"
-                        Content="开始"
+                        Content="开始" 
                         Tag="开始"
                         PreviewMouseLeftButtonDown="PaletteItem_PreviewMouseLeftButtonDown"
                         PreviewMouseLeftButtonUp="PaletteItem_PreviewMouseLeftButtonUp"
@@ -69,17 +109,17 @@
 
                 <Separator Margin="0,12,0,12" />
 
-                <TextBlock Foreground="#666666" Text="操作说明" FontWeight="SemiBold" />
+                <TextBlock Foreground="{DynamicResource AppMutedTextBrush}" Text="操作说明" FontWeight="SemiBold" />
                 <TextBlock Margin="0,8,0,0"
-                           Foreground="#666666"
+                           Foreground="{DynamicResource AppMutedTextBrush}"
                            Text="1. 左键拖按钮到画布创建节点"
                            TextWrapping="Wrap" />
                 <TextBlock Margin="0,6,0,0"
-                           Foreground="#666666"
+                           Foreground="{DynamicResource AppMutedTextBrush}"
                            Text="2. 拖节点四边连接点创建箭头线"
                            TextWrapping="Wrap" />
                 <TextBlock Margin="0,6,0,0"
-                           Foreground="#666666"
+                           Foreground="{DynamicResource AppMutedTextBrush}"
                            Text="3. 左键拖空白区域平移，滚轮缩放，Delete 删除选中项"
                            TextWrapping="Wrap" />
             </StackPanel>

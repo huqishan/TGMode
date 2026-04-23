@@ -1,0 +1,168 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:local="clr-namespace:WpfApp">
+    <Style x:Key="TabHeaderCloseButtonStyle" TargetType="{x:Type Button}">
+        <Setter Property="Width" Value="22" />
+        <Setter Property="Height" Value="22" />
+        <Setter Property="Margin" Value="12,0,0,0" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Foreground" Value="{DynamicResource TabCloseButtonForegroundBrush}" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Focusable" Value="False" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type Button}">
+                    <Border x:Name="Chrome"
+                            Background="{TemplateBinding Background}"
+                            CornerRadius="11"
+                            SnapsToDevicePixels="True">
+                        <ContentPresenter HorizontalAlignment="Center"
+                                          VerticalAlignment="Center" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Chrome" Property="Background" Value="{DynamicResource TabCloseHoverBrush}" />
+                            <Setter Property="Foreground" Value="{DynamicResource TabCloseButtonHoverForegroundBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="Chrome" Property="Background" Value="{DynamicResource TabClosePressedBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.35" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <DataTemplate x:Key="ClosableTabHeaderTemplate">
+        <StackPanel Margin="16,10"
+                    Orientation="Horizontal"
+                    HorizontalAlignment="Left">
+            <TextBlock VerticalAlignment="Center"
+                       FontSize="13"
+                       FontWeight="Bold"
+                       Foreground="{Binding RelativeSource={RelativeSource AncestorType={x:Type TabItem}}, Path=Foreground}"
+                       Text="{Binding}"
+                       TextWrapping="NoWrap" />
+
+            <Button Style="{StaticResource TabHeaderCloseButtonStyle}"
+                    Command="{x:Static local:MainWindow.CloseTabCommand}"
+                    CommandParameter="{Binding RelativeSource={RelativeSource AncestorType={x:Type TabItem}}}">
+                <TextBlock FontSize="11"
+                           FontWeight="Bold"
+                           Text="&#x00D7;" />
+            </Button>
+        </StackPanel>
+    </DataTemplate>
+
+    <Style x:Key="MinimalTabItemStyle" TargetType="{x:Type TabItem}">
+        <Setter Property="Foreground" Value="{DynamicResource TabItemForegroundBrush}" />
+        <Setter Property="Background" Value="{DynamicResource TabItemBackgroundBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource TabItemBorderBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Width" Value="Auto" />
+        <Setter Property="MinWidth" Value="0" />
+        <Setter Property="HorizontalAlignment" Value="Left" />
+        <Setter Property="HorizontalContentAlignment" Value="Left" />
+        <Setter Property="Margin" Value="0,0,10,0" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="HeaderTemplate" Value="{StaticResource ClosableTabHeaderTemplate}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type TabItem}">
+                    <Border x:Name="TabBorder"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="18"
+                            ClipToBounds="True"
+                            SnapsToDevicePixels="True">
+                        <Grid>
+                            <Border x:Name="SelectedAccent"
+                                    Height="3"
+                                    Margin="16,4,16,0"
+                                    VerticalAlignment="Top"
+                                    Background="{DynamicResource TabItemSelectedBorderBrush}"
+                                    CornerRadius="2"
+                                    Opacity="0" />
+
+                            <ContentPresenter x:Name="HeaderContent"
+                                              Content="{TemplateBinding Header}"
+                                              ContentTemplate="{TemplateBinding HeaderTemplate}"
+                                              ContentTemplateSelector="{TemplateBinding HeaderTemplateSelector}"
+                                              ContentStringFormat="{TemplateBinding HeaderStringFormat}"
+                                              HorizontalAlignment="Left"
+                                              VerticalAlignment="Center"
+                                              RecognizesAccessKey="True" />
+                        </Grid>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="TabBorder" Property="Background" Value="{DynamicResource TabItemHoverBrush}" />
+                            <Setter TargetName="TabBorder" Property="BorderBrush" Value="{DynamicResource TabItemHoverBorderBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsSelected" Value="True">
+                            <Setter Property="Foreground" Value="{DynamicResource TabItemSelectedForegroundBrush}" />
+                            <Setter Property="Panel.ZIndex" Value="2" />
+                            <Setter TargetName="TabBorder" Property="Background" Value="{DynamicResource TabItemSelectedBrush}" />
+                            <Setter TargetName="TabBorder" Property="BorderBrush" Value="{DynamicResource TabItemSelectedBorderBrush}" />
+                            <Setter TargetName="SelectedAccent" Property="Opacity" Value="1" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter TargetName="TabBorder" Property="Opacity" Value="0.45" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="MinimalTabControlStyle" TargetType="{x:Type TabControl}">
+        <Setter Property="Padding" Value="24" />
+        <Setter Property="Background" Value="{DynamicResource TabStripBackgroundBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource TabItemBorderBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="ItemContainerStyle" Value="{StaticResource MinimalTabItemStyle}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type TabControl}">
+                    <Grid SnapsToDevicePixels="True" ClipToBounds="True">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+
+                        <Border Grid.RowSpan="2"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="22" />
+
+                        <TabPanel Grid.Row="0"
+                                  Margin="16,16,16,0"
+                                  Panel.ZIndex="1"
+                                  Background="Transparent"
+                                  IsItemsHost="True"
+                                  KeyboardNavigation.TabIndex="1" />
+
+                        <Border Grid.Row="1"
+                                Margin="16,12,16,16"
+                                Padding="{TemplateBinding Padding}"
+                                Background="{DynamicResource TabCardBackgroundBrush}"
+                                BorderBrush="{DynamicResource TabContentBorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="18">
+                            <ContentPresenter x:Name="PART_SelectedContentHost"
+                                              ContentSource="SelectedContent"
+                                              SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" />
+                        </Border>
+                    </Grid>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+</ResourceDictionary>
