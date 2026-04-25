@@ -42,6 +42,7 @@ namespace ControlLibrary.ControlViews.Communication.Models
         public string DisplayName { get; }
     }
 
+
     /// <summary>
     /// TCP Server 当前已连接客户端的界面绑定对象。
     /// </summary>

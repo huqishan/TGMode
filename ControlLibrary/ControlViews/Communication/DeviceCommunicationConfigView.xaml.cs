@@ -2,6 +2,7 @@ using ControlLibrary.ControlViews.Communication.Models;
 using Shared.Abstractions;
 using Shared.Abstractions.Enum;
 using Shared.Infrastructure.Communication;
+using Shared.Infrastructure.Extensions;
 using Shared.Models.Communication;
 using Shared.Models.Log;
 using System;

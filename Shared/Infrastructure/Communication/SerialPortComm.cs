@@ -5,6 +5,7 @@ using System.Text;
 using Shared.Models.Communication;
 using Shared.Models.Log;
 using System.IO.Ports;
+using Shared.Infrastructure.Extensions;
 
 namespace Shared.Infrastructure.Communication
 {
@@ -15,6 +16,7 @@ namespace Shared.Infrastructure.Communication
         private Thread _ReconnectionThread;
         private AutoResetEvent IsWhile = new AutoResetEvent(false);
         private BlockingCollection<string> _RespQueue = new BlockingCollection<string>();
+        private bool _lastSendIsHex;
         private ConnectState _IsConnected = ConnectState.DisConnected;
         /// <summary>
         /// TCP 客户端连接状态
@@ -99,7 +101,7 @@ namespace Shared.Infrastructure.Communication
             if (_SerialPort.IsOpen)
             {
                 _RespQueue.TakeWhile(x => x != null);
-                byte[] sendData = Encoding.UTF8.GetBytes(readWriteModel.Message);
+                byte[] sendData = BuildSendBytes(readWriteModel.Message);
                 _SerialPort.Write(sendData, 0, sendData.Length);
                 if (isWait)
                 {
@@ -125,8 +127,35 @@ namespace Shared.Infrastructure.Communication
         {
             byte[] reDatas = new byte[_SerialPort.BytesToRead];
             _SerialPort.Read(reDatas, 0, reDatas.Length);
-            _RespQueue.Add(Encoding.UTF8.GetString(reDatas));
+            _RespQueue.Add(_lastSendIsHex
+                ? BitConverter.ToString(reDatas).Replace("-", string.Empty)
+                : Encoding.UTF8.GetString(reDatas));
             Task.Run(() => OnReceive?.Invoke(reDatas));
+        }
+
+        private byte[] BuildSendBytes(string message)
+        {
+            if (message.TrimStart().StartsWith("0x", StringComparison.OrdinalIgnoreCase))
+            {
+                _lastSendIsHex = true;
+                return NormalizeHexCommand(message).HexStringToByteArray();
+            }
+
+            _lastSendIsHex = false;
+            return Encoding.UTF8.GetBytes(message);
+        }
+
+        private static string NormalizeHexCommand(string message)
+        {
+            string normalized = message.Replace("0x", string.Empty, StringComparison.OrdinalIgnoreCase);
+            normalized = normalized.Replace(" ", string.Empty, StringComparison.Ordinal);
+            normalized = normalized.Replace("-", string.Empty, StringComparison.Ordinal);
+            normalized = normalized.Replace(",", string.Empty, StringComparison.Ordinal);
+            normalized = normalized.Replace("_", string.Empty, StringComparison.Ordinal);
+            normalized = normalized.Replace("\r", string.Empty, StringComparison.Ordinal);
+            normalized = normalized.Replace("\n", string.Empty, StringComparison.Ordinal);
+            normalized = normalized.Replace("\t", string.Empty, StringComparison.Ordinal);
+            return normalized.Trim();
         }
 
         private void WriteLog(LogMessageModel log)

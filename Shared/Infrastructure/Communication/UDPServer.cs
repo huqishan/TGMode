@@ -1,5 +1,6 @@
 using Shared.Abstractions;
 using Shared.Abstractions.Enum;
+using Shared.Infrastructure.Extensions;
 using Shared.Models.Communication;
 using Shared.Models.Log;
 using System;
@@ -21,6 +22,7 @@ namespace Shared.Infrastructure.Communication
         private UdpClient? _udpServer;
         private CancellationTokenSource? _lifetimeCts;
         private Task? _receiveTask;
+        private bool _lastSendIsHex;
         private ConnectState _isConnected = ConnectState.DisConnected;
 
         /// <summary>
@@ -153,7 +155,7 @@ namespace Shared.Infrastructure.Communication
             IPEndPoint remoteEndPoint = resolvedEndPoint;
             try
             {
-                byte[] data = Encoding.UTF8.GetBytes(readWriteModel.Message);
+                byte[] data = BuildSendBytes(readWriteModel.Message);
                 _udpServer.Send(data, data.Length, remoteEndPoint);
                 WriteLog(new LogMessageModel { Message = $"{LocalName}-->UdpClient({remoteEndPoint.Address}:{remoteEndPoint.Port}):{OnSendHandler(data)}", Type = LogType.INFO });
                 return true;
@@ -176,7 +178,9 @@ namespace Shared.Infrastructure.Communication
         {
             try
             {
-                return Encoding.UTF8.GetString(data);
+                return _lastSendIsHex
+                    ? BitConverter.ToString(data).Replace("-", string.Empty)
+                    : Encoding.UTF8.GetString(data);
             }
             catch
             {
@@ -188,12 +192,39 @@ namespace Shared.Infrastructure.Communication
         {
             try
             {
-                return Encoding.UTF8.GetString(data);
+                return _lastSendIsHex
+                    ? BitConverter.ToString(data).Replace("-", string.Empty)
+                    : Encoding.UTF8.GetString(data);
             }
             catch
             {
                 return string.Empty;
             }
+        }
+
+        private byte[] BuildSendBytes(string message)
+        {
+            if (message.TrimStart().StartsWith("0x", StringComparison.OrdinalIgnoreCase))
+            {
+                _lastSendIsHex = true;
+                return NormalizeHexCommand(message).HexStringToByteArray();
+            }
+
+            _lastSendIsHex = false;
+            return Encoding.UTF8.GetBytes(message);
+        }
+
+        private static string NormalizeHexCommand(string message)
+        {
+            string normalized = message.Replace("0x", string.Empty, StringComparison.OrdinalIgnoreCase);
+            normalized = normalized.Replace(" ", string.Empty, StringComparison.Ordinal);
+            normalized = normalized.Replace("-", string.Empty, StringComparison.Ordinal);
+            normalized = normalized.Replace(",", string.Empty, StringComparison.Ordinal);
+            normalized = normalized.Replace("_", string.Empty, StringComparison.Ordinal);
+            normalized = normalized.Replace("\r", string.Empty, StringComparison.Ordinal);
+            normalized = normalized.Replace("\n", string.Empty, StringComparison.Ordinal);
+            normalized = normalized.Replace("\t", string.Empty, StringComparison.Ordinal);
+            return normalized.Trim();
         }
 
         private async Task ReceiveLoopAsync(CancellationToken token)

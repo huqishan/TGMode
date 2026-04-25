@@ -42,6 +42,15 @@ namespace Shared.Infrastructure.PackMethod
             }
             return default(T);
         }
+        public static T? DeserializeObject<T>(string json)
+        {
+            if (string.IsNullOrWhiteSpace(json)) return default;
+            return JsonConvert.DeserializeObject<T>(json);
+        }
+        public static string SerializeObject<T>(T obj)
+        {
+            return JsonConvert.SerializeObject(obj, Newtonsoft.Json.Formatting.Indented);
+        }
 
         #region 获取json中字段值
         /// <summary>

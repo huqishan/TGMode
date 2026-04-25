@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 using System.Xml;
 
@@ -27,41 +28,41 @@ namespace Shared.Infrastructure.Extensions
         }
         #endregion
 
-        #region DES加密字符串
-        private static byte[] DESKeys = { 0x12, 0x34, 0x56, 0x78, 0x90, 0xAB, 0xCD, 0xEF };//密钥
-        private static byte[] DesKey = { 0xFE, 0xDC, 0xBA, 0x09, 0x87, 0x65, 0x43, 0x21 };
+        #region 加密字符串
+        private const string EncryptedFormat = "Shared.Infrastructure.Extensions";
+
+        private static readonly byte[] AdditionalEntropy = Encoding.UTF8.GetBytes("WpfApp.Shared.2026");
         ///<summary>   
-        ///DES加密字符串   
+        ///加密字符串 
         ///</summary>   
         ///<param name="str">待加密的字符串</param>   
         ///<returns>加密后的字符串</returns>   
-        public static string EncryptDES(this string str)
+        public static string Encrypt(this string str)
         {
             byte[] inputByteArray = Encoding.UTF8.GetBytes(str);
-            DESCryptoServiceProvider provider = new DESCryptoServiceProvider();
-            MemoryStream mStream = new MemoryStream();
-            CryptoStream cStream = new CryptoStream(mStream, provider.CreateEncryptor(DesKey, DESKeys), CryptoStreamMode.Write);
-            cStream.Write(inputByteArray, 0, inputByteArray.Length);
-            cStream.FlushFinalBlock();
-            return Convert.ToBase64String(mStream.ToArray());
+            byte[] protectedBytes = ProtectedData.Protect(inputByteArray, AdditionalEntropy, DataProtectionScope.CurrentUser);
+            return Convert.ToBase64String(protectedBytes.ToArray());
         }
         #endregion
 
-        #region DES解密字符串
+        #region 解密字符串
         /// <summary>
-        /// DES解密字符串
+        /// 解密字符串
         /// </summary>
         /// <param name="decryptString"></param>
         /// <returns></returns>
         public static string DesDecrypt(this string decryptString)
         {
-            byte[] inputByteArray = Convert.FromBase64String(decryptString);
-            DESCryptoServiceProvider provider = new DESCryptoServiceProvider();
-            MemoryStream mStream = new MemoryStream();
-            CryptoStream cStream = new CryptoStream(mStream, provider.CreateDecryptor(DesKey, DESKeys), CryptoStreamMode.Write);
-            cStream.Write(inputByteArray, 0, inputByteArray.Length);
-            cStream.FlushFinalBlock();
-            return Encoding.UTF8.GetString(mStream.ToArray());
+            try
+            {
+                byte[] protectedBytes = Convert.FromBase64String(decryptString);
+                byte[] plainBytes = ProtectedData.Unprotect(protectedBytes, AdditionalEntropy, DataProtectionScope.CurrentUser);
+                return Encoding.UTF8.GetString(plainBytes);
+            }
+            catch (Exception ex) when (ex is CryptographicException or FormatException)
+            {
+                throw new InvalidOperationException("解密失败，文件内容已损坏。", ex);
+            }
         }
         #endregion
 

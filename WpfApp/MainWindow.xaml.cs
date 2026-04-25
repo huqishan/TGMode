@@ -45,7 +45,7 @@ namespace WpfApp
                     {
                         new ControlInfoDataItem("设备通信配置", IconFactory.Router, "ControlLibrary.ControlViews.Communication.DeviceCommunicationConfigView, ControlLibrary", null),
                         new ControlInfoDataItem("流程图", IconFactory.Workflow, "ControlLibrary.ControlViews.Flowchar.FlowchartView, ControlLibrary", null),
-                        new ControlInfoDataItem("协议配置", IconFactory.FileCog, "协议配置", null)
+                        new ControlInfoDataItem("协议配置", IconFactory.FileCog, "ControlLibrary.ControlViews.Protocol.ProtocolConfigView, ControlLibrary", null)
                     },
                     description: "Devices")
             };

@@ -217,11 +217,10 @@
               HorizontalAlignment="Stretch"
               VerticalAlignment="Stretch">
             <Grid.RowDefinitions>
-                <RowDefinition Height="0.5*"/>
+                <RowDefinition Height="0.45*"/>
                 <RowDefinition Height="3*"/>
             </Grid.RowDefinitions>
             <Border Grid.Row="0"
-                    MinHeight="130"
                     HorizontalAlignment="Stretch"
                     VerticalAlignment="Stretch"
                     Style="{StaticResource CardBorderStyle}">
@@ -267,6 +266,7 @@
                       ItemContainerStyle="{StaticResource InputComboBoxItemStyle}"
                       SelectedValue="{Binding SelectedProfile.Type, Mode=TwoWay}"
                       SelectedValuePath="Value" />
+
 
                         <StackPanel Visibility="{Binding ElementName=communicationType, Path=SelectedItem.Value, Converter={StaticResource ComparisonToVisibilityConvert}, ConverterParameter='TCPClient|TCPServer|Hsl'}">
                             <TextBlock Style="{StaticResource FieldLabelStyle}" Text="本地 IP 地址" />

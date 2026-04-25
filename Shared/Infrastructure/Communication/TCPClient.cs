@@ -371,14 +371,27 @@ namespace Shared.Infrastructure.Communication
 
         private byte[] BuildSendBytes(string message)
         {
-            if (message.Contains("0x", StringComparison.OrdinalIgnoreCase))
+            if (message.TrimStart().StartsWith("0x", StringComparison.OrdinalIgnoreCase))
             {
                 _lastSendIsHex = true;
-                return message.Replace("0x", string.Empty, StringComparison.OrdinalIgnoreCase).HexStringToByteArray();
+                return NormalizeHexCommand(message).HexStringToByteArray();
             }
 
             _lastSendIsHex = false;
             return Encoding.UTF8.GetBytes(message);
+        }
+
+        private static string NormalizeHexCommand(string message)
+        {
+            string normalized = message.Replace("0x", string.Empty, StringComparison.OrdinalIgnoreCase);
+            normalized = normalized.Replace(" ", string.Empty, StringComparison.Ordinal);
+            normalized = normalized.Replace("-", string.Empty, StringComparison.Ordinal);
+            normalized = normalized.Replace(",", string.Empty, StringComparison.Ordinal);
+            normalized = normalized.Replace("_", string.Empty, StringComparison.Ordinal);
+            normalized = normalized.Replace("\r", string.Empty, StringComparison.Ordinal);
+            normalized = normalized.Replace("\n", string.Empty, StringComparison.Ordinal);
+            normalized = normalized.Replace("\t", string.Empty, StringComparison.Ordinal);
+            return normalized.Trim();
         }
 
         private bool IsSocketConnected()
