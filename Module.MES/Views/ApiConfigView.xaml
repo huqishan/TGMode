@@ -393,10 +393,6 @@
                                       Foreground="{DynamicResource AppContentTextBrush}"
                                       Content="通信查询中显示"
                                       IsChecked="{Binding SelectedProfile.IsCommunicationQueryVisible, Mode=TwoWay}" />
-                            <TextBlock Margin="0,10,0,0"
-                                       Foreground="{DynamicResource AppMutedTextBrush}"
-                                       Text="{Binding StructureDirectoryDisplay}"
-                                       TextWrapping="Wrap" />
                         </StackPanel>
                     </Grid>
                 </Grid>
@@ -419,23 +415,20 @@
                     <ListBox Grid.Row="2" x:Name="SendMESType"
                              Style="{StaticResource MethodTypeListBoxStyle}"
                              ItemContainerStyle="{StaticResource MethodTypeListBoxItemStyle}"
-                             ItemsSource="{Binding MethodTypes}"
-                             SelectedValue="{Binding SelectedProfile.SelectMESType, Mode=TwoWay}"
-                             SelectedValuePath="Value">
+                             SelectedValue="{Binding SelectedProfile.SelectMESType, Mode=TwoWay}" SelectedValuePath="Content">
+                        <ListBoxItem Content="TCP Client"/>
+                        <ListBoxItem Content="WebApi" IsSelected="True"/>
+                        <ListBoxItem Content="WebService"/>
+                        <ListBoxItem Content="FTP"/>
                         <ListBox.ItemsPanel>
                             <ItemsPanelTemplate>
                                 <StackPanel Orientation="Horizontal" />
                             </ItemsPanelTemplate>
                         </ListBox.ItemsPanel>
-                        <ListBox.ItemTemplate>
-                            <DataTemplate>
-                                <TextBlock FontWeight="SemiBold" Text="{Binding DisplayName}" />
-                            </DataTemplate>
-                        </ListBox.ItemTemplate>
                     </ListBox>
 
                     <Grid Grid.Row="4">
-                        <Border Visibility="{Binding ElementName=SendMESType,Path=SelectedItem.Value, Converter={StaticResource Comp2Vis},ConverterParameter='WebApi'}">
+                        <Border Visibility="{Binding ElementName=SendMESType,Path=SelectedValue, Converter={StaticResource Comp2Vis},ConverterParameter='WebApi'}">
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="180" />
@@ -498,7 +491,7 @@
                             </Grid>
                         </Border>
 
-                        <Border Visibility="{Binding ElementName=SendMESType,Path=SelectedItem.Value, Converter={StaticResource Comp2Vis},ConverterParameter='WebService'}">
+                        <Border Visibility="{Binding ElementName=SendMESType,Path=SelectedValue, Converter={StaticResource Comp2Vis},ConverterParameter='WebService'}">
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*" />
@@ -535,7 +528,7 @@
                             </Grid>
                         </Border>
 
-                        <Border Visibility="{Binding ElementName=SendMESType,Path=SelectedItem.Value, Converter={StaticResource Comp2Vis},ConverterParameter='TCP Client'}">
+                        <Border Visibility="{Binding ElementName=SendMESType,Path=SelectedValue, Converter={StaticResource Comp2Vis},ConverterParameter='TCP Client'}">
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*" />
@@ -576,7 +569,7 @@
                             </Grid>
                         </Border>
 
-                        <Border Visibility="{Binding ElementName=SendMESType,Path=SelectedItem.Value, Converter={StaticResource Comp2Vis},ConverterParameter='FTP'}">
+                        <Border Visibility="{Binding ElementName=SendMESType,Path=SelectedValue, Converter={StaticResource Comp2Vis},ConverterParameter='FTP'}">
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*" />
@@ -617,23 +610,6 @@
                             </Grid>
                         </Border>
 
-                        <Border Visibility="{Binding ElementName=SendMESType,Path=SelectedItem.Value, Converter={StaticResource Comp2Vis},ConverterParameter='P-Invoke'}">
-                            <Grid>
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="Auto" />
-                                    <RowDefinition Height="16" />
-                                    <RowDefinition Height="Auto" />
-                                </Grid.RowDefinitions>
-
-                                <TextBlock Foreground="{DynamicResource AppMutedTextBrush}"
-                                           Text="P-Invoke 当前只保留配置入口，底层发送逻辑尚未接入。你可以先在下方 Lua 脚本中编排自定义调用。"
-                                           TextWrapping="Wrap" />
-                                <TextBlock Grid.Row="2"
-                                           Foreground="{DynamicResource AppMutedTextBrush}"
-                                           Text="保存不会报错，但测试接口暂不执行 P-Invoke。"
-                                           TextWrapping="Wrap" />
-                            </Grid>
-                        </Border>
                     </Grid>
                 </Grid>
             </Border>
@@ -784,26 +760,5 @@
             </Grid>
         </Grid>
 
-        <!--<Grid x:Name="LuaEditorHost"
-              Grid.ColumnSpan="3"
-              Panel.ZIndex="30"
-              Opacity="0"
-              IsHitTestVisible="False">
-            <Border Background="#4D0F172A"/>
-
-            <Border x:Name="LuaEditorSheet"
-                    Width="1380"
-                    MaxWidth="1600"
-                    Height="780"
-                    Margin="28"
-                    HorizontalAlignment="Center"
-                    VerticalAlignment="Center"
-                    Style="{StaticResource HeaderDrawerBorderStyle}">
-                <Border.RenderTransform>
-                    <TranslateTransform x:Name="LuaEditorTranslateTransform" Y="24" />
-                </Border.RenderTransform>
-                
-            </Border>
-        </Grid>-->
     </Grid>
 </UserControl>

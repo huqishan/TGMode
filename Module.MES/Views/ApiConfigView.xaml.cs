@@ -168,12 +168,10 @@ namespace Module.MES.Views
             foreach (ApiInterfaceProfile profile in profiles)
             {
                 ProfilesView?.Add(profile);
+                var t = _selectedProfile;
             }
         }
 
-        public string StructureDirectoryDisplay => $"结构目录：{DataStructureConfigDirectory}";
-
-        public string LegacyStructureDirectoryDisplay => $"旧版结构目录：{LegacyStructureConfigDirectory}";
         private ObservableCollection<ApiInterfaceProfile> _ProfilesView = new ObservableCollection<ApiInterfaceProfile>();
         public ObservableCollection<ApiInterfaceProfile> ProfilesView
         {
@@ -527,7 +525,7 @@ namespace Module.MES.Views
                     SetPageStatus($"读取接口配置失败：{Path.GetFileName(filePath)}，原因：{ex.Message}", WarningBrush);
                 }
             }
-            
+
             return loadedCount;
         }
 

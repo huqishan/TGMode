@@ -21,7 +21,7 @@ namespace ControlLibrary.Converts
                 return Visibility.Collapsed;
             }
 
-            return parameterText.ToUpperInvariant().Contains(valueText.ToUpperInvariant())
+            return valueText.ToUpperInvariant().Contains(parameterText.ToUpperInvariant())
                 ? Visibility.Visible
                 : Visibility.Collapsed;
         }
