@@ -306,7 +306,7 @@ Background="{DynamicResource TabCardBackgroundBrush}"
 BorderBrush="{DynamicResource TabItemBorderBrush}"
 BorderThickness="1"
 CornerRadius="999">
-                                    <TextBlock FontWeight="SemiBold"
+                                    <TextBlock FontWeight="SemiBold" VerticalAlignment="Center"
        Foreground="{Binding ConnectionStatusBrush}"
        Text="{Binding ConnectionStatusText}" />
                                 </Border>
@@ -375,7 +375,7 @@ Click="SendAllButton_Click" />
    Text="接收 / 日志" />
                             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
                                 <Button
-Content="娓呯┖"
+Content="清空"
 Style="{StaticResource ActionButtonStyle}"
 Click="ClearReceiveButton_Click" />
                             </StackPanel>

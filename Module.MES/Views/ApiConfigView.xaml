@@ -219,12 +219,19 @@
             <Setter Property="HorizontalContentAlignment" Value="Left" />
             <Setter Property="Padding" Value="12,10" />
         </Style>
+            <Style x:Key="DrawerBorderStyle" TargetType="Border">
+                <Setter Property="Padding" Value="18" />
+                <Setter Property="Background" Value="{DynamicResource TabCardBackgroundBrush}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource TabItemSelectedBorderBrush}" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="CornerRadius" Value="18" />
+            </Style>
         </ResourceDictionary>
     </UserControl.Resources>
 
-    <Grid Margin="18">
+    <Grid>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="320" />
+            <ColumnDefinition Width="400" />
             <ColumnDefinition Width="16" />
             <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
@@ -384,6 +391,7 @@
                                 <Button Content="测试接口"
                                         Click="TestInterfaceButton_Click"
                                         Style="{StaticResource PrimaryActionButtonStyle}" />
+                                <Button Content="Lua" Style="{StaticResource PrimaryActionButtonStyle}" Click="LuaButton_Click"/>
                             </WrapPanel>
                             <CheckBox Margin="0,10,0,0"
                                       Foreground="{DynamicResource AppContentTextBrush}"
@@ -398,7 +406,7 @@
                 </Grid>
             </Border>
 
-            <Border Grid.Row="2" Style="{StaticResource CardBorderStyle}">
+            <Border Grid.Row="2" Style="{StaticResource CardBorderStyle}" x:Name="SendConfig">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
@@ -413,18 +421,21 @@
                                Text="调用方式与连接参数" />
 
                     <ListBox Grid.Row="2" x:Name="SendMESType"
-                             Style="{StaticResource MethodTypeListBoxStyle}"
-                             ItemContainerStyle="{StaticResource MethodTypeListBoxItemStyle}"
-                             SelectedValue="{Binding SelectedProfile.SelectMESType, Mode=TwoWay}" SelectedValuePath="Content">
-                        <ListBoxItem Content="TCP Client"/>
-                        <ListBoxItem Content="WebApi" IsSelected="True"/>
-                        <ListBoxItem Content="WebService"/>
-                        <ListBoxItem Content="FTP"/>
+         Style="{StaticResource MethodTypeListBoxStyle}"
+         ItemContainerStyle="{StaticResource MethodTypeListBoxItemStyle}"
+         ItemsSource="{Binding MethodTypes}"
+         SelectedValue="{Binding SelectedProfile.SelectMESType, Mode=TwoWay}"
+         SelectedValuePath="Value">
                         <ListBox.ItemsPanel>
                             <ItemsPanelTemplate>
                                 <StackPanel Orientation="Horizontal" />
                             </ItemsPanelTemplate>
                         </ListBox.ItemsPanel>
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock FontWeight="SemiBold" Text="{Binding DisplayName}" />
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
                     </ListBox>
 
                     <Grid Grid.Row="4">
@@ -614,7 +625,7 @@
                 </Grid>
             </Border>
 
-            <Border Grid.Row="4" Style="{StaticResource CardBorderStyle}">
+            <Border Grid.Row="4" Style="{StaticResource CardBorderStyle}" x:Name="SendAndResult">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
@@ -755,6 +766,49 @@
                                     Click="SaveHeaderButton_Click"
                                     Style="{StaticResource PrimaryActionButtonStyle}" />
                         </StackPanel>
+                    </Grid>
+                </Border>
+            </Grid>
+
+
+            <Grid x:Name="CommandDrawerHost" Grid.Row="5" Grid.RowSpan="4"
+                      Panel.ZIndex="10"
+                      Opacity="0"
+                      IsHitTestVisible="False">
+                <Border Background="#3A000000"
+                            MouseLeftButtonDown="CommandDrawerBackdrop_MouseLeftButtonDown" />
+
+                <Border x:Name="CommandDrawerSheet"
+                            Margin="0,56,0,0"
+                            VerticalAlignment="Bottom"
+                            Style="{StaticResource DrawerBorderStyle}">
+                    <Border.RenderTransform>
+                        <TranslateTransform x:Name="CommandDrawerTranslateTransform" Y="56" />
+                    </Border.RenderTransform>
+
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+
+                        <DockPanel LastChildFill="False">
+                            <TextBlock Style="{StaticResource SectionTitleStyle}" Text="Lua编辑" />
+                            <Button DockPanel.Dock="Right"
+                                        Content="关闭"
+                                        Style="{StaticResource ActionButtonStyle}"/>
+                        </DockPanel>
+
+                        <ScrollViewer Grid.Row="1"
+                                          Margin="0,14,0,0"
+                                          HorizontalScrollBarVisibility="Disabled"
+                                          VerticalScrollBarVisibility="Auto">
+                            <StackPanel Height="500">
+                                <Border Style="{StaticResource CardBorderStyle}">
+                                    
+                                </Border>
+                            </StackPanel>
+                        </ScrollViewer>
                     </Grid>
                 </Border>
             </Grid>

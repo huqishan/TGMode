@@ -1,4 +1,5 @@
 ﻿<UserControl x:Class="ControlLibrary.Controls.LuaScripEditor.Control.LuaScriptEditor"
+             x:Name="Root"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
@@ -57,7 +58,7 @@ Style="{StaticResource PrimaryActionButtonStyle}" />
         Foreground="{DynamicResource AppMutedTextBrush}"
         LineHeight="24"
         LineStackingStrategy="BlockLineHeight"
-        Text="{Binding LuaLineNumberText}"
+        Text="{Binding LuaLineNumberText, ElementName=Root}"
         TextAlignment="Right">
                                 <TextBlock.RenderTransform>
                                     <TranslateTransform x:Name="LuaLineNumberOffsetTransform" />
@@ -110,8 +111,8 @@ Style="{StaticResource PrimaryActionButtonStyle}" />
                  VerticalScrollBarVisibility="Auto"
                  HorizontalScrollBarVisibility="Auto"
                  FontFamily="Consolas"
-                 FontSize="13" Foreground="{Binding LuaEditorStatusBrush}"
-                 Text="{Binding LuaCompileResultText, Mode=OneWay}" />
+                 FontSize="13" Foreground="{Binding LuaEditorStatusBrush, ElementName=Root}"
+                 Text="{Binding LuaCompileResultText, ElementName=Root, Mode=OneWay}" />
             </Grid>
         </Border>
     </Grid>

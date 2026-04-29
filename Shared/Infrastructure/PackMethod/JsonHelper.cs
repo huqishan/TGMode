@@ -49,7 +49,7 @@ namespace Shared.Infrastructure.PackMethod
         }
         public static string SerializeObject<T>(T obj)
         {
-            return JsonConvert.SerializeObject(obj, Newtonsoft.Json.Formatting.Indented);
+            return JsonConvert.SerializeObject(obj);
         }
 
         #region 获取json中字段值

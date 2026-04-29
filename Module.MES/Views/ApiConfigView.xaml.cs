@@ -1,3 +1,4 @@
+using Module.MES.ViewModels.VMs;
 using Shared.Infrastructure.Extensions;
 using Shared.Infrastructure.PackMethod;
 using Shared.Models.MES;
@@ -33,7 +34,7 @@ namespace Module.MES.Views
             Path.Combine(AppContext.BaseDirectory, "Config", "MES_Config");
 
         private static readonly string ApiConfigDirectory =
-            Path.Combine(MesConfigRootDirectory, "CommunicateConfig");
+            Path.Combine(MesConfigRootDirectory, "ApiConfig");
 
         private static readonly string MesSystemConfigFilePath =
             Path.Combine(MesConfigRootDirectory, "MesSystemConfig", "MesSystemConfig.json");
@@ -41,10 +42,14 @@ namespace Module.MES.Views
         private static readonly string DataStructureConfigDirectory =
             Path.Combine(AppContext.BaseDirectory, "Config", "DataStructure");
 
-        private static readonly string LegacyStructureConfigDirectory =
-            Path.Combine(MesConfigRootDirectory, "MESConvertConfig");
 
         private static readonly JsonSerializerOptions PreviewJsonOptions = new JsonSerializerOptions
+        {
+            WriteIndented = true,
+            Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+        };
+
+        private static readonly JsonSerializerOptions ApiConfigStorageJsonOptions = new JsonSerializerOptions
         {
             WriteIndented = true,
             Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
@@ -72,6 +77,7 @@ namespace Module.MES.Views
         private Brush _pageStatusBrush = NeutralBrush;
         private bool _isBusy;
         private bool _isHeaderDrawerOpen;
+        
 
         public ApiConfigView()
         {
@@ -92,8 +98,8 @@ namespace Module.MES.Views
                 new ApiOptionItem("GET", "GET")
             };
 
-            //ProfilesView = CollectionViewSource.GetDefaultView(Profiles);
-            //ProfilesView.Filter = FilterProfiles;
+            ProfilesView = CollectionViewSource.GetDefaultView(Profiles);
+            ProfilesView.Filter = FilterProfiles;
 
             DataContext = this;
 
@@ -123,7 +129,7 @@ namespace Module.MES.Views
 
         public ObservableCollection<string> DataStructureOptions { get; } = new ObservableCollection<string>();
 
-        //public ICollectionView ProfilesView1 { get; }
+        public ICollectionView ProfilesView { get; }
 
         public ApiInterfaceProfile? SelectedProfile
         {
@@ -134,8 +140,9 @@ namespace Module.MES.Views
                 {
                     return;
                 }
-
-                _selectedProfile = value;
+                if (value != null)
+                    _selectedProfile = value;
+                else _selectedProfile = _selectedProfile.Clone(_selectedProfile.ApiName);
                 CloseHeaderDrawer(animate: false);
                 OnPropertyChanged();
             }
@@ -150,33 +157,8 @@ namespace Module.MES.Views
                 {
                     return;
                 }
-                Refresh();
+                ProfilesView.Refresh();
             }
-        }
-        private void Refresh()
-        {
-            ProfilesView?.Clear();
-            IEnumerable<ApiInterfaceProfile> profiles = new ObservableCollection<ApiInterfaceProfile>();
-            if (string.IsNullOrWhiteSpace(_searchText))
-            {
-                profiles = Profiles;
-            }
-            else
-            {
-                profiles = Profiles.Where(r => r.ApiName.Contains(_searchText));
-            }
-            foreach (ApiInterfaceProfile profile in profiles)
-            {
-                ProfilesView?.Add(profile);
-                var t = _selectedProfile;
-            }
-        }
-
-        private ObservableCollection<ApiInterfaceProfile> _ProfilesView = new ObservableCollection<ApiInterfaceProfile>();
-        public ObservableCollection<ApiInterfaceProfile> ProfilesView
-        {
-            get => _ProfilesView;
-            private set => SetField(ref _ProfilesView, value);
         }
         public string PageStatusText
         {
@@ -195,7 +177,7 @@ namespace Module.MES.Views
             get => _isBusy;
             private set => SetField(ref _isBusy, value);
         }
-
+        
         private void NewProfileButton_Click(object sender, RoutedEventArgs e)
         {
             ApiInterfaceProfile profile = CreateDefaultProfile(GenerateUniqueName("MES 接口"));
@@ -261,7 +243,7 @@ namespace Module.MES.Views
             ApiHeaderItem header = new ApiHeaderItem
             {
                 Key = "Content-Type",
-                Value = SelectedProfile.IsWebApiSelected ? "application/json" : string.Empty
+                Value = "application/json"
             };
 
             SelectedProfile.Heads.Add(header);
@@ -284,7 +266,7 @@ namespace Module.MES.Views
 
         private void OpenHeaderDrawerButton_Click(object sender, RoutedEventArgs e)
         {
-            if (SelectedProfile is null || !SelectedProfile.IsWebApiSelected)
+            if (SelectedProfile is null)
             {
                 return;
             }
@@ -312,7 +294,7 @@ namespace Module.MES.Views
 
             try
             {
-                SaveProfileToDisk(SelectedProfile);
+                SaveProfilesToDisk(SelectedProfile);
                 SetPageStatus("请求头配置已保存。", SuccessBrush);
                 CloseHeaderDrawer(animate: true);
             }
@@ -355,11 +337,6 @@ namespace Module.MES.Views
             }
 
             ApiInterfaceProfile profile = SelectedProfile;
-            if (profile.IsPInvokeSelected)
-            {
-                SetPageStatus("P-Invoke 尚未接入底层发送逻辑，暂不支持测试。", WarningBrush);
-                return;
-            }
 
             try
             {
@@ -373,7 +350,7 @@ namespace Module.MES.Views
                 }
 
                 EnsureMesSystemConfigExists();
-                SaveProfileToDisk(profile);
+                SaveProfilesToDisk(profile);
 
                 string requestPayload = profile.SampleRequestBody ?? string.Empty;
                 IsBusy = true;
@@ -410,6 +387,98 @@ namespace Module.MES.Views
             }
         }
 
+        #region Lua弹框
+        private bool _isCommandDrawerOpen;
+        private const double CommandDrawerClosedOffset = 56d;
+        private static readonly Duration CommandDrawerAnimationDuration = new Duration(TimeSpan.FromMilliseconds(220));
+        private static readonly IEasingFunction CommandDrawerEasing = new CubicEase { EasingMode = EasingMode.EaseOut };
+        public bool IsCommandDrawerOpen
+        {
+            get => _isCommandDrawerOpen;
+            private set
+            {
+                if (_isCommandDrawerOpen == value)
+                {
+                    return;
+                }
+
+                _isCommandDrawerOpen = value;
+                OnPropertyChanged();
+            }
+        }
+        private void CommandDrawerBackdrop_MouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        {
+            CloseCommandDrawer();
+        }
+        private void LuaButton_Click(object sender, RoutedEventArgs e)
+        {
+            OpenCommandDrawer();
+        }
+        private void CloseCommandDrawer()
+        {
+            IsCommandDrawerOpen = false;
+            UpdateCommandDrawerVisual(animate: true);
+        }
+        private void OpenCommandDrawer()
+        {
+            IsCommandDrawerOpen = true;
+            UpdateCommandDrawerVisual(animate: true);
+        }
+        private void UpdateCommandDrawerVisual(bool animate)
+        {
+            if (CommandDrawerHost is null || CommandDrawerTranslateTransform is null)
+            {
+                return;
+            }
+
+            double targetOpacity = IsCommandDrawerOpen ? 1d : 0d;
+            double targetOffset = IsCommandDrawerOpen ? 0d : CommandDrawerClosedOffset;
+
+            if (IsCommandDrawerOpen)
+            {
+                CommandDrawerHost.IsHitTestVisible = true;
+            }
+
+            if (!animate)
+            {
+                CommandDrawerHost.BeginAnimation(UIElement.OpacityProperty, null);
+                CommandDrawerTranslateTransform.BeginAnimation(TranslateTransform.YProperty, null);
+                CommandDrawerHost.Opacity = targetOpacity;
+                CommandDrawerTranslateTransform.Y = targetOffset;
+                CommandDrawerHost.IsHitTestVisible = IsCommandDrawerOpen;
+                return;
+            }
+
+            DoubleAnimation opacityAnimation = new DoubleAnimation
+            {
+                To = targetOpacity,
+                Duration = CommandDrawerAnimationDuration,
+                EasingFunction = CommandDrawerEasing
+            };
+
+            if (!IsCommandDrawerOpen)
+            {
+                opacityAnimation.Completed += (_, _) =>
+                {
+                    if (!IsCommandDrawerOpen)
+                    {
+                        CommandDrawerHost.IsHitTestVisible = false;
+                    }
+                };
+            }
+
+            DoubleAnimation translateAnimation = new DoubleAnimation
+            {
+                To = targetOffset,
+                Duration = CommandDrawerAnimationDuration,
+                EasingFunction = CommandDrawerEasing
+            };
+
+            CommandDrawerHost.BeginAnimation(UIElement.OpacityProperty, opacityAnimation);
+            CommandDrawerTranslateTransform.BeginAnimation(TranslateTransform.YProperty, translateAnimation);
+        }
+        #endregion
+
         private void Profile_PropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
             if (e.PropertyName is nameof(ApiInterfaceProfile.ApiName) or
@@ -418,12 +487,11 @@ namespace Module.MES.Views
                 nameof(ApiInterfaceProfile.SelectMESType) or
                 nameof(ApiInterfaceProfile.IsEnabledAPI))
             {
-                //ProfilesView.Refresh();
+                ProfilesView.Refresh();
             }
 
             if (e.PropertyName == nameof(ApiInterfaceProfile.SelectMESType) &&
-                SelectedProfile is not null &&
-                !SelectedProfile.IsWebApiSelected)
+                SelectedProfile is not null)
             {
                 CloseHeaderDrawer(animate: true);
             }
@@ -493,7 +561,6 @@ namespace Module.MES.Views
         {
             profile.PropertyChanged += Profile_PropertyChanged;
             Profiles.Add(profile);
-            _ProfilesView.Add(profile);
         }
 
         private int LoadProfilesFromDisk()
@@ -513,7 +580,6 @@ namespace Module.MES.Views
                     {
                         continue;
                     }
-
                     string fallbackName = Path.GetFileNameWithoutExtension(filePath);
                     ApiInterfaceProfile profile = ApiInterfaceProfile.FromApiConfig(config, fallbackName);
                     AddProfile(profile);
@@ -529,20 +595,21 @@ namespace Module.MES.Views
             return loadedCount;
         }
 
-        private int SaveProfilesToDisk()
+        
+        private int SaveProfilesToDisk(ApiInterfaceProfile? apiProfile = null)
         {
             Directory.CreateDirectory(ApiConfigDirectory);
+            ObservableCollection<ApiInterfaceProfile> targetProfiles = apiProfile is null ? Profiles : new ObservableCollection<ApiInterfaceProfile> { apiProfile };
             HashSet<string> usedFileNames = new(StringComparer.OrdinalIgnoreCase);
             int savedCount = 0;
 
-            foreach (ApiInterfaceProfile profile in Profiles)
+            foreach (ApiInterfaceProfile profile in targetProfiles)
             {
                 ValidateProfileForSave(profile);
 
                 string fileName = BuildUniqueStorageFileName(profile.ApiName, usedFileNames);
                 string filePath = Path.Combine(ApiConfigDirectory, fileName);
                 JsonHelper.SaveJson(profile.ToApiConfig(), filePath);
-
                 if (_profileStorageFileNames.TryGetValue(profile, out string? oldFileName) &&
                     !string.Equals(oldFileName, fileName, StringComparison.OrdinalIgnoreCase))
                 {
@@ -555,26 +622,7 @@ namespace Module.MES.Views
 
             return savedCount;
         }
-
-        private void SaveProfileToDisk(ApiInterfaceProfile profile)
-        {
-            Directory.CreateDirectory(ApiConfigDirectory);
-            ValidateProfileForSave(profile);
-
-            HashSet<string> usedFileNames = BuildReservedFileNames(profile);
-            string fileName = BuildUniqueStorageFileName(profile.ApiName, usedFileNames);
-            string filePath = Path.Combine(ApiConfigDirectory, fileName);
-            JsonHelper.SaveJson(profile.ToApiConfig(), filePath);
-
-            if (_profileStorageFileNames.TryGetValue(profile, out string? oldFileName) &&
-                !string.Equals(oldFileName, fileName, StringComparison.OrdinalIgnoreCase))
-            {
-                TryDeleteStorageFile(oldFileName);
-            }
-
-            _profileStorageFileNames[profile] = fileName;
-        }
-
+        
         private static void ValidateProfileForSave(ApiInterfaceProfile profile)
         {
             if (string.IsNullOrWhiteSpace(profile.ApiName))
@@ -582,11 +630,8 @@ namespace Module.MES.Views
                 throw new InvalidOperationException("方法名称不能为空。");
             }
 
-            if (profile.IsTcpClientSelected)
-            {
-                ValidatePort(profile.TCPLocalPort, "本地端口");
-                ValidatePort(profile.TCPRemotePort, "远程端口");
-            }
+            ValidatePort(profile.TCPLocalPort, "本地端口");
+            ValidatePort(profile.TCPRemotePort, "远程端口");
         }
 
         private void RefreshDataStructureOptions()
@@ -614,14 +659,6 @@ namespace Module.MES.Views
                     catch
                     {
                     }
-                }
-            }
-
-            if (Directory.Exists(LegacyStructureConfigDirectory))
-            {
-                foreach (string filePath in Directory.EnumerateFiles(LegacyStructureConfigDirectory, "*.json").OrderBy(Path.GetFileName))
-                {
-                    _legacyStructureNames.Add(Path.GetFileNameWithoutExtension(filePath));
                 }
             }
 
@@ -1223,5 +1260,7 @@ namespace Module.MES.Views
 
             public int JsonValueKind { get; set; }
         }
+
+        
     }
 }

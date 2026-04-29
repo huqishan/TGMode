@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -16,8 +17,6 @@ namespace Shared.Models.MES
         public bool IsCommunicationQueryVisible { get; set; } = true;
         public string Remarks { get; set; }
         public string Lua { get; set; }
-        public string SampleRequestBody { get; set; }
-        public string SampleResponseBody { get; set; }
         #region TCP
         /// <summary>
         /// 数据结尾是否回车

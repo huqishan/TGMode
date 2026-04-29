@@ -60,20 +60,24 @@
 
                 <StackPanel>
                     <TextBlock Style="{StaticResource SectionTitleStyle}" Text="Lua 脚本编辑页" />
-                    <TextBlock Margin="0,8,0,0"
+                    <TextBlock Margin="0,8,0,0" x:Name="title"
                        Foreground="{DynamicResource AppMutedTextBrush}"
-                       Text=""
+                       Text="用于创建、复制、删除和保存多个 Lua 脚本，可在右侧编辑脚本内容并执行查看返回或错误。"
                        TextWrapping="Wrap" />
                 </StackPanel>
 
                 <UniformGrid Grid.Row="1" Columns="4" Margin="0,18,0,16">
                     <Button Content="新建"
+                    Click="NewProfileButton_Click"
                     Style="{StaticResource PrimaryActionButtonStyle}"/>
                     <Button Content="复制"
+                    Click="DuplicateProfileButton_Click"
                     Style="{StaticResource ActionButtonStyle}"/>
                     <Button Content="删除"
+                    Click="DeleteProfileButton_Click"
                     Style="{StaticResource ActionButtonStyle}"/>
                     <Button Content="保存"
+                    Click="SaveProfilesButton_Click"
                     Style="{StaticResource ActionButtonStyle}"/>
                 </UniformGrid>
 
@@ -85,11 +89,16 @@
                  SelectedItem="{Binding SelectedProfile, Mode=TwoWay}">
                     <ListBox.ItemTemplate>
                         <DataTemplate>
-                            <TextBlock FontSize="15"
-                               HorizontalAlignment="Center"
-                               VerticalAlignment="Center"
-                               FontWeight="SemiBold"
-                               Text="{Binding Name}" />
+                            <StackPanel>
+                                <TextBlock FontSize="15"
+                                           FontWeight="SemiBold"
+                                           Foreground="{DynamicResource AppContentTextBrush}"
+                                           Text="{Binding Name}" />
+                                <TextBlock Margin="0,5,0,0"
+                                           Foreground="{DynamicResource AppMutedTextBrush}"
+                                           Text="{Binding Summary}"
+                                           TextWrapping="Wrap" />
+                            </StackPanel>
                         </DataTemplate>
                     </ListBox.ItemTemplate>
                 </ListBox>
@@ -111,7 +120,7 @@
                 <Grid>
                     <StackPanel>
                         <DockPanel>
-                            <TextBlock Style="{StaticResource SectionTitleStyle}" Text="当前协议" />
+                            <TextBlock Style="{StaticResource SectionTitleStyle}" Text="当前脚本" />
                             <Border HorizontalAlignment="Right"
 Margin="16,0,0,0"
 Padding="12,6"
@@ -126,9 +135,9 @@ CornerRadius="999">
                             </Border>
                         </DockPanel>
 
-                        <TextBlock Style="{StaticResource FieldLabelStyle}" Text="Lua名称" />
+                        <TextBlock Style="{StaticResource FieldLabelStyle}" Text="脚本名称" />
                         <TextBox Style="{StaticResource InputTextBoxStyle}"
-                                 Text="{Binding SelectedProfile.Name, UpdateSourceTrigger=PropertyChanged}" />
+                                 Text="{Binding SelectedProfile.Name, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                         <TextBlock Margin="0,8,0,0"
                                    Foreground="{DynamicResource AppMutedTextBrush}"
                                    Text="{Binding SelectedProfile.Summary}"
@@ -141,7 +150,8 @@ CornerRadius="999">
                     </StackPanel>
                 </Grid>
             </Border>
-            <controls:LuaScriptEditor Grid.Row="2" />
+            <controls:LuaScriptEditor Grid.Row="2"
+                                      ScriptText="{Binding SelectedProfile.ScriptText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
         </Grid>
         
     </Grid>

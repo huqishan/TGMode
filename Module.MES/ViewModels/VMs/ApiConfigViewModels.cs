@@ -1,3 +1,4 @@
+using Newtonsoft.Json;
 using Shared.Models.MES;
 using System;
 using System.Collections.ObjectModel;
@@ -6,7 +7,7 @@ using System.ComponentModel;
 using System.Linq;
 using System.Runtime.CompilerServices;
 
-namespace Module.MES.Views
+namespace Module.MES.ViewModels.VMs
 {
     public sealed class ApiOptionItem
     {
@@ -125,13 +126,7 @@ namespace Module.MES.Views
                 {
                     return;
                 }
-
-                //OnPropertyChanged(nameof(IsTcpClientSelected));
-                //OnPropertyChanged(nameof(IsWebApiSelected));
-                //OnPropertyChanged(nameof(IsWebServiceSelected));
-                //OnPropertyChanged(nameof(IsFtpSelected));
-                //OnPropertyChanged(nameof(IsPInvokeSelected));
-                //OnPropertyChanged(nameof(TypeDisplayName));
+                OnPropertyChanged(nameof(TypeDisplayName));
             }
         }
 
@@ -260,13 +255,13 @@ namespace Module.MES.Views
             get => _isDown;
             set => SetField(ref _isDown, value, trimString: false);
         }
-
+        [JsonIgnore]
         public string SampleRequestBody
         {
             get => _sampleRequestBody;
             set => SetField(ref _sampleRequestBody, value, trimString: false);
         }
-
+        [JsonIgnore]
         public string SampleResponseBody
         {
             get => _sampleResponseBody;
@@ -290,16 +285,6 @@ namespace Module.MES.Views
         }
 
         public bool HasSelectedHeader => SelectedHeader is not null;
-
-        public bool IsTcpClientSelected => string.Equals(SelectMESType, "TCP CLIENT", StringComparison.OrdinalIgnoreCase);
-
-        public bool IsWebApiSelected => string.Equals(SelectMESType, "WEBAPI", StringComparison.OrdinalIgnoreCase);
-
-        public bool IsWebServiceSelected => string.Equals(SelectMESType, "WEBSERVICE", StringComparison.OrdinalIgnoreCase);
-
-        public bool IsFtpSelected => string.Equals(SelectMESType, "FTP", StringComparison.OrdinalIgnoreCase);
-
-        public bool IsPInvokeSelected => string.Equals(SelectMESType, "P-INVOKE", StringComparison.OrdinalIgnoreCase);
 
         public string TypeDisplayName =>
             SelectMESType.ToUpperInvariant() switch
@@ -375,9 +360,7 @@ namespace Module.MES.Views
                     })
                     .ToList(),
                 DownPath = DownPath,
-                IsDown = IsDown,
-                SampleRequestBody = SampleRequestBody,
-                SampleResponseBody = SampleResponseBody
+                IsDown = IsDown
             };
         }
 
@@ -407,9 +390,7 @@ namespace Module.MES.Views
                 TokenName = string.IsNullOrWhiteSpace(config?.TokenName) ? "accessToken" : config.TokenName.Trim(),
                 WebApiType = NormalizeHttpMethod(config?.WebApiType),
                 DownPath = config?.DownPath ?? string.Empty,
-                IsDown = config?.IsDown ?? false,
-                SampleRequestBody = config?.SampleRequestBody ?? string.Empty,
-                SampleResponseBody = config?.SampleResponseBody ?? string.Empty
+                IsDown = config?.IsDown ?? false
             };
 
             if (config?.Heads is not null)

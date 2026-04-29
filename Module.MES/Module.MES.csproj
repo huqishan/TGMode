@@ -9,9 +9,7 @@
 
   <ItemGroup>
     <Folder Include="ViewModels\Propertys\" />
-    <Folder Include="ViewModels\VMs\" />
     <Folder Include="ViewModels\Propertys\" />
-    <Folder Include="ViewModels\VMs\" />
   </ItemGroup>
 
   <ItemGroup>

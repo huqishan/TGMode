@@ -3,6 +3,7 @@ using Shared.Abstractions;
 using Shared.Abstractions.Enum;
 using Shared.Infrastructure.Communication;
 using Shared.Infrastructure.Extensions;
+using Shared.Infrastructure.PackMethod;
 using Shared.Models.Communication;
 using Shared.Models.Log;
 using System;
@@ -468,9 +469,6 @@ namespace ControlLibrary.ControlViews.Communication
         private void SeedProfiles()
         {
             AddProfile(CreateProfile(CommuniactionType.TCPClient, "TCPClient 1"));
-            AddProfile(CreateProfile(CommuniactionType.TCPServer, "TCPServer 1"));
-            AddProfile(CreateProfile(CommuniactionType.UDP, "UDP 1"));
-            AddProfile(CreateProfile(CommuniactionType.COM, "COM 1"));
         }
 
         private DeviceCommunicationProfile CreateProfile(CommuniactionType type, string name)
@@ -567,9 +565,10 @@ namespace ControlLibrary.ControlViews.Communication
             {
                 try
                 {
-                    string json = File.ReadAllText(filePath, Encoding.UTF8);
-                    DeviceCommunicationProfileDocument? document =
-                        JsonSerializer.Deserialize<DeviceCommunicationProfileDocument>(json, StorageJsonOptions);
+                    DeviceCommunicationProfileDocument? document = JsonHelper.ReadJson<DeviceCommunicationProfileDocument>(filePath);
+                    //string json = File.ReadAllText(filePath, Encoding.UTF8);
+                    //DeviceCommunicationProfileDocument? document =
+                    //    JsonSerializer.Deserialize<DeviceCommunicationProfileDocument>(json, StorageJsonOptions);
                     if (document is null || !IsSupportedCommunicationType(document.Type))
                     {
                         continue;
@@ -604,8 +603,9 @@ namespace ControlLibrary.ControlViews.Communication
 
                 string fileName = BuildUniqueStorageFileName(profile.LocalName, usedFileNames);
                 string filePath = Path.Combine(CommunicationConfigDirectory, fileName);
-                string json = JsonSerializer.Serialize(DeviceCommunicationProfileDocument.FromProfile(profile), StorageJsonOptions);
-                File.WriteAllText(filePath, json, Encoding.UTF8);
+                JsonHelper.SaveJson(DeviceCommunicationProfileDocument.FromProfile(profile), filePath);
+                //string json = JsonHelper.SaveJson(DeviceCommunicationProfileDocument.FromProfile(profile), filePath);
+                //File.WriteAllText(filePath, json, Encoding.UTF8);
 
                 if (_profileStorageFileNames.TryGetValue(profile, out string? oldFileName) &&
                     !string.Equals(oldFileName, fileName, StringComparison.OrdinalIgnoreCase))

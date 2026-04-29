@@ -246,7 +246,7 @@ CornerRadius="999">
                             <DockPanel LastChildFill="False">
                                 <TextBlock Style="{StaticResource SectionTitleStyle}" Text="指令编辑" />
                                 <Button DockPanel.Dock="Right"
-                                        Content="鍏抽棴"
+                                        Content="关闭"
                                         Style="{StaticResource ActionButtonStyle}"
                                         Click="CloseCommandDrawerButton_Click" />
                             </DockPanel>

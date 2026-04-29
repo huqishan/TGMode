@@ -62,6 +62,16 @@ namespace ControlLibrary.Controls.LuaScripEditor.Control
             private set => SetField(ref _luaCompileResultText, value);
         }
 
+        public static readonly DependencyProperty ScriptTextProperty =
+            DependencyProperty.Register(
+                nameof(ScriptText),
+                typeof(string),
+                typeof(LuaScriptEditor),
+                new FrameworkPropertyMetadata(
+                    string.Empty,
+                    FrameworkPropertyMetadataOptions.BindsTwoWayByDefault,
+                    OnScriptTextChanged));
+
 
         private static readonly Brush SuccessBrush = CreateBrush("#16A34A");
         private static readonly Brush WarningBrush = CreateBrush("#EA580C");
@@ -82,16 +92,41 @@ namespace ControlLibrary.Controls.LuaScripEditor.Control
                 _ => value.ToString() ?? string.Empty
             };
         }
+        private bool _isSyncingScriptText;
         public string ScriptText
         {
-            get => GetLuaEditorText();
-            set => SetScriptText(value);
+            get => (string?)GetValue(ScriptTextProperty) ?? string.Empty;
+            set => SetValue(ScriptTextProperty, NormalizeLuaLineEndings(value));
         }
 
         public LuaScriptEditor()
         {
             InitializeComponent();
-            DataContext = this;
+        }
+
+        private static void OnScriptTextChanged(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs e)
+        {
+            if (dependencyObject is not LuaScriptEditor editor || editor._isSyncingScriptText)
+            {
+                return;
+            }
+
+            string text = NormalizeLuaLineEndings(e.NewValue as string ?? string.Empty);
+            if (string.Equals(editor.GetLuaEditorText(), text, StringComparison.Ordinal))
+            {
+                editor.UpdateLuaLineNumbers(text);
+                return;
+            }
+
+            editor._isSyncingScriptText = true;
+            try
+            {
+                editor.SetScriptText(text);
+            }
+            finally
+            {
+                editor._isSyncingScriptText = false;
+            }
         }
 
         private void LuaEditorRichTextBox_ScrollChanged(object sender, ScrollChangedEventArgs e)
@@ -217,6 +252,27 @@ namespace ControlLibrary.Controls.LuaScripEditor.Control
             ApplyLuaHighlighting(text, selectionStart, selectionLength);
             RefreshLuaCurrentTokenText();
             UpdateLuaLineNumbers(text);
+            UpdateScriptTextProperty(text);
+        }
+
+        private void UpdateScriptTextProperty(string text)
+        {
+            text = NormalizeLuaLineEndings(text);
+            if (_isSyncingScriptText || string.Equals(ScriptText, text, StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            _isSyncingScriptText = true;
+            try
+            {
+                SetCurrentValue(ScriptTextProperty, text);
+                GetBindingExpression(ScriptTextProperty)?.UpdateSource();
+            }
+            finally
+            {
+                _isSyncingScriptText = false;
+            }
         }
         private void GetLuaEditorSelection(out int selectionStart, out int selectionLength)
         {
@@ -527,7 +583,9 @@ namespace ControlLibrary.Controls.LuaScripEditor.Control
 
         private void CompileLuaButton_Click(object sender, RoutedEventArgs e)
         {
-            if (TryExecuteLuaScript(ScriptText, out string message))
+            string script = GetLuaEditorText();
+            UpdateScriptTextProperty(script);
+            if (TryExecuteLuaScript(script, out string message))
             {
                 LuaCompileResultText = message;
                 SetLuaEditorFeedback($"执行完成。", SuccessBrush);
