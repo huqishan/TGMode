@@ -406,6 +406,10 @@ namespace Module.MES.Views
                 OnPropertyChanged();
             }
         }
+        private void CloseLuaDrawerButton_Click(object sender, RoutedEventArgs e)
+        {
+            CloseCommandDrawer();
+        }
         private void CommandDrawerBackdrop_MouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
         {
             CloseCommandDrawer();
@@ -1057,39 +1061,6 @@ namespace Module.MES.Views
 
             return safeName.Length <= 80 ? safeName : safeName[..80];
         }
-
-        private HashSet<string> BuildReservedFileNames(ApiInterfaceProfile target)
-        {
-            HashSet<string> usedNames = new(StringComparer.OrdinalIgnoreCase);
-            foreach (ApiInterfaceProfile profile in Profiles)
-            {
-                if (ReferenceEquals(profile, target))
-                {
-                    continue;
-                }
-
-                string proposedName = _profileStorageFileNames.TryGetValue(profile, out string? fileName)
-                    ? fileName
-                    : $"{BuildSafeFileName(profile.ApiName)}.json";
-
-                if (!usedNames.Add(proposedName))
-                {
-                    string baseName = Path.GetFileNameWithoutExtension(proposedName);
-                    string extension = Path.GetExtension(proposedName);
-                    for (int index = 2; ; index++)
-                    {
-                        string uniqueName = $"{baseName}_{index}{extension}";
-                        if (usedNames.Add(uniqueName))
-                        {
-                            break;
-                        }
-                    }
-                }
-            }
-
-            return usedNames;
-        }
-
         private string GenerateUniqueName(string prefix)
         {
             for (int index = 1; ; index++)

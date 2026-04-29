@@ -86,8 +86,6 @@ namespace ControlLibrary.ControlViews.LuaScrip
             }
         }
 
-        public string ConfigDirectoryDisplay => $"配置目录：{LuaScriptConfigDirectory}";
-
         public string PageStatusText
         {
             get => _pageStatusText;

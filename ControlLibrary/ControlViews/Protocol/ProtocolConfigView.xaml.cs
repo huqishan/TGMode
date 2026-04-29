@@ -134,7 +134,6 @@ namespace ControlLibrary.ControlViews.Protocol
             }
         }
 
-        public string ConfigDirectoryDisplay => $"配置目录：{ProtocolConfigDirectory}";
 
         public string PageStatusText
         {

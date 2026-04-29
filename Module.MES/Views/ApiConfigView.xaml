@@ -7,6 +7,7 @@
              mc:Ignorable="d"
              xmlns:searchBox="clr-namespace:ControlLibrary.Controls.SearchBox.Control;assembly=ControlLibrary"
              xmlns:converts="clr-namespace:ControlLibrary.Converts;assembly=ControlLibrary"
+             xmlns:controls="clr-namespace:ControlLibrary.Controls.LuaScripEditor.Control;assembly=ControlLibrary"
              HorizontalAlignment="Stretch"
              VerticalAlignment="Stretch"
              d:DesignHeight="900"
@@ -285,7 +286,7 @@
                                                FontWeight="SemiBold"
                                                Foreground="{DynamicResource AppContentTextBrush}"
                                                Text="{Binding ApiName}" />
-                                    <Border DockPanel.Dock="Right"
+                                    <Border DockPanel.Dock="Right"  Width="100"
                                             Margin="10,0,0,0"
                                             Padding="8,2"
                                             Background="{DynamicResource PrimaryButtonBrush}"
@@ -293,7 +294,7 @@
                                             BorderThickness="1"
                                             CornerRadius="999">
                                         <TextBlock Foreground="{DynamicResource SecondaryButtonForegroundBrush}"
-                                                   FontSize="11"
+                                                   FontSize="11" HorizontalAlignment="Center"
                                                    FontWeight="SemiBold"
                                                    Text="{Binding TypeDisplayName}" />
                                     </Border>
@@ -391,7 +392,7 @@
                                 <Button Content="测试接口"
                                         Click="TestInterfaceButton_Click"
                                         Style="{StaticResource PrimaryActionButtonStyle}" />
-                                <Button Content="Lua" Style="{StaticResource PrimaryActionButtonStyle}" Click="LuaButton_Click"/>
+                                <Button Content="Lua编辑" Style="{StaticResource PrimaryActionButtonStyle}" Click="LuaButton_Click"/>
                             </WrapPanel>
                             <CheckBox Margin="0,10,0,0"
                                       Foreground="{DynamicResource AppContentTextBrush}"
@@ -771,7 +772,7 @@
             </Grid>
 
 
-            <Grid x:Name="CommandDrawerHost" Grid.Row="5" Grid.RowSpan="4"
+            <Grid x:Name="CommandDrawerHost" Grid.Row="2" Grid.RowSpan="4"
                       Panel.ZIndex="10"
                       Opacity="0"
                       IsHitTestVisible="False">
@@ -780,7 +781,6 @@
 
                 <Border x:Name="CommandDrawerSheet"
                             Margin="0,56,0,0"
-                            VerticalAlignment="Bottom"
                             Style="{StaticResource DrawerBorderStyle}">
                     <Border.RenderTransform>
                         <TranslateTransform x:Name="CommandDrawerTranslateTransform" Y="56" />
@@ -795,7 +795,7 @@
                         <DockPanel LastChildFill="False">
                             <TextBlock Style="{StaticResource SectionTitleStyle}" Text="Lua编辑" />
                             <Button DockPanel.Dock="Right"
-                                        Content="关闭"
+                                        Content="关闭" Click="CloseLuaDrawerButton_Click"
                                         Style="{StaticResource ActionButtonStyle}"/>
                         </DockPanel>
 
@@ -803,11 +803,7 @@
                                           Margin="0,14,0,0"
                                           HorizontalScrollBarVisibility="Disabled"
                                           VerticalScrollBarVisibility="Auto">
-                            <StackPanel Height="500">
-                                <Border Style="{StaticResource CardBorderStyle}">
-                                    
-                                </Border>
-                            </StackPanel>
+                            <controls:LuaScriptEditor ScriptText="{Binding SelectedProfile.Lua, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                         </ScrollViewer>
                     </Grid>
                 </Border>

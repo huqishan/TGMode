@@ -36,7 +36,7 @@ namespace WpfApp
                     new ObservableCollection<ControlInfoDataItem>
                     {
                         new ControlInfoDataItem("接口配置", IconFactory.PlugZap, "Module.MES.Views.ApiConfigView, Module.MES", null),
-                        new ControlInfoDataItem("结构配置", IconFactory.Network, "ControlLibrary.ControlViews.Structure.DataStructureConfigView, ControlLibrary", null),
+                        new ControlInfoDataItem("结构配置", IconFactory.Network, "Module.MES.Views.DataStructureConfigView, Module.MES", null),
                         new ControlInfoDataItem("通讯配置", IconFactory.MessageSquareCode, "通讯配置", null)
                     },
                     description: "Manufacturing"),
