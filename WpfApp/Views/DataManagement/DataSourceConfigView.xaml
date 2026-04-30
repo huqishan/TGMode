@@ -1,0 +1,478 @@
+<UserControl x:Class="WpfApp.Views.DataManagement.DataSourceConfigView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d"
+             HorizontalAlignment="Stretch"
+             VerticalAlignment="Stretch"
+             d:DesignHeight="760"
+             d:DesignWidth="1800">
+    <UserControl.Resources>
+        <Style x:Key="DataGridHeaderStyle" TargetType="{x:Type DataGridColumnHeader}">
+            <Setter Property="Background" Value="{DynamicResource TabItemSelectedBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource TabItemSelectedBorderBrush}" />
+            <Setter Property="BorderThickness" Value="0,0,0,1" />
+            <Setter Property="Foreground" Value="{DynamicResource AppContentTextBrush}" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Padding" Value="10,8" />
+        </Style>
+
+        <Style x:Key="DataGridRowStyle" TargetType="{x:Type DataGridRow}">
+            <Setter Property="Background" Value="{DynamicResource TabCardBackgroundBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource AppContentTextBrush}" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Style.Triggers>
+                <Trigger Property="AlternationIndex" Value="1">
+                    <Setter Property="Background" Value="{DynamicResource TabItemBackgroundBrush}" />
+                </Trigger>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource TabItemHoverBrush}" />
+                </Trigger>
+                <Trigger Property="IsSelected" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource NavSelectedItemBrush}" />
+                    <Setter Property="Foreground" Value="{DynamicResource NavButtonForegroundBrush}" />
+                    <Setter Property="BorderBrush" Value="{DynamicResource NavSelectedBorderBrush}" />
+                    <Setter Property="BorderThickness" Value="1" />
+                    <Setter Property="FontWeight" Value="SemiBold" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="DataGridCellStyle" TargetType="{x:Type DataGridCell}">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="{DynamicResource TabItemBorderBrush}" />
+            <Setter Property="BorderThickness" Value="0,0,0,1" />
+            <Setter Property="Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type DataGridRow}}}" />
+            <Setter Property="Padding" Value="8,0" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type DataGridCell}">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}">
+                            <ContentPresenter Margin="{TemplateBinding Padding}"
+                                              VerticalAlignment="Center" />
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsSelected" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource NavSelectedItemBrush}" />
+                    <Setter Property="Foreground" Value="{DynamicResource NavButtonForegroundBrush}" />
+                    <Setter Property="BorderBrush" Value="{DynamicResource NavSelectedBorderBrush}" />
+                    <Setter Property="FontWeight" Value="SemiBold" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="CellTextBlockStyle" TargetType="{x:Type TextBlock}">
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+            <Setter Property="Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type DataGridCell}}}" />
+        </Style>
+
+        <Style x:Key="CellTextBoxStyle" TargetType="{x:Type TextBox}">
+            <Setter Property="Padding" Value="8,4" />
+            <Setter Property="Margin" Value="0" />
+            <Setter Property="Background" Value="{DynamicResource TabCardBackgroundBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource TabItemBorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Foreground" Value="{DynamicResource AppContentTextBrush}" />
+        </Style>
+    </UserControl.Resources>
+
+    <Grid HorizontalAlignment="Stretch"
+          VerticalAlignment="Stretch">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="400" />
+            <ColumnDefinition Width="16" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <Border Grid.Column="0" Style="{StaticResource CardBorderStyle}">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+
+                <StackPanel>
+                    <TextBlock Style="{StaticResource SectionTitleStyle}" Text="数据源配置" />
+                    <TextBlock Margin="0,8,0,0"
+                               Foreground="{DynamicResource AppMutedTextBrush}"
+                               Text="集中维护测试数据展示方案，统一设置列名、绑定字段、列宽和默认启用配置。"
+                               TextWrapping="Wrap" />
+                </StackPanel>
+
+                <UniformGrid Grid.Row="1" Columns="4" Margin="0,18,0,16">
+                    <Button Content="新建"
+                            Click="AddConfigurationButton_Click"
+                            Style="{StaticResource PrimaryActionButtonStyle}" />
+                    <Button Content="复制"
+                            Click="DuplicateConfigurationButton_Click"
+                            Style="{StaticResource ActionButtonStyle}" />
+                    <Button Content="删除"
+                            Click="DeleteConfigurationButton_Click"
+                            Style="{StaticResource ActionButtonStyle}" />
+                    <Button Content="保存"
+                            Click="SaveButton_Click"
+                            Style="{StaticResource ActionButtonStyle}" />
+                </UniformGrid>
+
+                <ListBox Grid.Row="2"
+                         ItemsSource="{Binding Configurations}"
+                         SelectedItem="{Binding SelectedConfiguration, Mode=TwoWay}"
+                         BorderThickness="0"
+                         Background="Transparent"
+                         ItemContainerStyle="{StaticResource ListBoxItemStyle}">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <StackPanel>
+                                <DockPanel LastChildFill="True">
+                                    <TextBlock FontSize="15"
+                                               FontWeight="SemiBold"
+                                               Text="{Binding Name}" />
+                                    <Border Width="88"
+                                            HorizontalAlignment="Right"
+                                            Margin="10,0,0,0"
+                                            Padding="8,2"
+                                            Background="{DynamicResource PrimaryButtonBrush}"
+                                            BorderBrush="{DynamicResource SecondaryButtonBorderBrush}"
+                                            BorderThickness="1"
+                                            CornerRadius="999">
+                                        <TextBlock HorizontalAlignment="Center"
+                                                   FontSize="11"
+                                                   Foreground="{DynamicResource AppContentTextBrush}">
+                                            <Run Text="{Binding Columns.Count, Mode=OneWay}" />
+                                            <Run Text=" 列" />
+                                        </TextBlock>
+                                    </Border>
+                                </DockPanel>
+
+                                <TextBlock Margin="0,8,0,0"
+                                           Foreground="{DynamicResource AppMutedTextBrush}"
+                                           TextWrapping="Wrap">
+                                    <Run Text="已配置 " />
+                                    <Run Text="{Binding Columns.Count, Mode=OneWay}" />
+                                    <Run Text=" 个展示字段" />
+                                </TextBlock>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </Grid>
+        </Border>
+
+        <Grid Grid.Column="2"
+              HorizontalAlignment="Stretch"
+              VerticalAlignment="Stretch">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="0.45*" />
+                <RowDefinition Height="3*" />
+            </Grid.RowDefinitions>
+
+            <Border Grid.Row="0"
+                    HorizontalAlignment="Stretch"
+                    VerticalAlignment="Stretch"
+                    Style="{StaticResource CardBorderStyle}">
+                <StackPanel HorizontalAlignment="Stretch"
+                            VerticalAlignment="Stretch">
+                    <DockPanel LastChildFill="True">
+                        <StackPanel DockPanel.Dock="Right"
+                                    Orientation="Horizontal"
+                                    HorizontalAlignment="Right">
+                            <Border Margin="0,0,10,0"
+                                    Padding="10,5"
+                                    Background="{DynamicResource TabCardBackgroundBrush}"
+                                    BorderBrush="{DynamicResource TabItemBorderBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="999">
+                                <TextBlock FontWeight="SemiBold"
+                                           VerticalAlignment="Center"
+                                           Foreground="{Binding PageStatusBrush}"
+                                           Text="{Binding PageStatusText}" />
+                            </Border>
+                            <Button Content="启用当前"
+                                    Click="EnableConfigurationButton_Click"
+                                    Style="{StaticResource PrimaryActionButtonStyle}" />
+                        </StackPanel>
+                        <TextBlock Style="{StaticResource SectionTitleStyle}" Text="当前配置" />
+                    </DockPanel>
+
+                    <TextBlock Margin="0,8,0,0"
+                               Foreground="{DynamicResource AppMutedTextBrush}"
+                               Text="{Binding CurrentConfigurationDescription}"
+                               TextWrapping="Wrap" />
+                    <TextBlock Margin="0,12,0,0"
+                               FontWeight="SemiBold"
+                               Text="{Binding SelectedConfigurationSummary}"
+                               TextWrapping="Wrap" />
+                    <TextBlock Margin="0,6,0,0"
+                               Foreground="{DynamicResource AppMutedTextBrush}"
+                               Text="{Binding EnabledConfigurationText}"
+                               TextWrapping="Wrap" />
+                </StackPanel>
+            </Border>
+
+            <Grid Grid.Row="1"
+                  Margin="0,16,0,0"
+                  HorizontalAlignment="Stretch"
+                  VerticalAlignment="Stretch">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="300" />
+                    <ColumnDefinition Width="16" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <Border Grid.Column="0" Style="{StaticResource CardBorderStyle}">
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource SectionTitleStyle}" Text="配置参数" />
+
+                        <TextBlock Style="{StaticResource FieldLabelStyle}" Text="配置名称" />
+                        <TextBox Style="{StaticResource InputTextBoxStyle}"
+                                 Text="{Binding SelectedConfiguration.Name, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+
+                        <TextBlock Style="{StaticResource FieldLabelStyle}" Text="启用状态" />
+                        <Border Padding="12,8"
+                                Background="{DynamicResource TabCardBackgroundBrush}"
+                                BorderBrush="{DynamicResource TabItemBorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="999">
+                            <TextBlock FontWeight="SemiBold"
+                                       Text="{Binding EnabledConfigurationText}"
+                                       TextWrapping="Wrap" />
+                        </Border>
+
+                        <Button Margin="0,14,0,0"
+                                Content="启用当前配置"
+                                Click="EnableConfigurationButton_Click"
+                                Style="{StaticResource PrimaryActionButtonStyle}" />
+
+                        <Border Height="1"
+                                Margin="0,18,0,0"
+                                Background="{DynamicResource TabItemBorderBrush}" />
+
+                        <DockPanel Margin="0,18,0,0">
+                            <TextBlock Style="{StaticResource SectionTitleStyle}" Text="列操作" />
+                        </DockPanel>
+
+                        <TextBlock Style="{StaticResource FieldLabelStyle}" Text="当前选中列" />
+                        <TextBlock Padding="12,8"
+                                   Background="{DynamicResource TabCardBackgroundBrush}"
+                                   Foreground="{DynamicResource AppMutedTextBrush}"
+                                   Text="{Binding SelectedColumnSummary}"
+                                   TextWrapping="Wrap" />
+
+                        <UniformGrid Columns="2" Margin="0,14,0,0">
+                            <Button Content="新增列"
+                                    Click="AddColumnButton_Click"
+                                    Style="{StaticResource ActionButtonStyle}" />
+                            <Button Content="删除列"
+                                    Click="DeleteColumnButton_Click"
+                                    Style="{StaticResource ActionButtonStyle}" />
+                            <Button Content="上移"
+                                    Click="MoveUpButton_Click"
+                                    Style="{StaticResource ActionButtonStyle}" />
+                            <Button Content="下移"
+                                    Click="MoveDownButton_Click"
+                                    Style="{StaticResource ActionButtonStyle}" />
+                        </UniformGrid>
+
+                        <Button Content="重置字段"
+                                Click="ResetButton_Click"
+                                Style="{StaticResource ActionButtonStyle}" />
+                    </StackPanel>
+                </Border>
+
+                <Border Grid.Column="2"
+                        HorizontalAlignment="Stretch"
+                        VerticalAlignment="Stretch"
+                        MinHeight="360"
+                        Style="{StaticResource CardBorderStyle}">
+                    <Grid HorizontalAlignment="Stretch"
+                          VerticalAlignment="Stretch">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" MinHeight="300" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+
+                        <DockPanel LastChildFill="False"
+                                   HorizontalAlignment="Stretch">
+                            <TextBlock Style="{StaticResource SectionTitleStyle}" Text="列配置" />
+                            <StackPanel DockPanel.Dock="Right"
+                                        Orientation="Horizontal">
+                                <Button Content="重置字段"
+                                        Click="ResetButton_Click"
+                                        Style="{StaticResource ActionButtonStyle}" />
+                                <Button Content="预览"
+                                        Click="OpenPreviewDrawerButton_Click"
+                                        Style="{StaticResource ActionButtonStyle}" />
+                                <Button Content="保存"
+                                        Click="SaveButton_Click"
+                                        Style="{StaticResource PrimaryActionButtonStyle}" />
+                            </StackPanel>
+                        </DockPanel>
+
+                        <TextBlock Grid.Row="1"
+                                   Margin="0,8,0,10"
+                                   Foreground="{DynamicResource AppMutedTextBrush}"
+                                   Text="编辑列名、绑定字段、宽度和显示状态，右侧预览会实时按当前配置刷新。"
+                                   TextWrapping="Wrap" />
+
+                        <DataGrid x:Name="ColumnsDataGrid"
+                                  Grid.Row="2"
+                                  ItemsSource="{Binding SelectedConfiguration.Columns}"
+                                  SelectedItem="{Binding SelectedColumn, Mode=TwoWay}"
+                                  AutoGenerateColumns="False"
+                                  CanUserAddRows="False"
+                                  AlternationCount="2"
+                                  HeadersVisibility="Column"
+                                  GridLinesVisibility="Horizontal"
+                                  Background="{DynamicResource TabCardBackgroundBrush}"
+                                  Foreground="{DynamicResource AppContentTextBrush}"
+                                  RowBackground="{DynamicResource TabCardBackgroundBrush}"
+                                  AlternatingRowBackground="{DynamicResource TabItemBackgroundBrush}"
+                                  ColumnHeaderStyle="{StaticResource DataGridHeaderStyle}"
+                                  RowStyle="{StaticResource DataGridRowStyle}"
+                                  CellStyle="{StaticResource DataGridCellStyle}"
+                                  RowHeight="42">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="列名"
+                                                    Width="1.2*"
+                                                    ElementStyle="{StaticResource CellTextBlockStyle}"
+                                                    EditingElementStyle="{StaticResource CellTextBoxStyle}"
+                                                    Binding="{Binding ColumnName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+
+                                <DataGridTemplateColumn Header="数据绑定" Width="1.5*">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <ComboBox MinWidth="160"
+                                                      Style="{StaticResource InputComboBoxStyle}"
+                                                      ItemContainerStyle="{StaticResource InputComboBoxItemStyle}"
+                                                      ItemsSource="{Binding DataContext.BindingOptions, RelativeSource={RelativeSource AncestorType={x:Type UserControl}}}"
+                                                      DisplayMemberPath="DisplayText"
+                                                      SelectedValuePath="PropertyName"
+                                                      SelectedValue="{Binding BindingPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+
+                                <DataGridTextColumn Header="宽度"
+                                                    Width="85"
+                                                    ElementStyle="{StaticResource CellTextBlockStyle}"
+                                                    EditingElementStyle="{StaticResource CellTextBoxStyle}"
+                                                    Binding="{Binding Width, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+
+                                <DataGridCheckBoxColumn Header="显示"
+                                                        Width="70"
+                                                        Binding="{Binding IsVisible, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            </DataGrid.Columns>
+                        </DataGrid>
+
+                        <DockPanel Grid.Row="3"
+                                   Margin="0,16,0,0"
+                                   LastChildFill="False">
+                            <TextBlock Style="{StaticResource SectionTitleStyle}" Text="实时预览" />
+                            <Border DockPanel.Dock="Right"
+                                    Margin="0,0,10,0"
+                                    Padding="10,5"
+                                    Background="{DynamicResource TabCardBackgroundBrush}"
+                                    BorderBrush="{DynamicResource TabItemBorderBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="999">
+                                <TextBlock FontWeight="SemiBold"
+                                           Text="{Binding VisibleColumnCountText}" />
+                            </Border>
+                            <Button DockPanel.Dock="Right"
+                                    Content="打开预览"
+                                    Click="OpenPreviewDrawerButton_Click"
+                                    Style="{StaticResource PrimaryActionButtonStyle}" />
+                        </DockPanel>
+                    </Grid>
+                </Border>
+            </Grid>
+        </Grid>
+
+        <Grid x:Name="PreviewDrawerHost"
+              Grid.ColumnSpan="3"
+              Panel.ZIndex="20"
+              Opacity="0"
+              IsHitTestVisible="False">
+            <Border Background="#3A000000"
+                    MouseLeftButtonDown="PreviewDrawerBackdrop_MouseLeftButtonDown" />
+
+            <Border x:Name="PreviewDrawerSheet"
+                    Margin="0,56,0,0"
+                    Style="{StaticResource DrawerBorderStyle}">
+                <Border.RenderTransform>
+                    <TranslateTransform x:Name="PreviewDrawerTranslateTransform" Y="56" />
+                </Border.RenderTransform>
+
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <DockPanel LastChildFill="False">
+                        <StackPanel DockPanel.Dock="Left">
+                            <TextBlock Style="{StaticResource SectionTitleStyle}" Text="实时预览" />
+                            <TextBlock Margin="0,8,0,0"
+                                       Foreground="{DynamicResource AppMutedTextBrush}"
+                                       Text="{Binding SelectedConfigurationSummary}"
+                                       TextWrapping="Wrap" />
+                        </StackPanel>
+
+                        <StackPanel DockPanel.Dock="Right"
+                                    Orientation="Horizontal">
+                            <Border Margin="0,0,10,0"
+                                    Padding="10,5"
+                                    VerticalAlignment="Top"
+                                    Background="{DynamicResource TabItemBackgroundBrush}"
+                                    BorderBrush="{DynamicResource TabItemBorderBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="999">
+                                <TextBlock FontWeight="SemiBold"
+                                           Text="{Binding VisibleColumnCountText}" />
+                            </Border>
+                            <Button Content="关闭"
+                                    Click="ClosePreviewDrawerButton_Click"
+                                    Style="{StaticResource ActionButtonStyle}" />
+                        </StackPanel>
+                    </DockPanel>
+
+                    <TextBlock Grid.Row="1"
+                               Margin="0,12,0,12"
+                               Foreground="{DynamicResource AppMutedTextBrush}"
+                               Text="预览表格会按当前正在编辑的配置动态生成列，保存前也可以直接查看效果。"
+                               TextWrapping="Wrap" />
+
+                    <DataGrid x:Name="PreviewDataGrid"
+                              Grid.Row="2"
+                              ItemsSource="{Binding PreviewRows}"
+                              AutoGenerateColumns="False"
+                              CanUserAddRows="False"
+                              IsReadOnly="True"
+                              AlternationCount="2"
+                              HeadersVisibility="Column"
+                              GridLinesVisibility="Horizontal"
+                              Background="{DynamicResource TabCardBackgroundBrush}"
+                              Foreground="{DynamicResource AppContentTextBrush}"
+                              RowBackground="{DynamicResource TabCardBackgroundBrush}"
+                              AlternatingRowBackground="{DynamicResource TabItemBackgroundBrush}"
+                              ColumnHeaderStyle="{StaticResource DataGridHeaderStyle}"
+                              RowStyle="{StaticResource DataGridRowStyle}"
+                              CellStyle="{StaticResource DataGridCellStyle}" />
+                </Grid>
+            </Border>
+        </Grid>
+    </Grid>
+</UserControl>

@@ -1,0 +1,150 @@
+<UserControl x:Class="WpfApp.Views.DataManagement.TestDataView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d"
+             HorizontalAlignment="Stretch"
+             VerticalAlignment="Stretch"
+             d:DesignHeight="760"
+             d:DesignWidth="1500">
+    <UserControl.Resources>
+        <!-- 备注：测试数据页专用表格样式，选中行会更明显。 -->
+        <Style x:Key="DataGridHeaderStyle" TargetType="{x:Type DataGridColumnHeader}">
+            <Setter Property="Background" Value="{DynamicResource TabItemSelectedBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource TabItemSelectedBorderBrush}" />
+            <Setter Property="BorderThickness" Value="0,0,0,1" />
+            <Setter Property="Foreground" Value="{DynamicResource AppContentTextBrush}" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Padding" Value="10,8" />
+        </Style>
+
+        <Style x:Key="DataGridRowStyle" TargetType="{x:Type DataGridRow}">
+            <Setter Property="Background" Value="{DynamicResource TabCardBackgroundBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource AppContentTextBrush}" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Style.Triggers>
+                <Trigger Property="AlternationIndex" Value="1">
+                    <Setter Property="Background" Value="{DynamicResource TabItemBackgroundBrush}" />
+                </Trigger>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource TabItemHoverBrush}" />
+                </Trigger>
+                <Trigger Property="IsSelected" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource NavSelectedItemBrush}" />
+                    <Setter Property="Foreground" Value="{DynamicResource NavButtonForegroundBrush}" />
+                    <Setter Property="BorderBrush" Value="{DynamicResource NavSelectedBorderBrush}" />
+                    <Setter Property="BorderThickness" Value="1" />
+                    <Setter Property="FontWeight" Value="SemiBold" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="DataGridCellStyle" TargetType="{x:Type DataGridCell}">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="{DynamicResource TabItemBorderBrush}" />
+            <Setter Property="BorderThickness" Value="0,0,0,1" />
+            <Setter Property="Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type DataGridRow}}}" />
+            <Setter Property="Padding" Value="8,0" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type DataGridCell}">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}">
+                            <ContentPresenter Margin="{TemplateBinding Padding}"
+                                              VerticalAlignment="Center" />
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsSelected" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource NavSelectedItemBrush}" />
+                    <Setter Property="Foreground" Value="{DynamicResource NavButtonForegroundBrush}" />
+                    <Setter Property="BorderBrush" Value="{DynamicResource NavSelectedBorderBrush}" />
+                    <Setter Property="FontWeight" Value="SemiBold" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="CellTextBlockStyle" TargetType="{x:Type TextBlock}">
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+            <Setter Property="Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type DataGridCell}}}" />
+        </Style>
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="16" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <Border Grid.Row="0" Style="{StaticResource CardBorderStyle}">
+            <DockPanel LastChildFill="False">
+                <StackPanel DockPanel.Dock="Left">
+                    <TextBlock Style="{StaticResource SectionTitleStyle}" Text="测试数据" />
+                    <TextBlock Margin="0,6,0,0"
+                               Style="{StaticResource AppMutedTextBlockStyle}"
+                               Text="选择一套数据配置后，表格会按该配置的列定义展示测试数据。"
+                               TextWrapping="Wrap" />
+                </StackPanel>
+
+                <StackPanel DockPanel.Dock="Right"
+                            Orientation="Horizontal"
+                            VerticalAlignment="Top">
+                    <!-- 备注：选择展示配置后，下面的数据表会按该配置重新生成列。 -->
+                    <StackPanel Width="240" Margin="0,0,12,0">
+                        <TextBlock Margin="0,0,0,6"
+                                   Style="{StaticResource FieldLabelStyle}"
+                                   Text="展示配置" />
+                        <ComboBox Style="{StaticResource InputComboBoxStyle}"
+                                  ItemContainerStyle="{StaticResource InputComboBoxItemStyle}"
+                                  ItemsSource="{Binding Configurations}"
+                                  DisplayMemberPath="Name"
+                                  SelectedItem="{Binding SelectedConfiguration, Mode=TwoWay}" />
+                    </StackPanel>
+                    <Button Content="刷新配置"
+                            Click="RefreshConfigButton_Click"
+                            Style="{StaticResource ActionButtonStyle}" />
+                    <Button Content="刷新数据"
+                            Click="RefreshDataButton_Click"
+                            Style="{StaticResource PrimaryActionButtonStyle}" />
+                    <Border Padding="12,6"
+                            VerticalAlignment="Top"
+                            Background="{DynamicResource TabCardBackgroundBrush}"
+                            BorderBrush="{DynamicResource TabItemBorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="999">
+                        <TextBlock FontWeight="SemiBold"
+                                   Foreground="{Binding PageStatusBrush}"
+                                   Text="{Binding PageStatusText}" />
+                    </Border>
+                </StackPanel>
+            </DockPanel>
+        </Border>
+
+        <Border Grid.Row="2" Style="{StaticResource CardBorderStyle}">
+            <!-- 备注：AutoGenerateColumns=false，所有列都由当前展示配置动态创建。 -->
+            <DataGrid x:Name="TestDataGrid"
+                      ItemsSource="{Binding Records}"
+                      AutoGenerateColumns="False"
+                      CanUserAddRows="False"
+                      IsReadOnly="True"
+                      AlternationCount="2"
+                      HeadersVisibility="Column"
+                      GridLinesVisibility="Horizontal"
+                      Background="{DynamicResource TabCardBackgroundBrush}"
+                      Foreground="{DynamicResource AppContentTextBrush}"
+                      RowBackground="{DynamicResource TabCardBackgroundBrush}"
+                      AlternatingRowBackground="{DynamicResource TabItemBackgroundBrush}"
+                      ColumnHeaderStyle="{StaticResource DataGridHeaderStyle}"
+                      RowStyle="{StaticResource DataGridRowStyle}"
+                      CellStyle="{StaticResource DataGridCellStyle}" />
+        </Border>
+    </Grid>
+</UserControl>

@@ -12,8 +12,8 @@ namespace Shared.Models.MES
         public string ApiName { get; set; }
         public string SelectMESType { get; set; }
         public string ResultCheck { get; set; }
-        public string DataStruct { get; set; }
-        public bool isEnabledAPI { get; set; }
+        public string DataStructName { get; set; }
+        public bool IsEnabledAPI { get; set; }
         public bool IsCommunicationQueryVisible { get; set; } = true;
         public string Remarks { get; set; }
         public string Lua { get; set; }

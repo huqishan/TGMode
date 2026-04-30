@@ -11,46 +11,6 @@
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter" />
 
-        <Style x:Key="DrawerBorderStyle" TargetType="Border">
-            <Setter Property="Padding" Value="18" />
-            <Setter Property="Background" Value="{DynamicResource TabCardBackgroundBrush}" />
-            <Setter Property="BorderBrush" Value="{DynamicResource TabItemSelectedBorderBrush}" />
-            <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="CornerRadius" Value="18" />
-        </Style>
-<Style x:Key="ConfigListBoxItemStyle" TargetType="ListBoxItem">
-            <Setter Property="Margin" Value="0,0,0,10" />
-            <Setter Property="Padding" Value="14" />
-            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-            <Setter Property="BorderBrush" Value="{DynamicResource TabItemBorderBrush}" />
-            <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="Background" Value="{DynamicResource TabCardBackgroundBrush}" />
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="ListBoxItem">
-                        <Border x:Name="Chrome"
-                                Padding="{TemplateBinding Padding}"
-                                Background="{TemplateBinding Background}"
-                                BorderBrush="{TemplateBinding BorderBrush}"
-                                BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="14">
-                            <ContentPresenter />
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Chrome" Property="BorderBrush" Value="{DynamicResource TabItemHoverBorderBrush}" />
-                                <Setter TargetName="Chrome" Property="Background" Value="{DynamicResource TabItemHoverBrush}" />
-                            </Trigger>
-                            <Trigger Property="IsSelected" Value="True">
-                                <Setter TargetName="Chrome" Property="BorderBrush" Value="{DynamicResource TabItemSelectedBorderBrush}" />
-                                <Setter TargetName="Chrome" Property="Background" Value="{DynamicResource TabItemSelectedBrush}" />
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
         <DataTemplate x:Key="ProtocolOptionItemTemplate">
             <TextBlock Foreground="{DynamicResource AppContentTextBrush}" Text="{Binding DisplayName}" />
         </DataTemplate>
@@ -98,7 +58,7 @@
                 <ListBox Grid.Row="2"
                          BorderThickness="0"
                          Background="Transparent"
-                         ItemContainerStyle="{StaticResource ConfigListBoxItemStyle}"
+                         ItemContainerStyle="{StaticResource ListBoxItemStyle}"
                          ItemsSource="{Binding Profiles}"
                          SelectedItem="{Binding SelectedProfile, Mode=TwoWay}">
                     <ListBox.ItemTemplate>
@@ -153,11 +113,6 @@ CornerRadius="999">
                                    Foreground="{DynamicResource AppMutedTextBrush}"
                                    Text="{Binding SelectedProfile.Summary}"
                                    TextWrapping="Wrap" />
-                        <TextBlock Margin="0,12,0,0"
-                                   Foreground="{DynamicResource AppMutedTextBrush}"
-                                   Text="{Binding ConfigDirectoryDisplay}"
-                                   TextWrapping="Wrap" />
-                        
                     </StackPanel>
                 </Grid>
             </Border>
@@ -203,7 +158,7 @@ CornerRadius="999">
                                  ItemsSource="{Binding SelectedProfile.Commands}"
                                  SelectedItem="{Binding SelectedProfile.SelectedCommand, Mode=TwoWay}"
                                  PreviewMouseLeftButtonUp="CommandListBox_PreviewMouseLeftButtonUp"
-                                 ItemContainerStyle="{StaticResource ConfigListBoxItemStyle}">
+                                 ItemContainerStyle="{StaticResource ListBoxItemStyle}">
                             <ListBox.ItemTemplate>
                                 <DataTemplate>
                                     <StackPanel>
@@ -382,7 +337,7 @@ CornerRadius="999">
                                                 <Button Grid.Column="1"
                                                         Grid.Row="1" Grid.RowSpan="2"
                                                         Content=">>" FontSize="20"
-                                                        Style="{StaticResource PrimaryActionButtonStyle}"
+                                                        Style="{StaticResource ConvertButtonStyle}"
                                                         Click="GenerateCommandButton_Click" />
 
                                                 <TextBlock Grid.Column="2"
@@ -461,7 +416,7 @@ CornerRadius="999">
                                                 <Button Grid.Row="1"
         Grid.Column="1" Grid.RowSpan="2"
         Content=">>" FontSize="20"
-        Style="{StaticResource PrimaryActionButtonStyle}"
+        Style="{StaticResource ConvertButtonStyle}"
         Click="ParseResultButton_Click" />
 
                                                 <TextBlock Style="{StaticResource FieldLabelStyle}" Text="解析结果" Grid.Row="0" Grid.Column="2"/>

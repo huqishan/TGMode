@@ -30,27 +30,27 @@ namespace Shared.Infrastructure.PackMethod
         static string _LayoutFile = $"{System.AppDomain.CurrentDomain.SetupInformation.ApplicationBase}\\Config\\MES_Config";
         static string _ErrorCode = null;
         static Dictionary<string, ICommunication> _MESObj = new Dictionary<string, ICommunication>();
-        public static string Convert(MesDataInfoTree sourceData, TreeModel dataLayout)
+        public static string Convert(MesDataInfoTree sourceData, DataSruct dataLayout)
         {
-            if (dataLayout == null || dataLayout.Childs == null || dataLayout.Childs.Count == 0) return null;
+            if (dataLayout == null || dataLayout.Structure == null || dataLayout.Structure.Count == 0) return null;
             JObject jsonObj = null;
             try
             {
-                switch (dataLayout.DataType)
+                switch (dataLayout.StructureType)
                 {
                     case "JSON":
                         jsonObj = new JObject();
-                        return ItemsToJsonString(sourceData, dataLayout.Childs, ref jsonObj).Compress();
+                        return ItemsToJsonString(sourceData, dataLayout.Structure, ref jsonObj).Compress();
                     case "JSONREMOVEQUE"://json的key没有引号
                         jsonObj = new JObject();
-                        return ItemsToJsonString(sourceData, dataLayout.Childs, ref jsonObj).JsonRemoveQuo();
+                        return ItemsToJsonString(sourceData, dataLayout.Structure, ref jsonObj).JsonRemoveQuo();
                     case "JOINT":
-                        return ItemsToString(sourceData, dataLayout.Childs);
+                        return ItemsToString(sourceData, dataLayout.Structure);
                     case "SOAP":
-                        XNamespace @namespace = dataLayout.Childs[0].XMLNameSpace;
+                        XNamespace @namespace = dataLayout.Structure[0].XMLNameSpace;
                         XElement root = null;
-                        if (@namespace == null) root = new XElement($"{dataLayout.Childs[0].MESCode}");
-                        else root = new XElement(@namespace + $"{dataLayout.Childs[0].MESCode}");
+                        if (@namespace == null) root = new XElement($"{dataLayout.Structure[0].MESCode}");
+                        else root = new XElement(@namespace + $"{dataLayout.Structure[0].MESCode}");
                         return root.ToString();
                     default:
                         break;
@@ -64,8 +64,8 @@ namespace Shared.Infrastructure.PackMethod
         }
         public static string Convert(MesDataInfoTree sourceData, string structName)
         {
-            TreeModel dataLayout = JsonHelper.ReadJson<TreeModel>($"{_LayoutFile}\\MESConvertConfig\\{structName}.json");
-            if (dataLayout == null || dataLayout.Childs == null || dataLayout.Childs.Count == 0) throw new Exception($"上位机数据结构为空！！！");
+            DataSruct dataLayout = JsonHelper.ReadJson<DataSruct>($"{_LayoutFile}\\DataStructure\\{structName}.json");
+            if (dataLayout == null || dataLayout.Structure == null || dataLayout.Structure.Count == 0) throw new Exception($"上位机数据结构为空！！！");
             JObject jsonObj;
             try
             {
@@ -115,13 +115,13 @@ namespace Shared.Infrastructure.PackMethod
                 mesResult.State = MesStatus.UnUpLoad;
                 goto sendNG;
             }
-            if (!apiConfig.isEnabledAPI)
+            if (!apiConfig.IsEnabledAPI)
             {
                 mesResult.Message = $"Unfulfilled【{apiName}】接口未启用！！！";
                 mesResult.State = MesStatus.UnUpLoad;
                 goto sendNG;
             }
-            if (string.IsNullOrEmpty(data) && apiConfig.DataStruct == null)
+            if (string.IsNullOrEmpty(data) && apiConfig.DataStructName == null)
             {
                 mesResult.Message = $"【{apiName}】接口未选择数据结构！！！";
                 mesResult.State = MesStatus.StructNG;
@@ -131,7 +131,7 @@ namespace Shared.Infrastructure.PackMethod
             {
                 try
                 {
-                    data = Convert(sourceData, apiConfig.DataStruct);
+                    data = Convert(sourceData, apiConfig.DataStructName);
                 }
                 catch (Exception ex)
                 {
@@ -250,7 +250,7 @@ namespace Shared.Infrastructure.PackMethod
         public static TreeModel DeserializeFromJsonFile(string jsonPath)
         {
             JsonNode jsonNode = JsonNode.Parse(File.ReadAllText(jsonPath));
-            TreeModel model = new TreeModel() { ClientCode = Path.GetFileNameWithoutExtension(jsonPath), DataType = "JSON", IsRoot = true };
+            TreeModel model = new TreeModel() { ClientCode = Path.GetFileNameWithoutExtension(jsonPath), DataType = "JSON"};
             return model;
         }
         private static void AddItemFromJsonNote(JsonNode jsonNode, ref TreeModel tree)
@@ -267,7 +267,7 @@ namespace Shared.Infrastructure.PackMethod
                             MESCode = kvp.Key,
                             DataType = "Json"
                         };
-                        tree.Childs.Add(treeModel);
+                        tree.Children.Add(treeModel);
                         string key = kvp.Key;
                         JsonNode value = kvp.Value;
                         AddItemFromJsonNote(value, ref treeModel);
@@ -275,18 +275,18 @@ namespace Shared.Infrastructure.PackMethod
                     else if (kvp.Value is JsonArray jsonArr)
                     {
                         TreeModel treeModel = new TreeModel() { MESCode = kvp.Key, DataType = "List" };
-                        tree.Childs.Add(treeModel);
+                        tree.Children.Add(treeModel);
                         for (int i = 0; i < jsonArr.Count; i++)
                         {
                             JsonNode item = jsonArr[i];
                             TreeModel treeModel1 = new TreeModel() { MESCode = kvp.Key, DataType = "Model" };
-                            treeModel.Childs.Add(treeModel1);
+                            treeModel.Children.Add(treeModel1);
                             AddItemFromJsonNote(item, ref treeModel1);
                         }
                     }
                     else if (kvp.Value is JsonValue)
                     {
-                        tree.Childs.Add(new TreeModel { MESCode = kvp.Key, DataType = GetJsonObjectType(kvp), ClientCode = kvp.Value.ToString() });
+                        tree.Children.Add(new TreeModel { MESCode = kvp.Key, DataType = GetJsonObjectType(kvp), ClientCode = kvp.Value.ToString() });
                     }
                 }
             }
@@ -323,7 +323,7 @@ namespace Shared.Infrastructure.PackMethod
         {
             XmlDocument xmlDoc = new XmlDocument();
             xmlDoc.LoadXml(File.ReadAllText(xmlPath));
-            TreeModel model = new TreeModel() { ClientCode = Path.GetFileNameWithoutExtension(xmlPath), DataType = "SOAP", IsRoot = true };
+            TreeModel model = new TreeModel() { ClientCode = Path.GetFileNameWithoutExtension(xmlPath), DataType = "SOAP"};
             AddItemFromXmlNote(xmlDoc.FirstChild, ref model);
             return model;
         }
@@ -337,7 +337,7 @@ namespace Shared.Infrastructure.PackMethod
             TreeModel treeModel = new TreeModel() { MESCode = xmlNode.LocalName, DataType = isEmpty ? "XMLNULL" : "String", XMLNameSpace = xmlNode.NamespaceURI };
             foreach (XmlAttribute attribute in xmlNode?.Attributes)
             {
-                treeModel.Childs.Add(new TreeModel() { MESCode = attribute.LocalName, DataType = "XMLNamespac", XMLNameSpace = attribute.InnerText });
+                treeModel.Children.Add(new TreeModel() { MESCode = attribute.LocalName, DataType = "XMLNamespac", XMLNameSpace = attribute.InnerText });
             }
             if (xmlNode?.ChildNodes.Count > 0)
             {
@@ -346,7 +346,7 @@ namespace Shared.Infrastructure.PackMethod
                     AddItemFromXmlNote(childNode, ref treeModel);
                 }
             }
-            tree.Childs.Add(treeModel);
+            tree.Children.Add(treeModel);
         }
         #endregion
         private static string GetUrl(string url, MesDataInfoTree sourceData)
@@ -373,34 +373,34 @@ namespace Shared.Infrastructure.PackMethod
             {
                 var v = sourceData?.MesDataInfoItems?.FirstOrDefault(r => r.Code == item.ClientCode)?.Value;
                 if (string.IsNullOrEmpty(v?.ToString())) v = item.DefectValue;
-                if (item.Childs != null && item.Childs.Count > 0)
+                if (item.Children != null && item.Children.Count > 0)
                 {
                     if (item.DataType.ToUpper().Equals("LIST") && mesDataInfoItems.Count() == 1 && string.IsNullOrEmpty(item.MESCode))
                     {
-                        return AddList(sourceData, item.Childs.ToList(), item.MESCode, ref jsonObj).ToString();
+                        return AddList(sourceData, item.Children.ToList(), item.MESCode, ref jsonObj).ToString();
                     }
                     else if (item.DataType.ToUpper().Equals("LIST"))
                     {
-                        AddList(sourceData, item.Childs.ToList(), item.MESCode, ref jsonObj);
+                        AddList(sourceData, item.Children.ToList(), item.MESCode, ref jsonObj);
                     }
                     else if (item.DataType.ToUpper().Equals("ARRAY"))
                     {
-                        jsonObj.Add(item.MESCode, AddJarray(sourceData, item.Childs.ToList(), item.MESCode, ref jsonObj));
+                        jsonObj.Add(item.MESCode, AddJarray(sourceData, item.Children.ToList(), item.MESCode, ref jsonObj));
                     }
                     else if (item.DataType.ToUpper().Equals("MODEL"))
                     {
-                        AddModel(sourceData, item.Childs.ToList(), item.MESCode, ref jsonObj);
+                        AddModel(sourceData, item.Children.ToList(), item.MESCode, ref jsonObj);
                     }
                     else if (item.DataType.ToUpper().Equals("STRING"))
                     {
                         JObject jsonObj1 = new JObject();
-                        ItemsToJsonString(sourceData, item.Childs, ref jsonObj1);
+                        ItemsToJsonString(sourceData, item.Children, ref jsonObj1);
                         jsonObj.Add(item.MESCode, jsonObj1.ToString());
                     }
                     else
                     {
                         JObject jsonObj1 = new JObject();
-                        ItemsToJsonString(sourceData, item.Childs, ref jsonObj1);
+                        ItemsToJsonString(sourceData, item.Children, ref jsonObj1);
                         jsonObj.Add(item.MESCode, jsonObj1);
                     }
                 }
@@ -408,7 +408,7 @@ namespace Shared.Infrastructure.PackMethod
                 {
                     TreeModel dataLayout = JsonHelper.ReadJson<TreeModel>($"{_LayoutFile}\\MESConvertConfig\\{item.ClientCode}.json");
                     JObject jsonObject = new JObject();
-                    jsonObj.Add(item.MESCode, ItemsToJsonString(sourceData, dataLayout.Childs, ref jsonObject).Compress().ToString());
+                    jsonObj.Add(item.MESCode, ItemsToJsonString(sourceData, dataLayout.Children, ref jsonObject).Compress().ToString());
                 }
                 else if (item.IsWhile)
                 {
@@ -445,7 +445,7 @@ namespace Shared.Infrastructure.PackMethod
                         for (int i = 1; i <= item.WhileCount; i++)
                         {
                             JArray jArray1 = new JArray();
-                            foreach (var m in item.Childs)
+                            foreach (var m in item.Children)
                             {
                                 var v = sourceData?.MesDataInfoItems?.FirstOrDefault(r => r.Code == GetWhileName(i, m.ClientCode))?.Value;
                                 if (string.IsNullOrEmpty(v?.ToString()))
@@ -459,7 +459,7 @@ namespace Shared.Infrastructure.PackMethod
                     }
                     else
                     {
-                        jArray.Add(AddJarray(sourceData, item.Childs.ToList(), rootName, ref root));
+                        jArray.Add(AddJarray(sourceData, item.Children.ToList(), rootName, ref root));
                     }
                 }
                 else
@@ -544,7 +544,7 @@ namespace Shared.Infrastructure.PackMethod
                 JObject jsonObjArr = new JObject();
                 if (item.DataType.ToUpper().Equals("LIST"))
                 {
-                    AddList(sourceData, item.Childs.ToList(), item.MESCode, ref jsonObjArr);
+                    AddList(sourceData, item.Children.ToList(), item.MESCode, ref jsonObjArr);
                     jArray.Add(jsonObjArr);
                 }
                 else if (item.DataType.ToUpper().Equals("MODEL"))
@@ -557,15 +557,15 @@ namespace Shared.Infrastructure.PackMethod
                     {
                         bool nullIsWhile = false;
                         object v = null;
-                        foreach (var c in item.Childs)
+                        foreach (var c in item.Children)
                         {
                             if (c.DataType.ToUpper().Equals("LIST"))
                             {
-                                AddList(sourceData, c.Childs.ToList(), c.MESCode, ref jsonObjArr);
+                                AddList(sourceData, c.Children.ToList(), c.MESCode, ref jsonObjArr);
                             }
                             else if (c.DataType.ToUpper().Equals("MODEL"))
                             {
-                                AddModel(sourceData, c.Childs.ToList(), c.MESCode, ref jsonObjArr);
+                                AddModel(sourceData, c.Children.ToList(), c.MESCode, ref jsonObjArr);
                             }
                             else if (c.IsWhile)
                             {
@@ -600,7 +600,7 @@ namespace Shared.Infrastructure.PackMethod
                     foreach (var stepName in stepNames)
                     {
                         jsonObjArr = new JObject();
-                        foreach (var c in item.Childs)
+                        foreach (var c in item.Children)
                         {
                             var v = sourceData?.MesDataInfoItems?.FirstOrDefault(r => r.Code == $"{stepName.Code.Replace("_StepName", $"_{c.ClientCode}")}")?.Value;
                             if (string.IsNullOrEmpty(v?.ToString()))
@@ -630,7 +630,7 @@ namespace Shared.Infrastructure.PackMethod
                 JObject jsonObjArr = new JObject();
                 int nullCount = 0;
                 bool nullIsWhile = false;
-                foreach (var c in layout.Childs)
+                foreach (var c in layout.Children)
                 {
                     string clientName = GetWhileName(i, c.ClientCode);
                     var v = sourceData?.MesDataInfoItems?.FirstOrDefault(r => r.Code == $"{clientName}")?.Value;
@@ -654,11 +654,11 @@ namespace Shared.Infrastructure.PackMethod
             {
                 if (item.DataType.ToUpper().Equals("LIST"))
                 {
-                    AddList(sourceData, item.Childs.ToList(), item.MESCode, ref rootObj1);
+                    AddList(sourceData, item.Children.ToList(), item.MESCode, ref rootObj1);
                 }
                 else if (item.DataType.ToUpper().Equals("MODEL"))
                 {
-                    AddModel(sourceData, item.Childs.ToList(), item.MESCode, ref rootObj1);
+                    AddModel(sourceData, item.Children.ToList(), item.MESCode, ref rootObj1);
                 }
                 else
                 {
@@ -682,7 +682,7 @@ namespace Shared.Infrastructure.PackMethod
                     {
                         TreeModel dataLayout = JsonHelper.ReadJson<TreeModel>($"{_LayoutFile}\\MESConvertConfig\\{item.ClientCode}.json");
                         JObject jsonObject = new JObject();
-                        rootObj1.Add(item.MESCode, ItemsToJsonString(sourceData, dataLayout.Childs, ref jsonObject).Compress().ToString());
+                        rootObj1.Add(item.MESCode, ItemsToJsonString(sourceData, dataLayout.Children, ref jsonObject).Compress().ToString());
                     }
                     else
                     {
@@ -764,7 +764,7 @@ namespace Shared.Infrastructure.PackMethod
         private static void ValueTypeConvert(MesDataInfoTree sourceData, TreeModel layout, ref JObject root)
         {
 
-            foreach (TreeModel item in layout.Childs)
+            foreach (TreeModel item in layout.Children)
             {
                 JObject jsonObj = new JObject();
                 object value = sourceData?.MesDataInfoItems?.FirstOrDefault(r => r.Code == item.ClientCode)?.Value;
@@ -828,16 +828,16 @@ namespace Shared.Infrastructure.PackMethod
                 XNamespace @namespace = item.XMLNameSpace ?? "";
                 var v = sourceData?.MesDataInfoItems?.FirstOrDefault(r => r.Code == item.ClientCode)?.Value;
                 if (string.IsNullOrEmpty(v?.ToString())) v = item.DefectValue;
-                if (item.Childs != null && item.Childs.Count > 0)
+                if (item.Children != null && item.Children.Count > 0)
                 {
                     XElement element = new XElement(@namespace + item.MESCode);
                     if (item.DataType.ToUpper().Equals("LIST"))
                     {
-                        AddList(sourceData, item.Childs.ToList(), soapNamespace, ref element);
+                        AddList(sourceData, item.Children.ToList(), soapNamespace, ref element);
                     }
                     else
                     {
-                        ItemsToSOAPString(sourceData, soapNamespace, item.Childs, ref element);
+                        ItemsToSOAPString(sourceData, soapNamespace, item.Children, ref element);
                     }
                 }
                 else if (item.DataType.ToUpper().Equals("JSON"))
@@ -861,7 +861,7 @@ namespace Shared.Infrastructure.PackMethod
                 object v;
                 if (item.DataType.ToUpper().Equals("LIST"))
                 {
-                    AddList(sourceData, item.Childs.ToList(), soapNamespace, ref rootXml);
+                    AddList(sourceData, item.Children.ToList(), soapNamespace, ref rootXml);
                 }
                 else if (item.DataType.ToUpper().Equals("MODEL"))
                 {
@@ -871,7 +871,7 @@ namespace Shared.Infrastructure.PackMethod
                         {
                             element = new XElement(@namespace + item.MESCode);
                             bool isAdd = true;
-                            foreach (var c in item.Childs)
+                            foreach (var c in item.Children)
                             {
                                 string clientName = GetWhileName(i, c.ClientCode);
                                 v = sourceData?.MesDataInfoItems?.FirstOrDefault(r => r.Code == clientName)?.Value;
@@ -884,7 +884,7 @@ namespace Shared.Infrastructure.PackMethod
                     }
                     else
                     {
-                        foreach (var c in item.Childs)
+                        foreach (var c in item.Children)
                         {
                             v = sourceData?.MesDataInfoItems?.FirstOrDefault(r => r.Code == c.ClientCode)?.Value;
                             if (string.IsNullOrEmpty(v?.ToString())) v = c.DefectValue;

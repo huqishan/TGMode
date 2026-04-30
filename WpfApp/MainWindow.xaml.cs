@@ -2,11 +2,12 @@
 using ControlLibrary.Controls.Navigation.Models;
 using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using WpfApp.Services.Navigation;
+using WpfApp.Services.UserManagement;
 
 namespace WpfApp
 {
@@ -26,30 +27,11 @@ namespace WpfApp
         {
             InitializeComponent();
             CommandBindings.Add(new CommandBinding(CloseTabCommand, CloseTabExecuted, CanCloseTabExecuted));
+            StateChanged += MainWindow_StateChanged;
 
             // Reuse the existing navigation item model instead of adding a new menu schema.
-            _navigationInfo = new List<ControlInfoDataItem>
-            {
-                new ControlInfoDataItem("Home", IconFactory.House, null, null, description: "Overview"),
-                new ControlInfoDataItem("测试界面", IconFactory.FlaskConical, "Module.Views.TestInfoView, Module", null, description: "Sandbox"),
-                new ControlInfoDataItem("MES", IconFactory.Boxes, null,
-                    new ObservableCollection<ControlInfoDataItem>
-                    {
-                        new ControlInfoDataItem("接口配置", IconFactory.PlugZap, "Module.MES.Views.ApiConfigView, Module.MES", null),
-                        new ControlInfoDataItem("结构配置", IconFactory.Network, "Module.MES.Views.DataStructureConfigView, Module.MES", null),
-                        new ControlInfoDataItem("通讯配置", IconFactory.MessageSquareCode, "通讯配置", null)
-                    },
-                    description: "Manufacturing"),
-                new ControlInfoDataItem("设备管理", IconFactory.Cpu, null,
-                    new ObservableCollection<ControlInfoDataItem>
-                    {
-                        new ControlInfoDataItem("设备通讯配置", IconFactory.Router, "ControlLibrary.ControlViews.Communication.DeviceCommunicationConfigView, ControlLibrary", null),
-                        new ControlInfoDataItem("流程图", IconFactory.Workflow, "ControlLibrary.ControlViews.Flowchar.FlowchartView, ControlLibrary", null),
-                        new ControlInfoDataItem("协议配置", IconFactory.FileCog, "ControlLibrary.ControlViews.Protocol.ProtocolConfigView, ControlLibrary", null)
-                    },
-                    description: "Devices"),
-                new ControlInfoDataItem("脚本管理", IconFactory.FlaskConical, "ControlLibrary.ControlViews.LuaScrip.LuaScriptView, ControlLibrary", null, description: "Lua"),
-            };
+            _navigationInfo = NavigationCatalog.CreateItems();
+            UiPermissionRuntime.ApplyToNavigation(_navigationInfo);
 
             // The custom navigation control handles visuals while the window owns page opening.
             NavigationBar.PaneTitle = "WpfApp";
@@ -61,6 +43,55 @@ namespace WpfApp
             {
                 NavigationBar.SelectItem(homeItem);
             }
+        }
+
+        private void MinimizeButton_Click(object sender, RoutedEventArgs e)
+        {
+            WindowState = WindowState.Minimized;
+        }
+
+        private void MaximizeRestoreButton_Click(object sender, RoutedEventArgs e)
+        {
+            ToggleWindowState();
+        }
+
+        private void CloseButton_Click(object sender, RoutedEventArgs e)
+        {
+            Close();
+        }
+
+        private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            if (e.ChangedButton != MouseButton.Left)
+            {
+                return;
+            }
+
+            if (e.ClickCount == 2)
+            {
+                ToggleWindowState();
+                e.Handled = true;
+                return;
+            }
+
+            if (e.ButtonState != MouseButtonState.Pressed)
+            {
+                return;
+            }
+
+            DragMove();
+        }
+
+        private void MainWindow_StateChanged(object? sender, EventArgs e)
+        {
+            MaximizeRestoreButton.Content = WindowState == WindowState.Maximized ? "❐" : "□";
+        }
+
+        private void ToggleWindowState()
+        {
+            WindowState = WindowState == WindowState.Maximized
+                ? WindowState.Normal
+                : WindowState.Maximized;
         }
 
         private void NavigationBar_SelectionChanged(object? sender, ModernNavigationSelectionChangedEventArgs e)
@@ -99,6 +130,7 @@ namespace WpfApp
                 HorizontalAlignment = HorizontalAlignment.Stretch,
                 VerticalAlignment = VerticalAlignment.Stretch
             };
+            UiPermissionRuntime.Attach(settingsView);
 
             TabItem tabItem = new TabItem
             {
@@ -113,6 +145,11 @@ namespace WpfApp
 
         private void OpenContentTab(ControlInfoDataItem controlItem)
         {
+            if (!controlItem.IsVisibility || !controlItem.IsEnable)
+            {
+                return;
+            }
+
             // Reuse an existing tab instead of creating duplicates.
             foreach (object item in tabControl.Items)
             {
@@ -135,6 +172,7 @@ namespace WpfApp
             FrameworkElement content = (FrameworkElement)Activator.CreateInstance(targetType)!;
             content.HorizontalAlignment = HorizontalAlignment.Stretch;
             content.VerticalAlignment = VerticalAlignment.Stretch;
+            UiPermissionRuntime.Attach(content);
 
             TabItem tabItem = new TabItem
             {

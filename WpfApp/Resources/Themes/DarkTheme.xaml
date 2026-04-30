@@ -50,6 +50,9 @@
     <SolidColorBrush x:Key="PrimaryButtonForegroundBrush" Color="#041018" />
     <SolidColorBrush x:Key="SecondaryButtonForegroundBrush" Color="#E7F7FF" />
     <SolidColorBrush x:Key="SecondaryButtonBorderBrush" Color="#22FFFFFF" />
+    <SolidColorBrush x:Key="DisabledButtonBrush" Color="#223044" />
+    <SolidColorBrush x:Key="DisabledButtonBorderBrush" Color="#4A5B72" />
+    <SolidColorBrush x:Key="DisabledButtonForegroundBrush" Color="#D6E0EC" />
 
     <LinearGradientBrush x:Key="NavPaneBrush" StartPoint="0,0" EndPoint="1,1">
         <GradientStop Color="#D50D1828" Offset="0" />

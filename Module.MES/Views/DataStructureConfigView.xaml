@@ -11,38 +11,198 @@
              d:DesignWidth="1600">
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter" />
-        <Style x:Key="ConfigListBoxItemStyle" TargetType="ListBoxItem">
-            <Setter Property="Margin" Value="0,0,0,10" />
-            <Setter Property="Padding" Value="14" />
-            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-            <Setter Property="BorderBrush" Value="{DynamicResource TabItemBorderBrush}" />
+        <Style x:Key="ContextMenuIconPathStyle" TargetType="{x:Type Path}">
+            <Setter Property="Stroke" Value="#111827" />
+            <Setter Property="StrokeThickness" Value="1.25" />
+            <Setter Property="StrokeStartLineCap" Value="Round" />
+            <Setter Property="StrokeEndLineCap" Value="Round" />
+            <Setter Property="StrokeLineJoin" Value="Round" />
+            <Setter Property="Fill" Value="Transparent" />
+        </Style>
+        <Style x:Key="StructureContextMenuStyle" TargetType="{x:Type ContextMenu}">
+            <Setter Property="OverridesDefaultStyle" Value="True" />
+            <Setter Property="MinWidth" Value="178" />
+            <Setter Property="Padding" Value="16,14" />
+            <Setter Property="Background" Value="#FAFBFC" />
+            <Setter Property="BorderBrush" Value="#CAD1D8" />
             <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="Background" Value="{DynamicResource TabCardBackgroundBrush}" />
             <Setter Property="Template">
                 <Setter.Value>
-                    <ControlTemplate TargetType="ListBoxItem">
-                        <Border x:Name="Chrome"
-                        Padding="{TemplateBinding Padding}"
-                        Background="{TemplateBinding Background}"
-                        BorderBrush="{TemplateBinding BorderBrush}"
-                        BorderThickness="{TemplateBinding BorderThickness}"
-                        CornerRadius="14">
-                            <ContentPresenter />
+                    <ControlTemplate TargetType="{x:Type ContextMenu}">
+                        <Border Padding="{TemplateBinding Padding}"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="3"
+                                SnapsToDevicePixels="True">
+                            <Border.Effect>
+                                <DropShadowEffect BlurRadius="12"
+                                                  Direction="270"
+                                                  Opacity="0.18"
+                                                  ShadowDepth="2" />
+                            </Border.Effect>
+                            <ItemsPresenter KeyboardNavigation.DirectionalNavigation="Cycle" />
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="StructureContextMenuItemStyle" TargetType="{x:Type MenuItem}">
+            <Setter Property="Height" Value="40" />
+            <Setter Property="MinWidth" Value="146" />
+            <Setter Property="Foreground" Value="#111111" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type MenuItem}">
+                        <Border x:Name="ItemRoot"
+                                Height="{TemplateBinding Height}"
+                                MinWidth="{TemplateBinding MinWidth}"
+                                Background="Transparent"
+                                CornerRadius="3">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="42" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <ContentPresenter x:Name="IconPresenter"
+                                                  HorizontalAlignment="Center"
+                                                  VerticalAlignment="Center"
+                                                  Content="{TemplateBinding Icon}" />
+                                <TextBlock Grid.Column="1"
+                                           Margin="6,0,0,0"
+                                           VerticalAlignment="Center"
+                                           FontSize="{TemplateBinding FontSize}"
+                                           FontWeight="{TemplateBinding FontWeight}"
+                                           Foreground="{TemplateBinding Foreground}"
+                                           Text="{TemplateBinding Header}" />
+                            </Grid>
                         </Border>
                         <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Chrome" Property="BorderBrush" Value="{DynamicResource TabItemHoverBorderBrush}" />
-                                <Setter TargetName="Chrome" Property="Background" Value="{DynamicResource TabItemHoverBrush}" />
+                            <Trigger Property="IsHighlighted" Value="True">
+                                <Setter TargetName="ItemRoot" Property="Background" Value="#EEF3F6" />
                             </Trigger>
-                            <Trigger Property="IsSelected" Value="True">
-                                <Setter TargetName="Chrome" Property="BorderBrush" Value="{DynamicResource TabItemSelectedBorderBrush}" />
-                                <Setter TargetName="Chrome" Property="Background" Value="{DynamicResource TabItemSelectedBrush}" />
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Foreground" Value="#7A7F86" />
+                                <Setter TargetName="ItemRoot" Property="Opacity" Value="0.55" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
         </Style>
+        <Style x:Key="DataStructureTreeViewItemStyle" TargetType="{x:Type TreeViewItem}">
+            <Setter Property="Foreground" Value="{DynamicResource AppContentTextBrush}" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="4,2" />
+            <Setter Property="Margin" Value="0,2,0,2" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <EventSetter Event="PreviewMouseRightButtonDown" Handler="DataStructureTreeViewItem_PreviewMouseRightButtonDown" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type TreeViewItem}">
+                        <StackPanel>
+                            <Border x:Name="HeaderChrome"
+                                    MinHeight="34"
+                                    Padding="{TemplateBinding Padding}"
+                                    Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                    CornerRadius="16"
+                                    SnapsToDevicePixels="True">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="18" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <ToggleButton x:Name="Expander"
+                                                  Grid.Column="0"
+                                                  Width="16"
+                                                  Height="16"
+                                                  Margin="0,0,2,0"
+                                                  VerticalAlignment="Center"
+                                                  Background="Transparent"
+                                                  BorderThickness="0"
+                                                  ClickMode="Press"
+                                                  IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}}">
+                                        <Path x:Name="ExpanderGlyph"
+                                              Width="8"
+                                              Height="8"
+                                              Fill="{DynamicResource AppMutedTextBrush}"
+                                              Stretch="Uniform"
+                                              Data="M2,1 L2,7 L6,4 Z" />
+                                    </ToggleButton>
+
+                                    <ContentPresenter x:Name="PART_Header"
+                                                      Grid.Column="1"
+                                                      HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                                      VerticalAlignment="Center"
+                                                      ContentSource="Header" />
+                                </Grid>
+                            </Border>
+
+                            <ItemsPresenter x:Name="ItemsHost"
+                                            Margin="23,0,0,0" />
+                        </StackPanel>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="HasItems" Value="False">
+                                <Setter TargetName="Expander" Property="Visibility" Value="Hidden" />
+                            </Trigger>
+                            <Trigger Property="IsExpanded" Value="False">
+                                <Setter TargetName="ItemsHost" Property="Visibility" Value="Collapsed" />
+                            </Trigger>
+                            <Trigger Property="IsExpanded" Value="True">
+                                <Setter TargetName="ExpanderGlyph" Property="Data" Value="M1,2 L7,2 L4,6 Z" />
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="HeaderChrome" Property="Background" Value="{DynamicResource NavSelectedItemBrush}" />
+                                <Setter TargetName="HeaderChrome" Property="BorderBrush" Value="{DynamicResource NavSelectedBorderBrush}" />
+                                <Setter TargetName="HeaderChrome" Property="BorderThickness" Value="1" />
+                                <Setter TargetName="ExpanderGlyph" Property="Fill" Value="{DynamicResource NavIconBrush}" />
+                                <Setter Property="Foreground" Value="{DynamicResource NavButtonForegroundBrush}" />
+                                <Setter Property="FontWeight" Value="SemiBold" />
+                            </Trigger>
+                            <MultiTrigger>
+                                <MultiTrigger.Conditions>
+                                    <Condition Property="IsSelected" Value="True" />
+                                    <Condition Property="IsSelectionActive" Value="False" />
+                                </MultiTrigger.Conditions>
+                                <Setter TargetName="HeaderChrome" Property="Background" Value="{DynamicResource NavSelectedItemBrush}" />
+                                <Setter TargetName="HeaderChrome" Property="BorderBrush" Value="{DynamicResource NavSelectedBorderBrush}" />
+                            </MultiTrigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <HierarchicalDataTemplate x:Key="DataStructureFieldTemplate"
+                                  ItemContainerStyle="{StaticResource DataStructureTreeViewItemStyle}"
+                                  ItemsSource="{Binding Children}">
+            <StackPanel Orientation="Horizontal"
+                        GotKeyboardFocus="DataStructureFieldEditor_GotKeyboardFocus">
+                <CheckBox Margin="0,0,6,0" IsChecked="{Binding IsSelected, Mode=TwoWay}" VerticalAlignment="Center"/>
+                <Label Content="客户端Code|" Style="{DynamicResource LabelStyle}"/>
+                <TextBox Text="{Binding ClientCode, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Style="{DynamicResource DataStructureTextBoxStyle}"/>
+
+                <Label Content="上传MESCode|" Style="{DynamicResource LabelStyle}"/>
+                <TextBox Text="{Binding MesCode, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Style="{DynamicResource DataStructureTextBoxStyle}"/>
+
+                <Label Content="数据类型|" Style="{DynamicResource LabelStyle}"/>
+                <ComboBox Style="{StaticResource InputComboBoxStyle}" Width="120"
+ItemContainerStyle="{StaticResource InputComboBoxItemStyle}"
+DisplayMemberPath="DisplayName"
+ItemsSource="{Binding DataTypes}"
+SelectedValue="{Binding DataType, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+SelectedValuePath="Value" />
+
+                <!--<Label Content="默认值|" Style="{DynamicResource LabelStyle}"/>
+                <TextBox Text="{Binding DefaultValue, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Style="{DynamicResource DataStructureTextBoxStyle}"/>-->
+            </StackPanel>
+        </HierarchicalDataTemplate>
     </UserControl.Resources>
 
     <Grid>
@@ -86,8 +246,8 @@ Style="{StaticResource ActionButtonStyle}" />
                 <ListBox Grid.Row="3"
          BorderThickness="0"
          Background="Transparent"
-         ItemContainerStyle="{StaticResource ConfigListBoxItemStyle}"
-         ItemsSource="{Binding Profiles}"
+         ItemContainerStyle="{StaticResource ListBoxItemStyle}"
+          ItemsSource="{Binding ProfilesView}"
          SelectedItem="{Binding SelectedProfile, Mode=TwoWay}">
                     <ListBox.ItemTemplate>
                         <DataTemplate>
@@ -96,7 +256,7 @@ Style="{StaticResource ActionButtonStyle}" />
                                     <TextBlock FontSize="15"
                                FontWeight="SemiBold"
                                Foreground="{DynamicResource AppContentTextBrush}"
-                               Text="{Binding Name}" />
+                                    Text="{Binding Name}" />
                                     <Border DockPanel.Dock="Right"
                             Margin="10,0,0,0" Width="100"
                             Padding="8,2"
@@ -107,7 +267,7 @@ Style="{StaticResource ActionButtonStyle}" />
                                         <TextBlock Foreground="{DynamicResource SecondaryButtonForegroundBrush}"
                                    FontSize="11" HorizontalAlignment="Center"
                                    FontWeight="SemiBold"
-                                   Text="{Binding Name}" />
+                                    Text="{Binding StructureType}" />
                                     </Border>
                                 </DockPanel>
                                 <TextBlock Margin="0,8,0,0"
@@ -153,10 +313,26 @@ CornerRadius="999">
        Text="{Binding PageStatusText}" />
                             </Border>
                         </DockPanel>
-
-                        <TextBlock Style="{StaticResource FieldLabelStyle}" Text="结构名称" />
-                        <TextBox Style="{StaticResource InputTextBoxStyle}"
-                                 Text="{Binding SelectedProfile.Name, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition/>
+                                <ColumnDefinition/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource FieldLabelStyle}" Text="结构名称" />
+                                <TextBox Style="{StaticResource InputTextBoxStyle}"
+         Text="{Binding SelectedProfile.Name, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            </StackPanel>
+                            <StackPanel HorizontalAlignment="Left" Grid.Column="1" Margin="16,0,0,0">
+                                <TextBlock Style="{StaticResource FieldLabelStyle}" Text="结构类型" />
+                                <ComboBox Style="{StaticResource InputComboBoxStyle}"
+ItemContainerStyle="{StaticResource InputComboBoxItemStyle}"
+DisplayMemberPath="DisplayName"
+ItemsSource="{Binding StructureTypes}"
+SelectedValue="{Binding SelectedProfile.StructureType, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+SelectedValuePath="Value" />
+                            </StackPanel>
+                        </Grid>
                         <TextBlock Margin="0,8,0,0"
                                    Foreground="{DynamicResource AppMutedTextBrush}"
                                    Text="{Binding SelectedProfile.Summary}"
@@ -167,12 +343,264 @@ CornerRadius="999">
             </Border>
 
             <Border Grid.Row="2"
-         MinHeight="130"
-         HorizontalAlignment="Stretch"
-         VerticalAlignment="Stretch"
-         Style="{StaticResource CardBorderStyle}">
-                <TreeView Background="{DynamicResource TabItemBackgroundBrush}" BorderThickness="0"></TreeView>
+          MinHeight="130"
+          HorizontalAlignment="Stretch"
+          VerticalAlignment="Stretch"
+          Style="{StaticResource CardBorderStyle}">
+                <Border.ContextMenu>
+                    <ContextMenu ItemContainerStyle="{StaticResource StructureContextMenuItemStyle}"
+                                 Opened="StructureContextMenu_Opened"
+                                 Style="{StaticResource StructureContextMenuStyle}">
+                        <MenuItem Header="导入结构">
+                            <MenuItem.Icon>
+                                <Viewbox Width="32" Height="32">
+                                    <Canvas Width="16" Height="16">
+                                        <Path Style="{StaticResource ContextMenuIconPathStyle}"
+                                              Data="M4,3 L10,3 L13,6 L13,13 L4,13 Z M10,3 L10,6 L13,6 M7,8 L12,8 M10,6 L12,8 L10,10" />
+                                    </Canvas>
+                                </Viewbox>
+                            </MenuItem.Icon>
+                        </MenuItem>
+                        <MenuItem Header="导出结构">
+                            <MenuItem.Icon>
+                                <Viewbox Width="32" Height="32">
+                                    <Canvas Width="16" Height="16">
+                                        <Path Style="{StaticResource ContextMenuIconPathStyle}"
+                                              Data="M4,3 L10,3 L13,6 L13,13 L4,13 Z M10,3 L10,6 L13,6 M12,8 L7,8 M9,6 L7,8 L9,10" />
+                                    </Canvas>
+                                </Viewbox>
+                            </MenuItem.Icon>
+                        </MenuItem>
+                        <MenuItem Header="结构导入">
+                            <MenuItem.Icon>
+                                <Viewbox Width="32" Height="32">
+                                    <Canvas Width="16" Height="16">
+                                        <Path Style="{StaticResource ContextMenuIconPathStyle}"
+                      Data="M5,3 C3.8,3 3.5,4 3.5,5 L3.5,6.4 C3.5,7.2 2.8,7.5 2.3,7.5 C2.8,7.5 3.5,7.8 3.5,8.6 L3.5,10 C3.5,11 3.8,12 5,12 M11,3 C12.2,3 12.5,4 12.5,5 L12.5,6.4 C12.5,7.2 13.2,7.5 13.7,7.5 C13.2,7.5 12.5,7.8 12.5,8.6 L12.5,10 C12.5,11 12.2,12 11,12 M6.5,7.5 L10.5,7.5 M9,6 L10.5,7.5 L9,9" />
+                                    </Canvas>
+                                </Viewbox>
+                            </MenuItem.Icon>
+                        </MenuItem>
+                        <MenuItem Header="添加子项"
+                                  Click="AddFieldChild_Click">
+                            <MenuItem.Icon>
+                                <Viewbox Width="32" Height="32">
+                                    <Canvas Width="16" Height="16">
+                                        <Path Style="{StaticResource ContextMenuIconPathStyle}"
+                                              Data="M4,3 L4,12 M4,5 L8,5 M8,5 L8,7 M4,10 L8,10 M11,8 L11,13 M8.5,10.5 L13.5,10.5" />
+                                    </Canvas>
+                                </Viewbox>
+                            </MenuItem.Icon>
+                        </MenuItem>
+                        <MenuItem x:Name="CopyFieldMenuItem"
+                                  Header="复制"
+                                  Click="CopyField_Click">
+                            <MenuItem.Icon>
+                                <Viewbox Width="32" Height="32">
+                                    <Canvas Width="16" Height="16">
+                                        <Path Style="{StaticResource ContextMenuIconPathStyle}"
+                                              Data="M6,5 L12,5 L12,13 L6,13 Z M4,3 L10,3 M4,3 L4,11 M4,11 L6,11" />
+                                    </Canvas>
+                                </Viewbox>
+                            </MenuItem.Icon>
+                        </MenuItem>
+                        <MenuItem x:Name="PasteFieldMenuItem"
+                                  Header="粘贴"
+                                  Click="PasteField_Click">
+                            <MenuItem.Icon>
+                                <Viewbox Width="32" Height="32">
+                                    <Canvas Width="16" Height="16">
+                                        <Path Style="{StaticResource ContextMenuIconPathStyle}"
+                                              Data="M5,4 L11,4 L11,13 L5,13 Z M7,4 L7,3 L9,3 L9,4 M6.8,7 L9.7,7 M6.8,9 L10,9" />
+                                    </Canvas>
+                                </Viewbox>
+                            </MenuItem.Icon>
+                        </MenuItem>
+                        <MenuItem x:Name="DeleteFieldMenuItem"
+                                  Header="删除"
+                                  Click="DeleteField_Click">
+                            <MenuItem.Icon>
+                                <Viewbox Width="32" Height="32">
+                                    <Canvas Width="16" Height="16">
+                                        <Path Style="{StaticResource ContextMenuIconPathStyle}"
+                                              Data="M5,5 L11,5 M7,5 L7,4 L9,4 L9,5 M6,7 L6.4,13 L9.6,13 L10,7 M7.5,8 L7.5,12 M8.5,8 L8.5,12" />
+                                    </Canvas>
+                                </Viewbox>
+                            </MenuItem.Icon>
+                        </MenuItem>
+                    </ContextMenu>
+                </Border.ContextMenu>
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    <TextBlock Style="{StaticResource SectionTitleStyle}" Text="结构内容" />
+
+                    <TreeView x:Name="StructureTreeView"
+          Grid.Row="1"
+          Background="{DynamicResource TabItemBackgroundBrush}"
+          BorderThickness="0"
+          ItemContainerStyle="{StaticResource DataStructureTreeViewItemStyle}"
+          ItemTemplate="{StaticResource DataStructureFieldTemplate}"
+          ItemsSource="{Binding SelectedProfile.Structure}"
+          PreviewMouseRightButtonDown="StructureTreeView_PreviewMouseRightButtonDown"
+          SelectedItemChanged="StructureTreeView_SelectedItemChanged" PreviewMouseDoubleClick="StructureTreeView_PreviewMouseDoubleClick">
+                        <TreeView.Resources>
+                            <StaticResource x:Key="{x:Static SystemColors.HighlightBrushKey}" ResourceKey="NavSelectedItemBrush" />
+                            <StaticResource x:Key="{x:Static SystemColors.InactiveSelectionHighlightBrushKey}" ResourceKey="NavSelectedItemBrush" />
+                            <StaticResource x:Key="{x:Static SystemColors.HighlightTextBrushKey}" ResourceKey="NavButtonForegroundBrush" />
+                            <StaticResource x:Key="{x:Static SystemColors.InactiveSelectionHighlightTextBrushKey}" ResourceKey="NavButtonForegroundBrush" />
+                        </TreeView.Resources>
+                    </TreeView>
+
+                </Grid>
+
             </Border>
+            <Grid x:Name="DataStructureDrawerHost" Grid.Row="2"
+Panel.ZIndex="10"
+Opacity="0"
+IsHitTestVisible="False">
+                <Border Background="#3A000000" MouseLeftButtonDown="DataStructureDrawerBackdrop_MouseLeftButtonDown" />
+
+                <Border Margin="0,150,0,0" Style="{StaticResource DrawerBorderStyle}">
+                    <Border.RenderTransform>
+                        <TranslateTransform x:Name="DataStructureDrawerTranslateTransform" Y="56" />
+                    </Border.RenderTransform>
+
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+
+                        <DockPanel LastChildFill="False">
+                            <TextBlock Style="{StaticResource SectionTitleStyle}" Text="节点详细信息" />
+                            <Button DockPanel.Dock="Right"
+Content="关闭" Click="CloseInfoDrawerButton_Click"
+Style="{StaticResource ActionButtonStyle}"/>
+                        </DockPanel>
+
+                        <ScrollViewer Grid.Row="1"
+                    Margin="0,14,0,0"
+                    HorizontalScrollBarVisibility="Disabled"
+                    VerticalScrollBarVisibility="Auto">
+                            <Grid>
+                                <TextBlock HorizontalAlignment="Center"
+                                           VerticalAlignment="Center"
+                                           Foreground="{DynamicResource AppMutedTextBrush}"
+                                           Text="未选择节点">
+                                    <TextBlock.Style>
+                                        <Style TargetType="{x:Type TextBlock}">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding SelectedField}" Value="{x:Null}">
+                                                    <Setter Property="Visibility" Value="Visible" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+
+                                <Grid DataContext="{Binding SelectedField}"
+                                      Visibility="{Binding DataContext.HasSelectedField, RelativeSource={RelativeSource AncestorType={x:Type UserControl}}, Converter={StaticResource BoolToVisibilityConverter}}">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="16" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                    </Grid.RowDefinitions>
+
+                                    <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,0,12">
+                                        <TextBlock Style="{StaticResource FieldLabelStyle}" Text="客户端Code" />
+                                        <TextBox Style="{StaticResource InputTextBoxStyle}"
+                                                 Text="{Binding ClientCode, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                    </StackPanel>
+
+                                    <StackPanel Grid.Row="0" Grid.Column="2" Margin="0,0,0,12">
+                                        <TextBlock Style="{StaticResource FieldLabelStyle}" Text="上传MESCode" />
+                                        <TextBox Style="{StaticResource InputTextBoxStyle}"
+                                                 Text="{Binding MesCode, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                    </StackPanel>
+
+                                    <StackPanel Grid.Row="1" Margin="0,0,0,12">
+                                        <TextBlock Style="{StaticResource FieldLabelStyle}" Text="默认值" />
+                                        <TextBox Style="{StaticResource InputTextBoxStyle}"
+             Text="{Binding DefaultValue, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Row="1" Grid.Column="2" Orientation="Horizontal">
+                                        <StackPanel>
+                                            <TextBlock Style="{StaticResource FieldLabelStyle}" Text="数据类型" />
+                                            <ComboBox Style="{StaticResource InputComboBoxStyle}"  Width="220"
+ItemContainerStyle="{StaticResource InputComboBoxItemStyle}" HorizontalAlignment="Left"
+DisplayMemberPath="DisplayName"
+ItemsSource="{Binding DataTypes}"
+SelectedValue="{Binding DataType, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+SelectedValuePath="Value" />
+                                        </StackPanel>
+                                        <StackPanel Margin="12,0,0,0">
+                                            <TextBlock Style="{StaticResource FieldLabelStyle}" Text="保留位数" />
+                                            <TextBox Style="{StaticResource InputTextBoxStyle}"
+Text="{Binding KeepCount, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                        </StackPanel>
+                                        <StackPanel Margin="12,0,0,0">
+                                            <TextBlock Style="{StaticResource FieldLabelStyle}" Text="循环次数" />
+                                            <TextBox Style="{StaticResource InputTextBoxStyle}"
+Text="{Binding WhileCount, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                        </StackPanel>
+                                        <CheckBox Grid.Row="0" Margin="12,25,0,0"
+Grid.Column="2"
+VerticalAlignment="Center"
+Content="当前字段允许为空"
+Foreground="{DynamicResource AppContentTextBrush}"
+IsChecked="{Binding IsNull, Mode=TwoWay}" />
+                                    </StackPanel>
+
+                                    <StackPanel Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="3" Margin="0,0,0,12">
+                                        <TextBlock Style="{StaticResource FieldLabelStyle}" Text="XML命名空间" />
+                                        <TextBox Style="{StaticResource InputTextBoxStyle}"
+                                                 Text="{Binding XmlNamespace, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                    </StackPanel>
+
+                                    <Grid Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="3">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="16" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="16" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+
+                                        <StackPanel Grid.Column="0">
+                                            <TextBlock Style="{StaticResource FieldLabelStyle}" Text="判断值" />
+                                            <TextBox Style="{StaticResource InputTextBoxStyle}"
+                                                     Text="{Binding JudgeValue, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                        </StackPanel>
+
+                                        <StackPanel Grid.Column="2">
+                                            <TextBlock Style="{StaticResource FieldLabelStyle}" Text="OK文本" />
+                                            <TextBox Style="{StaticResource InputTextBoxStyle}"
+                                                     Text="{Binding OKText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                        </StackPanel>
+
+                                        <StackPanel Grid.Column="4">
+                                            <TextBlock Style="{StaticResource FieldLabelStyle}" Text="NG文本" />
+                                            <TextBox Style="{StaticResource InputTextBoxStyle}"
+                                                     Text="{Binding NGText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                        </StackPanel>
+                                    </Grid>
+                                </Grid>
+                            </Grid>
+                        </ScrollViewer>
+                    </Grid>
+                </Border>
+            </Grid>
         </Grid>
     </Grid>
 </UserControl>

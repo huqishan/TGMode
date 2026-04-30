@@ -77,7 +77,7 @@ namespace Module.MES.ViewModels.VMs
         private string _apiName = "MES 接口 1";
         private string _selectMesType = "WEBAPI";
         private string _resultCheck = string.Empty;
-        private string _dataStruct = string.Empty;
+        private string _dataStructName = string.Empty;
         private bool _isEnabledApi = true;
         private bool _isCommunicationQueryVisible = true;
         private string _remarks = string.Empty;
@@ -136,10 +136,10 @@ namespace Module.MES.ViewModels.VMs
             set => SetField(ref _resultCheck, value, trimString: true);
         }
 
-        public string DataStruct
+        public string DataStructName
         {
-            get => _dataStruct;
-            set => SetField(ref _dataStruct, value, trimString: true);
+            get => _dataStructName;
+            set => SetField(ref _dataStructName, value, trimString: true);
         }
 
         public bool IsEnabledAPI
@@ -301,7 +301,7 @@ namespace Module.MES.ViewModels.VMs
         {
             get
             {
-                string structureText = string.IsNullOrWhiteSpace(DataStruct) ? "未绑定结构" : DataStruct;
+                string structureText = string.IsNullOrWhiteSpace(DataStructName) ? "未绑定结构" : DataStructName;
                 string enabledText = IsEnabledAPI ? "已启用" : "未启用";
                 return $"{TypeDisplayName} / {structureText} / {enabledText}";
             }
@@ -333,8 +333,8 @@ namespace Module.MES.ViewModels.VMs
                 ApiName = ApiName,
                 SelectMESType = NormalizeTransportType(SelectMESType),
                 ResultCheck = ResultCheck,
-                DataStruct = DataStruct,
-                isEnabledAPI = IsEnabledAPI,
+                DataStructName = DataStructName,
+                IsEnabledAPI = IsEnabledAPI,
                 IsCommunicationQueryVisible = IsCommunicationQueryVisible,
                 Remarks = Remarks,
                 Lua = Lua,
@@ -371,8 +371,8 @@ namespace Module.MES.ViewModels.VMs
                 ApiName = string.IsNullOrWhiteSpace(config?.ApiName) ? fallbackName : config.ApiName.Trim(),
                 SelectMESType = NormalizeTransportType(config?.SelectMESType),
                 ResultCheck = config?.ResultCheck ?? string.Empty,
-                DataStruct = config?.DataStruct ?? string.Empty,
-                IsEnabledAPI = config?.isEnabledAPI ?? true,
+                DataStructName = config?.DataStructName ?? string.Empty,
+                IsEnabledAPI = config?.IsEnabledAPI ?? true,
                 IsCommunicationQueryVisible = config?.IsCommunicationQueryVisible ?? true,
                 Remarks = config?.Remarks ?? string.Empty,
                 Lua = config?.Lua ?? string.Empty,

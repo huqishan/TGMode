@@ -88,39 +88,6 @@
             <Setter Property="CaretBrush" Value="{DynamicResource AppContentTextBrush}" />
         </Style>
             
-        <Style x:Key="ConfigListBoxItemStyle" TargetType="ListBoxItem">
-            <Setter Property="Margin" Value="0,0,0,10" />
-            <Setter Property="Padding" Value="14" />
-            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-            <Setter Property="BorderBrush" Value="{DynamicResource TabItemBorderBrush}" />
-            <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="Background" Value="{DynamicResource TabCardBackgroundBrush}" />
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="ListBoxItem">
-                        <Border x:Name="Chrome"
-                                Padding="{TemplateBinding Padding}"
-                                Background="{TemplateBinding Background}"
-                                BorderBrush="{TemplateBinding BorderBrush}"
-                                BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="14">
-                            <ContentPresenter />
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Chrome" Property="BorderBrush" Value="{DynamicResource TabItemHoverBorderBrush}" />
-                                <Setter TargetName="Chrome" Property="Background" Value="{DynamicResource TabItemHoverBrush}" />
-                            </Trigger>
-                            <Trigger Property="IsSelected" Value="True">
-                                <Setter TargetName="Chrome" Property="BorderBrush" Value="{DynamicResource TabItemSelectedBorderBrush}" />
-                                <Setter TargetName="Chrome" Property="Background" Value="{DynamicResource TabItemSelectedBrush}" />
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
         <Style x:Key="MethodTypeListBoxStyle" TargetType="ListBox">
             <Setter Property="BorderThickness" Value="0" />
             <Setter Property="Background" Value="Transparent" />
@@ -220,13 +187,7 @@
             <Setter Property="HorizontalContentAlignment" Value="Left" />
             <Setter Property="Padding" Value="12,10" />
         </Style>
-            <Style x:Key="DrawerBorderStyle" TargetType="Border">
-                <Setter Property="Padding" Value="18" />
-                <Setter Property="Background" Value="{DynamicResource TabCardBackgroundBrush}" />
-                <Setter Property="BorderBrush" Value="{DynamicResource TabItemSelectedBorderBrush}" />
-                <Setter Property="BorderThickness" Value="1" />
-                <Setter Property="CornerRadius" Value="18" />
-            </Style>
+            
         </ResourceDictionary>
     </UserControl.Resources>
 
@@ -275,7 +236,7 @@
                 <ListBox Grid.Row="3"
                          BorderThickness="0"
                          Background="Transparent"
-                         ItemContainerStyle="{StaticResource ConfigListBoxItemStyle}"
+                         ItemContainerStyle="{StaticResource ListBoxItemStyle}"
                          ItemsSource="{Binding ProfilesView}"
                          SelectedItem="{Binding SelectedProfile, Mode=TwoWay}">
                     <ListBox.ItemTemplate>
@@ -376,7 +337,7 @@
                                           Style="{StaticResource InputComboBoxStyle}"
                                           ItemContainerStyle="{StaticResource InputComboBoxItemStyle}"
                                           ItemsSource="{Binding DataStructureOptions}"
-                                          SelectedItem="{Binding SelectedProfile.DataStruct, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                          SelectedItem="{Binding SelectedProfile.DataStructName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                             </DockPanel>
                             <TextBlock Style="{StaticResource FieldLabelStyle}" Text="结果校验" />
                             <TextBox Style="{StaticResource InputTextBoxStyle}"
@@ -779,9 +740,7 @@
                 <Border Background="#3A000000"
                             MouseLeftButtonDown="CommandDrawerBackdrop_MouseLeftButtonDown" />
 
-                <Border x:Name="CommandDrawerSheet"
-                            Margin="0,56,0,0"
-                            Style="{StaticResource DrawerBorderStyle}">
+                <Border Margin="0,56,0,0" Style="{StaticResource DrawerBorderStyle}">
                     <Border.RenderTransform>
                         <TranslateTransform x:Name="CommandDrawerTranslateTransform" Y="56" />
                     </Border.RenderTransform>

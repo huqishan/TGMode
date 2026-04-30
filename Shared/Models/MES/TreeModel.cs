@@ -7,9 +7,18 @@ using System.Threading.Tasks;
 
 namespace Shared.Models.MES
 {
+    public class DataSruct 
+    {
+        public string? Name { get; set; }
+
+        public string? StructureType { get; set; }
+
+        public DateTime LastModifiedAt { get; set; }
+
+        public List<TreeModel>? Structure { get; set; }
+    }
     public class TreeModel
     {
-        public bool IsRoot { get; set; }
         public string ClientCode { get; set; }
         public string MESCode { get; set; }
         public string DataType { get; set; }
@@ -19,7 +28,7 @@ namespace Shared.Models.MES
         public int WhileCount { get; set; }
         public string KeepDecimalLength { get; set; }
         public string XMLNameSpace { get; set; }
-        public ObservableCollection<TreeModel> Childs { get; set; } = new ObservableCollection<TreeModel>();
+        public List<TreeModel> Children { get; set; } = new List<TreeModel>();
         public string JudgeValue { get; set; }
         public string OKText { get; set; }
         public string NGText { get; set; }
@@ -33,9 +42,9 @@ namespace Shared.Models.MES
                 {
                     if (item.Name.Equals("Childs"))
                     {
-                        foreach (var c in model.Childs)
+                        foreach (var c in model.Children)
                         {
-                            treeModel.Childs.Add(clone(c));
+                            treeModel.Children.Add(clone(c));
                         }
                     }
                     else

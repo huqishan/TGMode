@@ -8,38 +8,6 @@
              mc:Ignorable="d" 
              d:DesignHeight="450" d:DesignWidth="800">
     <UserControl.Resources>
-<Style x:Key="LuaListBoxItemStyle" TargetType="ListBoxItem">
-            <Setter Property="Margin" Value="0,0,0,10" />
-            <Setter Property="Padding" Value="14" />
-            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-            <Setter Property="BorderBrush" Value="{DynamicResource TabItemBorderBrush}" />
-            <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="Background" Value="{DynamicResource TabCardBackgroundBrush}" />
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="ListBoxItem">
-                        <Border x:Name="Chrome"
-                        Padding="{TemplateBinding Padding}"
-                        Background="{TemplateBinding Background}"
-                        BorderBrush="{TemplateBinding BorderBrush}"
-                        BorderThickness="{TemplateBinding BorderThickness}"
-                        CornerRadius="14">
-                            <ContentPresenter />
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Chrome" Property="BorderBrush" Value="{DynamicResource TabItemHoverBorderBrush}" />
-                                <Setter TargetName="Chrome" Property="Background" Value="{DynamicResource TabItemHoverBrush}" />
-                            </Trigger>
-                            <Trigger Property="IsSelected" Value="True">
-                                <Setter TargetName="Chrome" Property="BorderBrush" Value="{DynamicResource TabItemSelectedBorderBrush}" />
-                                <Setter TargetName="Chrome" Property="Background" Value="{DynamicResource TabItemSelectedBrush}" />
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
 
     </UserControl.Resources>
 
@@ -84,7 +52,7 @@
                 <ListBox Grid.Row="2"
                  BorderThickness="0"
                  Background="Transparent"
-                 ItemContainerStyle="{StaticResource LuaListBoxItemStyle}"
+                 ItemContainerStyle="{StaticResource ListBoxItemStyle}"
                  ItemsSource="{Binding Profiles}"
                  SelectedItem="{Binding SelectedProfile, Mode=TwoWay}">
                     <ListBox.ItemTemplate>

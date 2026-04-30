@@ -11,17 +11,12 @@ using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
-using System.Text.Encodings.Web;
-using System.Text.Json;
-using System.Text.Json.Nodes;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
-using System.Xml;
-using System.Xml.Linq;
 
 namespace Module.MES.Views
 {
@@ -40,20 +35,8 @@ namespace Module.MES.Views
             Path.Combine(MesConfigRootDirectory, "MesSystemConfig", "MesSystemConfig.json");
 
         private static readonly string DataStructureConfigDirectory =
-            Path.Combine(AppContext.BaseDirectory, "Config", "DataStructure");
+            Path.Combine(MesConfigRootDirectory, "DataStructure");
 
-
-        private static readonly JsonSerializerOptions PreviewJsonOptions = new JsonSerializerOptions
-        {
-            WriteIndented = true,
-            Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
-        };
-
-        private static readonly JsonSerializerOptions ApiConfigStorageJsonOptions = new JsonSerializerOptions
-        {
-            WriteIndented = true,
-            Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
-        };
 
         private static readonly Brush SuccessBrush =
             new SolidColorBrush((Color)ColorConverter.ConvertFromString("#16A34A"));
@@ -69,8 +52,6 @@ namespace Module.MES.Views
         private static readonly IEasingFunction HeaderDrawerEasing = new CubicEase { EasingMode = EasingMode.EaseOut };
 
         private readonly Dictionary<ApiInterfaceProfile, string> _profileStorageFileNames = new();
-        private readonly Dictionary<string, StoredDataStructureDocument> _dataStructureDocuments = new(StringComparer.OrdinalIgnoreCase);
-        private readonly HashSet<string> _legacyStructureNames = new(StringComparer.OrdinalIgnoreCase);
         private ApiInterfaceProfile? _selectedProfile;
         private string _searchText = string.Empty;
         private string _pageStatusText = "等待编辑";
@@ -311,21 +292,27 @@ namespace Module.MES.Views
                 return;
             }
 
-            if (string.IsNullOrWhiteSpace(SelectedProfile.DataStruct))
+            if (string.IsNullOrWhiteSpace(SelectedProfile.DataStructName))
             {
                 SetPageStatus("请先选择数据结构，再生成上传报文。", WarningBrush);
                 return;
             }
 
-            RefreshDataStructureOptions();
-            if (TryBuildPayloadFromStructure(SelectedProfile.DataStruct, out string payload, out string message))
+            try
             {
-                SelectedProfile.SampleRequestBody = payload;
-                SetPageStatus(message, SuccessBrush);
+                string? payload = MesDataConvert.Convert(new MesDataInfoTree(), SelectedProfile.DataStructName);
+                if (string.IsNullOrWhiteSpace(payload))
+                {
+                    SetPageStatus($"数据结构 {SelectedProfile.DataStructName} 未生成有效报文，请检查结构内容。", WarningBrush);
+                    return;
+                }
+
+                SelectedProfile.SampleRequestBody = FormatResponseText(payload);
+                SetPageStatus($"已生成上传报文：{SelectedProfile.DataStructName}", SuccessBrush);
             }
-            else
+            catch (Exception ex)
             {
-                SetPageStatus(message, WarningBrush);
+                SetPageStatus($"生成上传报文失败：{ex.Message}", WarningBrush);
             }
         }
 
@@ -343,10 +330,9 @@ namespace Module.MES.Views
                 ValidateProfileForSave(profile);
 
                 if (string.IsNullOrWhiteSpace(profile.SampleRequestBody) &&
-                    !string.IsNullOrWhiteSpace(profile.DataStruct) &&
-                    TryBuildPayloadFromStructure(profile.DataStruct, out string generatedPayload, out _))
+                    !string.IsNullOrWhiteSpace(profile.DataStructName))
                 {
-                    profile.SampleRequestBody = generatedPayload;
+                    //profile.SampleRequestBody = generatedPayload;
                 }
 
                 EnsureMesSystemConfigExists();
@@ -487,7 +473,7 @@ namespace Module.MES.Views
         {
             if (e.PropertyName is nameof(ApiInterfaceProfile.ApiName) or
                 nameof(ApiInterfaceProfile.Remarks) or
-                nameof(ApiInterfaceProfile.DataStruct) or
+                nameof(ApiInterfaceProfile.DataStructName) or
                 nameof(ApiInterfaceProfile.SelectMESType) or
                 nameof(ApiInterfaceProfile.IsEnabledAPI))
             {
@@ -640,358 +626,101 @@ namespace Module.MES.Views
 
         private void RefreshDataStructureOptions()
         {
-            _dataStructureDocuments.Clear();
-            _legacyStructureNames.Clear();
             DataStructureOptions.Clear();
 
             if (Directory.Exists(DataStructureConfigDirectory))
             {
                 foreach (string filePath in Directory.EnumerateFiles(DataStructureConfigDirectory, "*.json").OrderBy(Path.GetFileName))
                 {
-                    try
-                    {
-                        string encryptedText = File.ReadAllText(filePath, Encoding.UTF8);
-                        string jsonText = encryptedText.DesDecrypt();
-                        StoredDataStructureDocument? document = JsonHelper.DeserializeObject<StoredDataStructureDocument>(jsonText);
-                        if (document is null || string.IsNullOrWhiteSpace(document.Name))
-                        {
-                            continue;
-                        }
-
-                        _dataStructureDocuments[document.Name.Trim()] = document;
-                    }
-                    catch
-                    {
-                    }
+                    DataStructureOptions.Add(Path.GetFileName(filePath).Replace(".json", ""));
                 }
             }
+        }
+        private static TreeModel ConvertLayoutDocumentToTreeModel(DataStructureLayoutDocument document)
+        {
+            bool isWhile = document.IsWhile || document.WhileCount > 0;
+            TreeModel model = CreateTreeModel(
+                document.ClientCode ?? string.Empty,
+                document.MesCode ?? string.Empty,
+                DataStructureFieldDataTypes.Normalize(document.DataType),
+                document.DefaultValue ?? string.Empty,
+                isRoot: false);
 
-            foreach (string name in _dataStructureDocuments.Keys.OrderBy(name => name, StringComparer.OrdinalIgnoreCase))
+            model.IsNull = document.IsNull;
+            model.IsWhile = isWhile;
+            model.WhileCount = isWhile && document.WhileCount <= 0 ? 1 : Math.Max(0, document.WhileCount);
+            model.KeepDecimalLength = document.KeepCount.ToString(CultureInfo.InvariantCulture);
+            model.XMLNameSpace = document.XmlNamespace ?? string.Empty;
+            model.JudgeValue = document.JudgeValue ?? string.Empty;
+            model.OKText = document.OKText ?? string.Empty;
+            model.NGText = document.NGText ?? string.Empty;
+
+            foreach (DataStructureLayoutDocument child in document.Children ?? Enumerable.Empty<DataStructureLayoutDocument>())
             {
-                DataStructureOptions.Add(name);
+                model.Children.Add(ConvertLayoutDocumentToTreeModel(child));
             }
 
-            foreach (string name in _legacyStructureNames.OrderBy(name => name, StringComparer.OrdinalIgnoreCase))
-            {
-                if (!DataStructureOptions.Contains(name))
-                {
-                    DataStructureOptions.Add(name);
-                }
-            }
-
-            if (SelectedProfile is not null &&
-                !string.IsNullOrWhiteSpace(SelectedProfile.DataStruct) &&
-                !DataStructureOptions.Contains(SelectedProfile.DataStruct))
-            {
-                DataStructureOptions.Add(SelectedProfile.DataStruct);
-            }
+            return model;
         }
 
-        private bool TryBuildPayloadFromStructure(string structureName, out string payload, out string message)
+        private static TreeModel CreateTreeModel(
+            string clientCode,
+            string mesCode,
+            string dataType,
+            string defaultValue,
+            bool isRoot)
         {
-            payload = string.Empty;
-            message = "未找到对应的数据结构。";
-
-            if (_dataStructureDocuments.TryGetValue(structureName, out StoredDataStructureDocument? document))
+            return new TreeModel
             {
-                return TryBuildPayloadFromDocument(document, out payload, out message);
-            }
-
-            if (_legacyStructureNames.Contains(structureName))
-            {
-                message = "当前选中的是旧版树结构配置，暂不支持自动生成示例报文，请在左侧编辑框手工填写。";
-                return false;
-            }
-
-            return false;
-        }
-
-        private static bool TryBuildPayloadFromDocument(StoredDataStructureDocument document, out string payload, out string message)
-        {
-            payload = string.Empty;
-
-            string rootName = document.RootName?.Trim() ?? string.Empty;
-            if (string.IsNullOrWhiteSpace(rootName))
-            {
-                message = "数据结构缺少根节点名称。";
-                return false;
-            }
-
-            return document.Format switch
-            {
-                0 => TryBuildJsonPayload(document, rootName, out payload, out message),
-                1 => TryBuildXmlPayload(document, rootName, out payload, out message),
-                _ => Fail("暂不支持当前数据结构格式。", out payload, out message)
+                ClientCode = clientCode,
+                MESCode = mesCode,
+                DataType = dataType,
+                DefectValue = defaultValue,
+                KeepDecimalLength = "0",
+                XMLNameSpace = string.Empty,
+                JudgeValue = string.Empty,
+                OKText = string.Empty,
+                NGText = string.Empty
             };
         }
 
-        private static bool TryBuildJsonPayload(StoredDataStructureDocument document, string rootName, out string payload, out string message)
+        private static void NormalizeTreeModel(TreeModel model, bool isRoot)
         {
-            JsonObject contentObject = new JsonObject();
-            HashSet<string> usedNames = new(StringComparer.OrdinalIgnoreCase);
+            model.ClientCode ??= string.Empty;
+            model.MESCode ??= string.Empty;
+            model.DataType = isRoot
+                ? NormalizeRootDataType(model.DataType)
+                : DataStructureFieldDataTypes.Normalize(model.DataType);
+            model.DefectValue ??= string.Empty;
+            model.KeepDecimalLength = string.IsNullOrWhiteSpace(model.KeepDecimalLength)
+                ? "0"
+                : model.KeepDecimalLength;
+            model.XMLNameSpace ??= string.Empty;
+            model.JudgeValue ??= string.Empty;
+            model.OKText ??= string.Empty;
+            model.NGText ??= string.Empty;
+            model.Children ??= new List<TreeModel>();
 
-            foreach (StoredDataStructureField field in document.Fields ?? new List<StoredDataStructureField>())
+            foreach (TreeModel child in model.Children)
             {
-                string propertyName = ResolveFieldOutputName(field);
-                if (string.IsNullOrWhiteSpace(propertyName))
-                {
-                    return Fail("数据结构里存在空字段名，无法生成 JSON 报文。", out payload, out message);
-                }
+                NormalizeTreeModel(child, isRoot: false);
+            }
+        }
 
-                if (!usedNames.Add(propertyName))
-                {
-                    return Fail($"数据结构字段名重复：{propertyName}", out payload, out message);
-                }
-
-                if (!TryBuildJsonValue(field, out JsonNode? valueNode, out string errorMessage))
-                {
-                    return Fail(errorMessage, out payload, out message);
-                }
-
-                contentObject[propertyName] = valueNode;
+        private static string NormalizeRootDataType(string? dataType)
+        {
+            if (string.IsNullOrWhiteSpace(dataType))
+            {
+                return "JSON";
             }
 
-            JsonObject rootObject = new JsonObject
+            return dataType.Trim().ToUpperInvariant() switch
             {
-                [rootName] = contentObject
+                "SAOP" or "SOAP" or "XML" => "SOAP",
+                "JOIN" or "JOINT" => "JOINT",
+                "JSONREMOVEQUE" => "JSONREMOVEQUE",
+                _ => "JSON"
             };
-
-            payload = rootObject.ToJsonString(PreviewJsonOptions);
-            message = $"已根据 {document.Name} 生成 JSON 上传报文。";
-            return true;
-        }
-
-        private static bool TryBuildXmlPayload(StoredDataStructureDocument document, string rootName, out string payload, out string message)
-        {
-            payload = string.Empty;
-            XNamespace xmlNamespace = string.IsNullOrWhiteSpace(document.XmlNamespace)
-                ? XNamespace.None
-                : document.XmlNamespace.Trim();
-
-            XElement rootElement;
-            try
-            {
-                rootElement = new XElement(xmlNamespace + XmlConvert.VerifyName(rootName));
-            }
-            catch (Exception ex) when (ex is XmlException or ArgumentException)
-            {
-                message = $"XML 根节点无效：{ex.Message}";
-                return false;
-            }
-
-            HashSet<string> usedNames = new(StringComparer.OrdinalIgnoreCase);
-            foreach (StoredDataStructureField field in document.Fields ?? new List<StoredDataStructureField>())
-            {
-                string elementName = ResolveFieldOutputName(field);
-                if (string.IsNullOrWhiteSpace(elementName))
-                {
-                    message = "数据结构里存在空字段名，无法生成 XML 报文。";
-                    return false;
-                }
-
-                if (!usedNames.Add(elementName))
-                {
-                    message = $"XML 字段名重复：{elementName}";
-                    return false;
-                }
-
-                try
-                {
-                    XElement element = new XElement(
-                        xmlNamespace + XmlConvert.VerifyName(elementName),
-                        field.DefaultValue ?? string.Empty);
-
-                    if (!string.IsNullOrWhiteSpace(field.MesCode))
-                    {
-                        element.SetAttributeValue("mesCode", field.MesCode.Trim());
-                    }
-
-                    if (!string.IsNullOrWhiteSpace(field.ClientCode))
-                    {
-                        element.SetAttributeValue("clientCode", field.ClientCode.Trim());
-                    }
-
-                    if (!string.IsNullOrWhiteSpace(field.DataType))
-                    {
-                        element.SetAttributeValue("dataType", field.DataType.Trim());
-                    }
-
-                    rootElement.Add(element);
-                }
-                catch (Exception ex) when (ex is XmlException or ArgumentException)
-                {
-                    message = $"XML 字段无效：{elementName}，{ex.Message}";
-                    return false;
-                }
-            }
-
-            XDocument xmlDocument = new XDocument(new XDeclaration("1.0", "utf-8", "yes"), rootElement);
-            payload = xmlDocument.ToString();
-            message = $"已根据 {document.Name} 生成 XML 上传报文。";
-            return true;
-        }
-
-        private static bool TryBuildJsonValue(StoredDataStructureField field, out JsonNode? valueNode, out string message)
-        {
-            string rawValue = field.DefaultValue?.Trim() ?? string.Empty;
-            switch (field.JsonValueKind)
-            {
-                case 0:
-                    valueNode = JsonValue.Create(field.DefaultValue ?? string.Empty);
-                    message = string.Empty;
-                    return true;
-                case 1:
-                    if (string.IsNullOrWhiteSpace(rawValue))
-                    {
-                        valueNode = JsonValue.Create(0);
-                        message = string.Empty;
-                        return true;
-                    }
-
-                    if (long.TryParse(rawValue, NumberStyles.Integer, CultureInfo.InvariantCulture, out long integerValue))
-                    {
-                        valueNode = JsonValue.Create(integerValue);
-                        message = string.Empty;
-                        return true;
-                    }
-
-                    valueNode = null;
-                    message = $"字段 {ResolveFieldOutputName(field)} 的默认值不是合法整数。";
-                    return false;
-                case 2:
-                    if (string.IsNullOrWhiteSpace(rawValue))
-                    {
-                        valueNode = JsonValue.Create(0d);
-                        message = string.Empty;
-                        return true;
-                    }
-
-                    if (double.TryParse(rawValue, NumberStyles.Float | NumberStyles.AllowThousands, CultureInfo.InvariantCulture, out double numberValue))
-                    {
-                        valueNode = JsonValue.Create(numberValue);
-                        message = string.Empty;
-                        return true;
-                    }
-
-                    valueNode = null;
-                    message = $"字段 {ResolveFieldOutputName(field)} 的默认值不是合法数字。";
-                    return false;
-                case 3:
-                    if (string.IsNullOrWhiteSpace(rawValue))
-                    {
-                        valueNode = JsonValue.Create(false);
-                        message = string.Empty;
-                        return true;
-                    }
-
-                    if (TryParseBoolean(rawValue, out bool booleanValue))
-                    {
-                        valueNode = JsonValue.Create(booleanValue);
-                        message = string.Empty;
-                        return true;
-                    }
-
-                    valueNode = null;
-                    message = $"字段 {ResolveFieldOutputName(field)} 的默认值不是合法布尔值。";
-                    return false;
-                case 4:
-                    if (string.IsNullOrWhiteSpace(rawValue))
-                    {
-                        valueNode = new JsonObject();
-                        message = string.Empty;
-                        return true;
-                    }
-
-                    return TryParseJsonNode(field, rawValue, System.Text.Json.JsonValueKind.Object, out valueNode, out message);
-                case 5:
-                    if (string.IsNullOrWhiteSpace(rawValue))
-                    {
-                        valueNode = new JsonArray();
-                        message = string.Empty;
-                        return true;
-                    }
-
-                    return TryParseJsonNode(field, rawValue, System.Text.Json.JsonValueKind.Array, out valueNode, out message);
-                case 6:
-                    valueNode = null;
-                    message = string.Empty;
-                    return true;
-                default:
-                    valueNode = null;
-                    message = $"字段 {ResolveFieldOutputName(field)} 使用了未支持的 JSON 值类型。";
-                    return false;
-            }
-        }
-
-        private static bool TryParseJsonNode(
-            StoredDataStructureField field,
-            string rawValue,
-            System.Text.Json.JsonValueKind expectedKind,
-            out JsonNode? node,
-            out string message)
-        {
-            try
-            {
-                node = JsonNode.Parse(rawValue);
-                if (node is null || node.GetValueKind() != expectedKind)
-                {
-                    message = $"字段 {ResolveFieldOutputName(field)} 的默认值与选定的 JSON 类型不匹配。";
-                    return false;
-                }
-
-                message = string.Empty;
-                return true;
-            }
-            catch (JsonException ex)
-            {
-                node = null;
-                message = $"字段 {ResolveFieldOutputName(field)} 的默认值不是合法 JSON：{ex.Message}";
-                return false;
-            }
-        }
-
-        private static string ResolveFieldOutputName(StoredDataStructureField field)
-        {
-            if (!string.IsNullOrWhiteSpace(field.ClientCode))
-            {
-                return field.ClientCode.Trim();
-            }
-
-            if (!string.IsNullOrWhiteSpace(field.Name))
-            {
-                return field.Name.Trim();
-            }
-
-            return string.Empty;
-        }
-
-        private static bool TryParseBoolean(string value, out bool result)
-        {
-            switch (value.Trim().ToLowerInvariant())
-            {
-                case "true":
-                case "1":
-                case "yes":
-                case "y":
-                    result = true;
-                    return true;
-                case "false":
-                case "0":
-                case "no":
-                case "n":
-                    result = false;
-                    return true;
-                default:
-                    result = false;
-                    return false;
-            }
-        }
-
-        private static bool Fail(string messageText, out string payload, out string message)
-        {
-            payload = string.Empty;
-            message = messageText;
-            return false;
         }
 
         private static void ValidatePort(string value, string displayName)
@@ -1170,8 +899,9 @@ namespace Module.MES.Views
             string keyword = SearchText.Trim();
             return Contains(profile.ApiName, keyword) ||
                    Contains(profile.Remarks, keyword) ||
-                   Contains(profile.DataStruct, keyword) ||
-                   Contains(profile.TypeDisplayName, keyword);
+                   Contains(profile.DataStructName, keyword) ||
+                   Contains(profile.TypeDisplayName, keyword) ||
+                   Contains(profile.Summary, keyword);
         }
 
         private static bool Contains(string? source, string keyword)
@@ -1202,36 +932,5 @@ namespace Module.MES.Views
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
 
-        private sealed class StoredDataStructureDocument
-        {
-            public int Version { get; set; }
-
-            public string? Name { get; set; }
-
-            public int Format { get; set; }
-
-            public string? RootName { get; set; }
-
-            public string? XmlNamespace { get; set; }
-
-            public List<StoredDataStructureField>? Fields { get; set; }
-        }
-
-        private sealed class StoredDataStructureField
-        {
-            public string? Name { get; set; }
-
-            public string? MesCode { get; set; }
-
-            public string? ClientCode { get; set; }
-
-            public string? DataType { get; set; }
-
-            public string? DefaultValue { get; set; }
-
-            public int JsonValueKind { get; set; }
-        }
-
-        
     }
 }

@@ -7,4 +7,11 @@
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="CornerRadius" Value="16" />
     </Style>
+    <Style x:Key="DrawerBorderStyle" TargetType="Border">
+        <Setter Property="Padding" Value="18" />
+        <Setter Property="Background" Value="{DynamicResource TabCardBackgroundBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource TabItemSelectedBorderBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="18" />
+    </Style>
 </ResourceDictionary>
