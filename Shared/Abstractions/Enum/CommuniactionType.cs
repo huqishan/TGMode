@@ -16,6 +16,6 @@ namespace Shared.Abstractions.Enum
         COM,
         RabbitMQRPCServer,
         RabbitMQRPCClient,
-        Hsl
+        PLC
     }
 }

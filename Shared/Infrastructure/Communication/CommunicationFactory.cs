@@ -19,6 +19,8 @@ namespace Shared.Infrastructure.Communication
                 CommuniactionType.UDP => new UDPClient(config),
                 CommuniactionType.UDPServer => new UDPServer(config),
                 CommuniactionType.COM => new SerialPortComm(config),
+                CommuniactionType.MX => new MxPlcCommunication(config),
+                CommuniactionType.PLC => new MxPlcCommunication(config),
                 CommuniactionType.RabbitMQRPCServer => new RabbitMQRPCServer(config),
                 CommuniactionType.RabbitMQRPCClient => new RabbitMQRPCClient(config),
                 _ => throw new NotSupportedException($"Unsupported communication type: {config.Type}")

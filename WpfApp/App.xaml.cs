@@ -1,7 +1,7 @@
+using Module.User.Services;
 using System;
 using System.Reflection;
 using System.Windows;
-using WpfApp.Services.UserManagement;
 
 namespace WpfApp
 {

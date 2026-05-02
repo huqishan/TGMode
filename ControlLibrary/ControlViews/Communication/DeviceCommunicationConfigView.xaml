@@ -175,7 +175,7 @@
                       SelectedValuePath="Value" />
 
 
-                        <StackPanel Visibility="{Binding ElementName=communicationType, Path=SelectedItem.Value, Converter={StaticResource ComparisonToVisibilityConvert}, ConverterParameter='TCPClient|TCPServer|Hsl'}">
+                        <StackPanel Visibility="{Binding ElementName=communicationType, Path=SelectedItem.Value, Converter={StaticResource ComparisonToVisibilityConvert}, ConverterParameter='TCPClient|TCPServer'}">
                             <TextBlock Style="{StaticResource FieldLabelStyle}" Text="本地 IP 地址" />
                             <TextBox Style="{StaticResource InputTextBoxStyle}"
                          Text="{Binding SelectedProfile.LocalIPAddress, UpdateSourceTrigger=PropertyChanged}" />
@@ -184,8 +184,15 @@
                             <TextBox Style="{StaticResource InputTextBoxStyle}"
                          Text="{Binding SelectedProfile.LocalPort, UpdateSourceTrigger=PropertyChanged}" />
                         </StackPanel>
-
-                        <StackPanel Visibility="{Binding ElementName=communicationType, Path=SelectedItem.Value, Converter={StaticResource ComparisonToVisibilityConvert}, ConverterParameter='TCPClient|UDP|Hsl'}">
+                        <StackPanel Visibility="{Binding ElementName=communicationType, Path=SelectedItem.Value, Converter={StaticResource ComparisonToVisibilityConvert}, ConverterParameter='PLC'}">
+                            <TextBlock Style="{StaticResource FieldLabelStyle}" Text="PLC类型" />
+                            <ComboBox Style="{StaticResource InputComboBoxStyle}" ItemContainerStyle="{StaticResource InputComboBoxItemStyle}"
+ItemsSource="{Binding PLCTypes}"
+ItemTemplate="{StaticResource CommunicationTypeItemTemplate}"
+SelectedValue="{Binding SelectedProfile.PLCType, Mode=TwoWay}"
+SelectedValuePath="Value" />
+                        </StackPanel>
+                        <StackPanel Visibility="{Binding ElementName=communicationType, Path=SelectedItem.Value, Converter={StaticResource ComparisonToVisibilityConvert}, ConverterParameter='TCPClient|UDP|PLC'}">
                             <TextBlock Style="{StaticResource FieldLabelStyle}" Text="远程 IP 地址" />
                             <TextBox Style="{StaticResource InputTextBoxStyle}"
                          Text="{Binding SelectedProfile.RemoteIPAddress, UpdateSourceTrigger=PropertyChanged}" />
@@ -194,7 +201,7 @@
                             <TextBox Style="{StaticResource InputTextBoxStyle}"
                          Text="{Binding SelectedProfile.RemotePort, UpdateSourceTrigger=PropertyChanged}" />
                         </StackPanel>
-
+                        
                         <StackPanel Visibility="{Binding ElementName=communicationType, Path=SelectedItem.Value, Converter={StaticResource ComparisonToVisibilityConvert}, ConverterParameter='COM'}">
                             <DockPanel Margin="0,14,0,6">
                                 <TextBlock VerticalAlignment="Center"
@@ -289,7 +296,7 @@ Click="CloseConnectionButton_Click" />
 
                         <TextBlock Margin="0,8,0,0" Grid.Row="1"
 Foreground="{DynamicResource AppMutedTextBrush}"
- Text="测试会按当前配置创建通信对象；若为 TCP Server，会自动列出当前已连接客户端，可选择单发或全部发送。"
+ Text="测试会按当前配置创建通信对象；TCP Server 可选择客户端发送，PLC 可使用下方读取或写入测试。"
 TextWrapping="Wrap" />
                         <StackPanel Grid.Row="2"
                                      Visibility="{Binding ElementName=communicationType, Path=SelectedItem.Value, Converter={StaticResource ComparisonToVisibilityConvert}, ConverterParameter='TCPServer'}">
@@ -309,8 +316,12 @@ TextWrapping="Wrap" />
                                       ItemContainerStyle="{StaticResource ConnectedClientComboBoxItemStyle}"
                                       SelectedItem="{Binding SelectedServerClient, Mode=TwoWay}" />
                         </StackPanel>
-                        <TextBlock Grid.Row="3" Style="{StaticResource FieldLabelStyle}" Text="发送内容" />
+                        <TextBlock Grid.Row="3"
+                                   Visibility="{Binding IsGenericSendTestVisible, Converter={StaticResource BoolToVisibilityConverter}}"
+                                   Style="{StaticResource FieldLabelStyle}"
+                                   Text="发送内容" />
                         <Grid Grid.Row="4"
+                              Visibility="{Binding IsGenericSendTestVisible, Converter={StaticResource BoolToVisibilityConverter}}"
                               HorizontalAlignment="Stretch"
                               VerticalAlignment="Stretch">
                             <Grid.ColumnDefinitions>
@@ -335,6 +346,67 @@ Click="SendButton_Click" />
 Style="{StaticResource ActionButtonStyle}"
  Visibility="{Binding ElementName=communicationType, Path=SelectedItem.Value, Converter={StaticResource ComparisonToVisibilityConvert}, ConverterParameter='TCPServer'}"
 Click="SendAllButton_Click" />
+                        </Grid>
+
+                        <Grid Grid.Row="3"
+                              Grid.RowSpan="2"
+                              Visibility="{Binding ElementName=communicationType, Path=SelectedItem.Value, Converter={StaticResource ComparisonToVisibilityConvert}, ConverterParameter='PLC'}">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="1.2*" />
+                                <ColumnDefinition Width="12" />
+                                <ColumnDefinition Width="0.8*" />
+                                <ColumnDefinition Width="12" />
+                                <ColumnDefinition Width="0.8*" />
+                                <ColumnDefinition Width="12" />
+                                <ColumnDefinition Width="1.2*" />
+                                <ColumnDefinition Width="12" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="8" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Style="{StaticResource FieldLabelStyle}" Text="PLC 地址" />
+                                <TextBox Style="{StaticResource InputTextBoxStyle}"
+                                         Text="{Binding PlcAddress, UpdateSourceTrigger=PropertyChanged}" />
+                            </StackPanel>
+
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Style="{StaticResource FieldLabelStyle}" Text="长度" />
+                                <TextBox Style="{StaticResource InputTextBoxStyle}"
+                                         Text="{Binding PlcLength, UpdateSourceTrigger=PropertyChanged}" />
+                            </StackPanel>
+
+                            <StackPanel Grid.Column="4">
+                                <TextBlock Style="{StaticResource FieldLabelStyle}" Text="数据类型" />
+                                <ComboBox Style="{StaticResource InputComboBoxStyle}"
+                                          ItemsSource="{Binding PlcDataTypeOptions}"
+                                          ItemTemplate="{StaticResource SelectionOptionItemTemplate}"
+                                          ItemContainerStyle="{StaticResource InputComboBoxItemStyle}"
+                                          SelectedValue="{Binding SelectedPlcDataType, Mode=TwoWay}"
+                                          SelectedValuePath="Value" />
+                            </StackPanel>
+
+                            <StackPanel Grid.Column="6">
+                                <TextBlock Style="{StaticResource FieldLabelStyle}" Text="写入值" />
+                                <TextBox Style="{StaticResource InputTextBoxStyle}"
+                                         Text="{Binding PlcWriteValue, UpdateSourceTrigger=PropertyChanged}" />
+                            </StackPanel>
+
+                            <Button Grid.Column="8" Margin="0"
+                                    VerticalAlignment="Bottom"
+                                    Content="读取"
+                                    Style="{StaticResource PrimaryActionButtonStyle}"
+                                    Click="ReadPlcButton_Click" />
+                            <Button Grid.Column="10" Margin="0"
+                                    VerticalAlignment="Bottom"
+                                    Content="写入"
+                                    Style="{StaticResource ActionButtonStyle}"
+                                    Click="WritePlcButton_Click" />
                         </Grid>
                         <DockPanel Margin="0,14,0,6" LastChildFill="False" Grid.Row="5" >
                             <TextBlock DockPanel.Dock="Left" VerticalAlignment="Bottom"

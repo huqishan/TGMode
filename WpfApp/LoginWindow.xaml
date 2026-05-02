@@ -250,10 +250,12 @@
                     <StackPanel Grid.Row="4">
                         <TextBlock Margin="0,0,0,8"
                                    Style="{StaticResource FieldLabelStyle}"
-                                   Text="密码" />
+                                   Text="密码" 
+                                   />
                         <PasswordBox x:Name="PasswordInput"
                                      KeyDown="PasswordInput_KeyDown"
-                                     Style="{StaticResource LoginPasswordBoxStyle}" />
+                                     Style="{StaticResource LoginPasswordBoxStyle}" 
+                                     />
                     </StackPanel>
 
                     <Border Grid.Row="6"

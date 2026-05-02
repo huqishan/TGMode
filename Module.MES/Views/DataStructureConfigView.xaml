@@ -4,13 +4,31 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:searchBox="clr-namespace:ControlLibrary.Controls.SearchBox.Control;assembly=ControlLibrary"
+             xmlns:vm="clr-namespace:Module.MES.ViewModels"
              mc:Ignorable="d"
              HorizontalAlignment="Stretch"
              VerticalAlignment="Stretch"
              d:DesignHeight="760"
              d:DesignWidth="1600">
+    <UserControl.DataContext>
+        <vm:DataStructureConfigViewModel />
+    </UserControl.DataContext>
+
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter" />
+        <Style x:Key="DrawerBackdropButtonStyle" TargetType="{x:Type Button}">
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Focusable" Value="False" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type Button}">
+                        <Border Background="{TemplateBinding Background}" />
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <Style x:Key="ContextMenuIconPathStyle" TargetType="{x:Type Path}">
             <Setter Property="Stroke" Value="#111827" />
             <Setter Property="StrokeThickness" Value="1.25" />
@@ -231,17 +249,17 @@ SelectedValuePath="Value" />
    Text="{Binding SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                 <UniformGrid Grid.Row="2" Columns="4" Margin="0,16,0,16">
                     <Button Content="新增"
-Click="AddProfile_Click"
-Style="{StaticResource PrimaryActionButtonStyle}" />
+                            Command="{Binding AddProfileCommand}"
+                            Style="{StaticResource PrimaryActionButtonStyle}" />
                     <Button Content="复制"
-Click="DuplicateProfile_Click"
-Style="{StaticResource ActionButtonStyle}" />
+                            Command="{Binding DuplicateProfileCommand}"
+                            Style="{StaticResource ActionButtonStyle}" />
                     <Button Content="删除"
-Click="DeleteProfile_Click"
-Style="{StaticResource ActionButtonStyle}" />
+                            Command="{Binding DeleteProfileCommand}"
+                            Style="{StaticResource ActionButtonStyle}" />
                     <Button Content="保存"
-Click="SaveProfiles_Click"
-Style="{StaticResource ActionButtonStyle}" />
+                            Command="{Binding SaveProfilesCommand}"
+                            Style="{StaticResource ActionButtonStyle}" />
                 </UniformGrid>
                 <ListBox Grid.Row="3"
          BorderThickness="0"
@@ -349,7 +367,7 @@ SelectedValuePath="Value" />
           Style="{StaticResource CardBorderStyle}">
                 <Border.ContextMenu>
                     <ContextMenu ItemContainerStyle="{StaticResource StructureContextMenuItemStyle}"
-                                 Opened="StructureContextMenu_Opened"
+                                 DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}"
                                  Style="{StaticResource StructureContextMenuStyle}">
                         <MenuItem Header="导入结构">
                             <MenuItem.Icon>
@@ -382,7 +400,7 @@ SelectedValuePath="Value" />
                             </MenuItem.Icon>
                         </MenuItem>
                         <MenuItem Header="添加子项"
-                                  Click="AddFieldChild_Click">
+                                  Command="{Binding AddFieldChildCommand}">
                             <MenuItem.Icon>
                                 <Viewbox Width="32" Height="32">
                                     <Canvas Width="16" Height="16">
@@ -394,7 +412,7 @@ SelectedValuePath="Value" />
                         </MenuItem>
                         <MenuItem x:Name="CopyFieldMenuItem"
                                   Header="复制"
-                                  Click="CopyField_Click">
+                                  Command="{Binding CopyFieldCommand}">
                             <MenuItem.Icon>
                                 <Viewbox Width="32" Height="32">
                                     <Canvas Width="16" Height="16">
@@ -406,7 +424,7 @@ SelectedValuePath="Value" />
                         </MenuItem>
                         <MenuItem x:Name="PasteFieldMenuItem"
                                   Header="粘贴"
-                                  Click="PasteField_Click">
+                                  Command="{Binding PasteFieldCommand}">
                             <MenuItem.Icon>
                                 <Viewbox Width="32" Height="32">
                                     <Canvas Width="16" Height="16">
@@ -418,7 +436,7 @@ SelectedValuePath="Value" />
                         </MenuItem>
                         <MenuItem x:Name="DeleteFieldMenuItem"
                                   Header="删除"
-                                  Click="DeleteField_Click">
+                                  Command="{Binding DeleteFieldCommand}">
                             <MenuItem.Icon>
                                 <Viewbox Width="32" Height="32">
                                     <Canvas Width="16" Height="16">
@@ -461,7 +479,9 @@ SelectedValuePath="Value" />
 Panel.ZIndex="10"
 Opacity="0"
 IsHitTestVisible="False">
-                <Border Background="#3A000000" MouseLeftButtonDown="DataStructureDrawerBackdrop_MouseLeftButtonDown" />
+                <Button Background="#3A000000"
+                        Command="{Binding CloseStructureDrawerCommand}"
+                        Style="{StaticResource DrawerBackdropButtonStyle}" />
 
                 <Border Margin="0,150,0,0" Style="{StaticResource DrawerBorderStyle}">
                     <Border.RenderTransform>
@@ -477,8 +497,9 @@ IsHitTestVisible="False">
                         <DockPanel LastChildFill="False">
                             <TextBlock Style="{StaticResource SectionTitleStyle}" Text="节点详细信息" />
                             <Button DockPanel.Dock="Right"
-Content="关闭" Click="CloseInfoDrawerButton_Click"
-Style="{StaticResource ActionButtonStyle}"/>
+                                    Content="关闭"
+                                    Command="{Binding CloseStructureDrawerCommand}"
+                                    Style="{StaticResource ActionButtonStyle}" />
                         </DockPanel>
 
                         <ScrollViewer Grid.Row="1"

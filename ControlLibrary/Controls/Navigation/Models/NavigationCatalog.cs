@@ -2,7 +2,7 @@ using ControlLibrary;
 using ControlLibrary.Controls.Navigation.Models;
 using System.Collections.ObjectModel;
 
-namespace WpfApp.Services.Navigation;
+namespace ControlLibrary.Controls.Navigation.Models;
 
 public static class NavigationCatalog
 {
@@ -40,8 +40,8 @@ public static class NavigationCatalog
             new("用户管理", IconFactory.Cpu, null,
                 new ObservableCollection<ControlInfoDataItem>
                 {
-                    new("账号", IconFactory.Router, "WpfApp.Views.UserManagement.AccountManagementView, WpfApp", null),
-                    new("权限配置", IconFactory.Workflow, "WpfApp.Views.UserManagement.PermissionConfigurationView, WpfApp", null)
+                    new("账号", IconFactory.Router, "Module.User.Views.AccountManagementView, Module.User", null),
+                    new("权限配置", IconFactory.Workflow, "Module.User.Views.PermissionConfigurationView, Module.User", null)
                 },
                 description: "Users"),
         };

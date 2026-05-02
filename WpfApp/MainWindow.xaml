@@ -5,20 +5,11 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:WpfApp"
         xmlns:controls="clr-namespace:ControlLibrary.Controls.Navigation.Control;assembly=ControlLibrary"
-        xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
         mc:Ignorable="d"
         MinWidth="1450"
         MinHeight="600"
-        WindowStyle="None"
         ResizeMode="CanResize"
         Background="{DynamicResource AppBackgroundBrush}">
-    <shell:WindowChrome.WindowChrome>
-        <shell:WindowChrome CaptionHeight="0"
-                            CornerRadius="0"
-                            GlassFrameThickness="0"
-                            ResizeBorderThickness="8"
-                            UseAeroCaptionButtons="False" />
-    </shell:WindowChrome.WindowChrome>
     <Window.Resources>
         <Style x:Key="GlassCardStyle" TargetType="Border">
             <Setter Property="CornerRadius" Value="28" />
@@ -35,53 +26,6 @@
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="BorderBrush" Value="{DynamicResource SecondaryButtonBorderBrush}" />
         </Style>
-
-        <Style x:Key="MainCaptionButtonStyle" TargetType="{x:Type Button}">
-            <Setter Property="Width" Value="38" />
-            <Setter Property="Height" Value="30" />
-            <Setter Property="Margin" Value="4,0,0,0" />
-            <Setter Property="Padding" Value="0" />
-            <Setter Property="Background" Value="Transparent" />
-            <Setter Property="BorderBrush" Value="Transparent" />
-            <Setter Property="BorderThickness" Value="0" />
-            <Setter Property="Foreground" Value="{DynamicResource AppMutedTextBrush}" />
-            <Setter Property="FontSize" Value="13" />
-            <Setter Property="FontWeight" Value="SemiBold" />
-            <Setter Property="Cursor" Value="Hand" />
-            <Setter Property="shell:WindowChrome.IsHitTestVisibleInChrome" Value="True" />
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="{x:Type Button}">
-                        <Border x:Name="Chrome"
-                                Background="{TemplateBinding Background}"
-                                CornerRadius="8">
-                            <ContentPresenter HorizontalAlignment="Center"
-                                              VerticalAlignment="Center" />
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Chrome" Property="Background" Value="{DynamicResource TabItemHoverBrush}" />
-                                <Setter Property="Foreground" Value="{DynamicResource AppContentTextBrush}" />
-                            </Trigger>
-                            <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="Chrome" Property="Background" Value="{DynamicResource TabClosePressedBrush}" />
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
-        <Style x:Key="MainCloseButtonStyle"
-               TargetType="{x:Type Button}"
-               BasedOn="{StaticResource MainCaptionButtonStyle}">
-            <Style.Triggers>
-                <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="#DC2626" />
-                    <Setter Property="Foreground" Value="#FFFFFF" />
-                </Trigger>
-            </Style.Triggers>
-        </Style>
     </Window.Resources>
     <Grid Background="{DynamicResource AppBackgroundBrush}">
         <Canvas IsHitTestVisible="False">
@@ -89,73 +33,37 @@
             <Ellipse Width="460" Height="460" Canvas.Right="-120" Canvas.Bottom="-120" Fill="{DynamicResource AppGreenGlowBrush}" Opacity="0.28" />
         </Canvas>
 
-        <Grid>
-            <Grid.RowDefinitions>
-                <RowDefinition Height="48" />
-                <RowDefinition Height="*" />
-            </Grid.RowDefinitions>
+        <Border x:Name="loginuserHost"
+                HorizontalAlignment="Right"
+                VerticalAlignment="Top"
+                Margin="0,34,38,0"
+                Padding="10"
+                Background="{DynamicResource PrimaryButtonBrush}"
+                CornerRadius="18"
+                Panel.ZIndex="2">
+            <TextBlock x:Name="loginuser"
+                       MinWidth="16"
+                       HorizontalAlignment="Center"
+                       VerticalAlignment="Center"
+                       FontSize="13"
+                       FontWeight="SemiBold"
+                       Foreground="{DynamicResource PrimaryButtonForegroundBrush}"
+                       TextAlignment="Center" />
+        </Border>
 
-            <Border Grid.Row="0"
-                    Margin="12,8,12,0"
-                    Background="{DynamicResource PanelBrush}"
-                    BorderBrush="{DynamicResource AppCardBorderBrush}"
-                    BorderThickness="1"
-                    CornerRadius="16"
-                    MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
-                <DockPanel Margin="14,0,10,0"
-                           LastChildFill="False">
-                    <StackPanel DockPanel.Dock="Left"
-                                Orientation="Horizontal"
-                                VerticalAlignment="Center">
-                        <Border Width="12"
-                                Height="12"
-                                Margin="0,0,10,0"
-                                Background="{DynamicResource PrimaryButtonBrush}"
-                                CornerRadius="6" />
-                        <TextBlock VerticalAlignment="Center"
-                                   FontSize="14"
-                                   FontWeight="Bold"
-                                   Text="WpfApp" />
-                        <Border Width="1"
-                                Height="16"
-                                Margin="12,0"
-                                Background="{DynamicResource NavSeparatorBrush}" />
-                        <TextBlock VerticalAlignment="Center"
-                                   Style="{StaticResource AppMutedTextBlockStyle}"
-                                   Text="Workspace" />
-                    </StackPanel>
+        <Grid Margin="24">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="20" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
 
-                    <StackPanel DockPanel.Dock="Right"
-                                Orientation="Horizontal"
-                                VerticalAlignment="Center">
-                        <Button Content="-"
-                                Click="MinimizeButton_Click"
-                                Style="{StaticResource MainCaptionButtonStyle}" />
-                        <Button x:Name="MaximizeRestoreButton"
-                                Content="□"
-                                Click="MaximizeRestoreButton_Click"
-                                Style="{StaticResource MainCaptionButtonStyle}" />
-                        <Button Content="X"
-                                Click="CloseButton_Click"
-                                Style="{StaticResource MainCloseButtonStyle}" />
-                    </StackPanel>
-                </DockPanel>
-            </Border>
+            <controls:ModernNavigationBar x:Name="NavigationBar" />
 
-            <Grid Grid.Row="1" Margin="24,16,24,24">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="20" />
-                    <ColumnDefinition Width="*" />
-                </Grid.ColumnDefinitions>
-
-                <controls:ModernNavigationBar x:Name="NavigationBar" />
-
-                <TabControl x:Name="tabControl" Grid.Column="2"
-                            Style="{StaticResource MinimalTabControlStyle}"
-                            HorizontalAlignment="Stretch"
-                            VerticalAlignment="Stretch" />
-            </Grid>
+            <TabControl x:Name="tabControl" Grid.Column="2"
+                        Style="{StaticResource MinimalTabControlStyle}"
+                        HorizontalAlignment="Stretch"
+                        VerticalAlignment="Stretch" />
         </Grid>
     </Grid>
    

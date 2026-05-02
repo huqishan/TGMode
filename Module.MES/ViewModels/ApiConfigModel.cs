@@ -1,15 +1,24 @@
+﻿using ControlLibrary;
 using Newtonsoft.Json;
 using Shared.Models.MES;
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
-using System.ComponentModel;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Text;
+using System.Threading.Tasks;
 
-namespace Module.MES.ViewModels.VMs
+namespace Module.MES.ViewModels
 {
-    public sealed class ApiOptionItem
+    public sealed partial class ApiConfigViewModel : ViewModelProperties
+    { 
+    
+    }
+    #region 接口选项模型
+
+    public sealed class ApiOptionItem : ViewModelProperties
     {
         public ApiOptionItem(string value, string displayName, string description = "")
         {
@@ -25,24 +34,36 @@ namespace Module.MES.ViewModels.VMs
         public string Description { get; }
     }
 
-    public sealed class ApiHeaderItem : INotifyPropertyChanged
+    #endregion
+
+    #region 请求头模型
+
+    public sealed class ApiHeaderItem : ViewModelProperties
     {
+        #region 字段与事件
+
         private string _key = string.Empty;
         private string _value = string.Empty;
 
-        public event PropertyChangedEventHandler? PropertyChanged;
+        #endregion
+
+        #region 属性
 
         public string Key
         {
             get => _key;
-            set => SetField(ref _key, value, trimString: true);
+            set => SetField(ref _key, value);
         }
 
         public string Value
         {
             get => _value;
-            set => SetField(ref _value, value, trimString: false);
+            set => SetField(ref _value, value);
         }
+
+        #endregion
+
+        #region 复制与通知
 
         public ApiHeaderItem Clone()
         {
@@ -53,27 +74,17 @@ namespace Module.MES.ViewModels.VMs
             };
         }
 
-        private bool SetField<T>(ref T field, T value, bool trimString, [CallerMemberName] string? propertyName = null)
-        {
-            object? normalizedValue = value;
-            if (trimString && value is string stringValue)
-            {
-                normalizedValue = stringValue.Trim();
-            }
-
-            if (Equals(field, normalizedValue))
-            {
-                return false;
-            }
-
-            field = (T)normalizedValue!;
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-            return true;
-        }
+        #endregion
     }
 
-    public sealed class ApiInterfaceProfile : INotifyPropertyChanged
+    #endregion
+
+    #region 接口配置模型
+
+    public sealed class ApiInterfaceProfile : ViewModelProperties
     {
+        #region 字段
+
         private string _apiName = "MES 接口 1";
         private string _selectMesType = "WEBAPI";
         private string _resultCheck = string.Empty;
@@ -101,19 +112,30 @@ namespace Module.MES.ViewModels.VMs
         private string _sampleResponseBody = string.Empty;
         private ApiHeaderItem? _selectedHeader;
 
+        #endregion
+
+        #region 构造与事件
+
         public ApiInterfaceProfile()
         {
             Heads.CollectionChanged += Heads_CollectionChanged;
         }
 
-        public event PropertyChangedEventHandler? PropertyChanged;
+
+        #endregion
+
+        #region 集合属性
 
         public ObservableCollection<ApiHeaderItem> Heads { get; } = new();
+
+        #endregion
+
+        #region 基础属性
 
         public string ApiName
         {
             get => _apiName;
-            set => SetField(ref _apiName, value, trimString: true);
+            set => SetProfileField(ref _apiName, value, trimString: true);
         }
 
         public string SelectMESType
@@ -122,7 +144,7 @@ namespace Module.MES.ViewModels.VMs
             set
             {
                 string normalizedValue = NormalizeTransportType(value);
-                if (!SetField(ref _selectMesType, normalizedValue, trimString: false))
+                if (!SetProfileField(ref _selectMesType, normalizedValue, trimString: false))
                 {
                     return;
                 }
@@ -133,140 +155,144 @@ namespace Module.MES.ViewModels.VMs
         public string ResultCheck
         {
             get => _resultCheck;
-            set => SetField(ref _resultCheck, value, trimString: true);
+            set => SetProfileField(ref _resultCheck, value, trimString: true);
         }
 
         public string DataStructName
         {
             get => _dataStructName;
-            set => SetField(ref _dataStructName, value, trimString: true);
+            set => SetProfileField(ref _dataStructName, value, trimString: true);
         }
 
         public bool IsEnabledAPI
         {
             get => _isEnabledApi;
-            set => SetField(ref _isEnabledApi, value, trimString: false);
+            set => SetProfileField(ref _isEnabledApi, value, trimString: false);
         }
 
         public bool IsCommunicationQueryVisible
         {
             get => _isCommunicationQueryVisible;
-            set => SetField(ref _isCommunicationQueryVisible, value, trimString: false);
+            set => SetProfileField(ref _isCommunicationQueryVisible, value, trimString: false);
         }
 
         public string Remarks
         {
             get => _remarks;
-            set => SetField(ref _remarks, value, trimString: true);
+            set => SetProfileField(ref _remarks, value, trimString: true);
         }
 
         public string Lua
         {
             get => _lua;
-            set => SetField(ref _lua, value, trimString: false);
+            set => SetProfileField(ref _lua, value, trimString: false);
         }
 
         public bool IsEnter
         {
             get => _isEnter;
-            set => SetField(ref _isEnter, value, trimString: false);
+            set => SetProfileField(ref _isEnter, value, trimString: false);
         }
 
         public bool IsEnabledTCPKeepAlive
         {
             get => _isEnabledTcpKeepAlive;
-            set => SetField(ref _isEnabledTcpKeepAlive, value, trimString: false);
+            set => SetProfileField(ref _isEnabledTcpKeepAlive, value, trimString: false);
         }
 
         public string TCPLocalIpAddress
         {
             get => _tcpLocalIpAddress;
-            set => SetField(ref _tcpLocalIpAddress, value, trimString: true);
+            set => SetProfileField(ref _tcpLocalIpAddress, value, trimString: true);
         }
 
         public string TCPLocalPort
         {
             get => _tcpLocalPort;
-            set => SetField(ref _tcpLocalPort, value, trimString: true);
+            set => SetProfileField(ref _tcpLocalPort, value, trimString: true);
         }
 
         public string TCPRemoteIpAddress
         {
             get => _tcpRemoteIpAddress;
-            set => SetField(ref _tcpRemoteIpAddress, value, trimString: true);
+            set => SetProfileField(ref _tcpRemoteIpAddress, value, trimString: true);
         }
 
         public string TCPRemotePort
         {
             get => _tcpRemotePort;
-            set => SetField(ref _tcpRemotePort, value, trimString: true);
+            set => SetProfileField(ref _tcpRemotePort, value, trimString: true);
         }
 
         public string Url
         {
             get => _url;
-            set => SetField(ref _url, value, trimString: false);
+            set => SetProfileField(ref _url, value, trimString: false);
         }
 
         public string UserName
         {
             get => _userName;
-            set => SetField(ref _userName, value, trimString: false);
+            set => SetProfileField(ref _userName, value, trimString: false);
         }
 
         public string Password
         {
             get => _password;
-            set => SetField(ref _password, value, trimString: false);
+            set => SetProfileField(ref _password, value, trimString: false);
         }
 
         public string Action
         {
             get => _action;
-            set => SetField(ref _action, value, trimString: false);
+            set => SetProfileField(ref _action, value, trimString: false);
         }
 
         public string TokenUrl
         {
             get => _tokenUrl;
-            set => SetField(ref _tokenUrl, value, trimString: false);
+            set => SetProfileField(ref _tokenUrl, value, trimString: false);
         }
 
         public string TokenName
         {
             get => _tokenName;
-            set => SetField(ref _tokenName, value, trimString: true);
+            set => SetProfileField(ref _tokenName, value, trimString: true);
         }
 
         public string WebApiType
         {
             get => _webApiType;
-            set => SetField(ref _webApiType, NormalizeHttpMethod(value), trimString: false);
+            set => SetProfileField(ref _webApiType, NormalizeHttpMethod(value), trimString: false);
         }
 
         public string DownPath
         {
             get => _downPath;
-            set => SetField(ref _downPath, value, trimString: false);
+            set => SetProfileField(ref _downPath, value, trimString: false);
         }
 
         public bool IsDown
         {
             get => _isDown;
-            set => SetField(ref _isDown, value, trimString: false);
+            set => SetProfileField(ref _isDown, value, trimString: false);
         }
         [JsonIgnore]
         public string SampleRequestBody
         {
             get => _sampleRequestBody;
-            set => SetField(ref _sampleRequestBody, value, trimString: false);
+            set => SetProfileField(ref _sampleRequestBody, value, trimString: false);
         }
         [JsonIgnore]
         public string SampleResponseBody
         {
             get => _sampleResponseBody;
-            set => SetField(ref _sampleResponseBody, value, trimString: false);
+            set => SetProfileField(ref _sampleResponseBody, value, trimString: false);
         }
+
+        #endregion
+
+        #region 选中项与摘要属性
 
         public ApiHeaderItem? SelectedHeader
         {
@@ -325,6 +351,10 @@ namespace Module.MES.ViewModels.VMs
                 return $"已配置脚本，共 {lineCount} 行。";
             }
         }
+
+        #endregion
+
+        #region 配置转换方法
 
         public APIConfig ToApiConfig()
         {
@@ -416,6 +446,10 @@ namespace Module.MES.ViewModels.VMs
             return clone;
         }
 
+        #endregion
+
+        #region 标准化方法
+
         private static ushort ParsePort(string value)
         {
             return ushort.TryParse(value?.Trim(), out ushort port) ? port : (ushort)0;
@@ -446,35 +480,32 @@ namespace Module.MES.ViewModels.VMs
             };
         }
 
+        #endregion
+
+        #region 集合与属性通知
+
         private void Heads_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
         {
             OnPropertyChanged(nameof(Summary));
             OnPropertyChanged(nameof(HeaderSummaryText));
         }
 
-        private bool SetField<T>(ref T field, T value, bool trimString, [CallerMemberName] string? propertyName = null)
+        /// <summary>
+        /// 通过 ViewModelProperties 更新字段，并刷新依赖当前接口内容的摘要绑定。
+        /// </summary>
+        private bool SetProfileField<T>(ref T field, T value, bool trimString, [CallerMemberName] string? propertyName = null)
         {
-            object? normalizedValue = value;
-            if (trimString && value is string stringValue)
-            {
-                normalizedValue = stringValue.Trim();
-            }
-
-            if (Equals(field, normalizedValue))
+            if (!SetField(ref field, value, trimString, propertyName))
             {
                 return false;
             }
 
-            field = (T)normalizedValue!;
-            OnPropertyChanged(propertyName);
             OnPropertyChanged(nameof(Summary));
             OnPropertyChanged(nameof(LuaSummaryText));
             return true;
         }
-
-        private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
-        {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-        }
+        #endregion
     }
+
+    #endregion
 }

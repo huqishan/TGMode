@@ -54,6 +54,20 @@ namespace Shared.Models.Communication
             this.Type = CommuniactionType.MX;
         }
         /// <summary>
+        /// PLC/MX Component
+        /// </summary>
+        /// <param name="type"></param>
+        /// <param name="localName"></param>
+        /// <param name="plcActLogicalStationNumber"></param>
+        /// <param name="passWord"></param>
+        public CommuniactionConfigModel(CommuniactionType type, string localName, int plcActLogicalStationNumber, string passWord = null)
+        {
+            this.LocalName = localName;
+            this.PLCActLogicalStationNumber = plcActLogicalStationNumber;
+            this.PassWord = passWord;
+            this.Type = type;
+        }
+        /// <summary>
         /// RabbitMQ RPC Server/Client
         /// </summary>
         /// <param name="isServer"></param>

@@ -1,13 +1,12 @@
 ﻿using ControlLibrary;
 using ControlLibrary.Controls.Navigation.Models;
+using Module.User.Services;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
-using WpfApp.Services.Navigation;
-using WpfApp.Services.UserManagement;
 
 namespace WpfApp
 {
@@ -27,7 +26,7 @@ namespace WpfApp
         {
             InitializeComponent();
             CommandBindings.Add(new CommandBinding(CloseTabCommand, CloseTabExecuted, CanCloseTabExecuted));
-            StateChanged += MainWindow_StateChanged;
+            UpdateLoginUserDisplay();
 
             // Reuse the existing navigation item model instead of adding a new menu schema.
             _navigationInfo = NavigationCatalog.CreateItems();
@@ -45,53 +44,33 @@ namespace WpfApp
             }
         }
 
-        private void MinimizeButton_Click(object sender, RoutedEventArgs e)
+        private void UpdateLoginUserDisplay()
         {
-            WindowState = WindowState.Minimized;
+            string userName = GetCurrentUserDisplayName();
+            loginuser.Text = GetLastTwoCharacters(userName);
+            loginuser.ToolTip = string.IsNullOrWhiteSpace(userName) ? null : userName;
+            loginuserHost.ToolTip = loginuser.ToolTip;
         }
 
-        private void MaximizeRestoreButton_Click(object sender, RoutedEventArgs e)
+        private static string GetCurrentUserDisplayName()
         {
-            ToggleWindowState();
-        }
-
-        private void CloseButton_Click(object sender, RoutedEventArgs e)
-        {
-            Close();
-        }
-
-        private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
-        {
-            if (e.ChangedButton != MouseButton.Left)
+            string? name = CurrentUserSession.Current?.Name;
+            if (!string.IsNullOrWhiteSpace(name))
             {
-                return;
+                return name.Trim();
             }
 
-            if (e.ClickCount == 2)
-            {
-                ToggleWindowState();
-                e.Handled = true;
-                return;
-            }
-
-            if (e.ButtonState != MouseButtonState.Pressed)
-            {
-                return;
-            }
-
-            DragMove();
+            return CurrentUserSession.Current?.Account?.Trim() ?? string.Empty;
         }
 
-        private void MainWindow_StateChanged(object? sender, EventArgs e)
+        private static string GetLastTwoCharacters(string text)
         {
-            MaximizeRestoreButton.Content = WindowState == WindowState.Maximized ? "❐" : "□";
-        }
+            if (string.IsNullOrEmpty(text) || text.Length <= 2)
+            {
+                return text;
+            }
 
-        private void ToggleWindowState()
-        {
-            WindowState = WindowState == WindowState.Maximized
-                ? WindowState.Normal
-                : WindowState.Maximized;
+            return text[^2..];
         }
 
         private void NavigationBar_SelectionChanged(object? sender, ModernNavigationSelectionChangedEventArgs e)

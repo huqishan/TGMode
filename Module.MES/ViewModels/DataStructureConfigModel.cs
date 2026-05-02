@@ -1,32 +1,62 @@
+using ControlLibrary;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
-using System.ComponentModel;
 using System.Linq;
 using System.Runtime.CompilerServices;
 
-namespace Module.MES.ViewModels.VMs
+namespace Module.MES.ViewModels
 {
-    public sealed class DataStructureTypeOption
+    public sealed partial class DataStructureConfigViewModel : ViewModelProperties
     {
+
+    }
+    #region 数据结构选项模型
+
+    /// <summary>
+    /// 数据结构配置页下拉选项模型。
+    /// </summary>
+    public sealed class DataStructureTypeOption : ViewModelProperties
+    {
+        #region 构造方法
+
         public DataStructureTypeOption(string value, string displayName)
         {
             Value = value;
             DisplayName = displayName;
         }
 
+        #endregion
+
+        #region 选项属性
+
         public string Value { get; }
 
         public string DisplayName { get; }
+
+        #endregion
     }
 
+    #endregion
+
+    #region 结构类型常量
+
+    /// <summary>
+    /// 数据结构配置支持的结构类型。
+    /// </summary>
     public static class DataStructureTypes
     {
+        #region 类型字段
+
         public const string Soap = "SOAP";
         public const string Json = "JSON";
         public const string Join = "JOIN";
+
+        #endregion
+
+        #region 类型选项
 
         public static IReadOnlyList<DataStructureTypeOption> Options { get; } = new[]
         {
@@ -35,10 +65,20 @@ namespace Module.MES.ViewModels.VMs
             new DataStructureTypeOption(Join, Join)
         };
 
+        #endregion
     }
 
+    #endregion
+
+    #region 字段类型常量
+
+    /// <summary>
+    /// 数据结构字段支持的数据类型。
+    /// </summary>
     public static class DataStructureFieldDataTypes
     {
+        #region 类型字段
+
         public const string Json = "JSON";
         public const string String = "String";
         public const string List = "List";
@@ -51,6 +91,10 @@ namespace Module.MES.ViewModels.VMs
         public const string XmlNull = "XMLNULL";
         public const string XmlNamespace = "XMLNamespac";
         public const string StepModel = "StepModel";
+
+        #endregion
+
+        #region 类型选项
 
         public static IReadOnlyList<DataStructureTypeOption> Options { get; } = new[]
         {
@@ -68,6 +112,10 @@ namespace Module.MES.ViewModels.VMs
             new DataStructureTypeOption(StepModel, StepModel)
         };
 
+        #endregion
+
+        #region 类型标准化方法
+
         public static string Normalize(string? value)
         {
             if (string.IsNullOrWhiteSpace(value))
@@ -79,21 +127,38 @@ namespace Module.MES.ViewModels.VMs
             return Options.FirstOrDefault(option =>
                 string.Equals(option.Value, normalized, StringComparison.OrdinalIgnoreCase))?.Value ?? normalized;
         }
+
+        #endregion
     }
 
-    public sealed class DataStructureProfile : INotifyPropertyChanged
+    #endregion
+
+    #region 数据结构配置模型
+
+    /// <summary>
+    /// 单个数据结构配置，供列表和编辑区绑定。
+    /// </summary>
+    public sealed class DataStructureProfile : ViewModelProperties
     {
+        #region 字段
+
         private string _name = string.Empty;
         private string _structureType = DataStructureTypes.Json;
         private DateTime _lastModifiedAt = DateTime.Now;
         private ObservableCollection<DataStructureLayout> _structure = new();
+
+        #endregion
+
+        #region 构造方法
 
         public DataStructureProfile()
         {
             HookChildren(_structure);
         }
 
-        public event PropertyChangedEventHandler? PropertyChanged;
+        #endregion
+
+        #region 基础属性
 
         public string Name
         {
@@ -152,6 +217,10 @@ namespace Module.MES.ViewModels.VMs
 
         public string Summary => $"{StructureType} · 修改于 {LastModifiedAt:yyyy-MM-dd HH:mm}";
 
+        #endregion
+
+        #region 复制与加载方法
+
         public DataStructureProfile Clone(string name)
         {
             DataStructureProfile clone = new()
@@ -175,6 +244,10 @@ namespace Module.MES.ViewModels.VMs
             OnPropertyChanged(nameof(LastModifiedAt));
             OnPropertyChanged(nameof(Summary));
         }
+
+        #endregion
+
+        #region 子节点订阅方法
 
         private void Children_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
         {
@@ -226,26 +299,19 @@ namespace Module.MES.ViewModels.VMs
             LastModifiedAt = DateTime.Now;
         }
 
-        private bool SetField<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
-        {
-            if (Equals(field, value))
-            {
-                return false;
-            }
-
-            field = value;
-            OnPropertyChanged(propertyName);
-            return true;
-        }
-
-        private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
-        {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-        }
+        #endregion
     }
 
-    public sealed class DataStructureProfileDocument
+    #endregion
+
+    #region 数据结构配置存储模型
+
+    /// <summary>
+    /// 数据结构配置的本地文件存储模型。
+    /// </summary>
+    public sealed class DataStructureProfileDocument : ViewModelProperties
     {
+        #region 存储属性
 
         public string? Name { get; set; }
 
@@ -254,6 +320,10 @@ namespace Module.MES.ViewModels.VMs
         public DateTime LastModifiedAt { get; set; }
 
         public List<DataStructureLayoutDocument>? Structure { get; set; }
+
+        #endregion
+
+        #region 转换方法
 
         public static DataStructureProfileDocument FromProfile(DataStructureProfile profile)
         {
@@ -286,10 +356,21 @@ namespace Module.MES.ViewModels.VMs
             profile.AcceptLoadedState(lastModifiedAt);
             return profile;
         }
+
+        #endregion
     }
 
-    public sealed class DataStructureLayoutDocument
+    #endregion
+
+    #region 数据结构字段存储模型
+
+    /// <summary>
+    /// 数据结构字段的本地文件存储模型。
+    /// </summary>
+    public sealed class DataStructureLayoutDocument : ViewModelProperties
     {
+        #region 存储属性
+
         public string? ClientCode { get; set; }
 
         public string? MesCode { get; set; }
@@ -315,6 +396,10 @@ namespace Module.MES.ViewModels.VMs
         public string? NGText { get; set; }
 
         public List<DataStructureLayoutDocument>? Children { get; set; }
+
+        #endregion
+
+        #region 转换方法
 
         public static DataStructureLayoutDocument FromLayout(DataStructureLayout layout)
         {
@@ -360,10 +445,21 @@ namespace Module.MES.ViewModels.VMs
 
             return layout;
         }
+
+        #endregion
     }
 
-    public sealed class DataStructureLayout : INotifyPropertyChanged
+    #endregion
+
+    #region 数据结构字段模型
+
+    /// <summary>
+    /// 数据结构字段节点，供 TreeView 和详情抽屉绑定。
+    /// </summary>
+    public sealed class DataStructureLayout : ViewModelProperties
     {
+        #region 字段
+
         private string _clientCode = string.Empty;
         private string _mesCode = string.Empty;
         private string _dataType = DataStructureFieldDataTypes.String;
@@ -378,14 +474,20 @@ namespace Module.MES.ViewModels.VMs
         private bool _isSelected;
         private ObservableCollection<DataStructureLayout> _children = new();
 
+        #endregion
+
+        #region 构造与事件
+
         public DataStructureLayout()
         {
             HookChildren(_children);
         }
 
-        public event PropertyChangedEventHandler? PropertyChanged;
-
         internal event EventHandler? ContentChanged;
+
+        #endregion
+
+        #region 绑定属性
 
         [JsonIgnore]
         public IReadOnlyList<DataStructureTypeOption> DataTypes => DataStructureFieldDataTypes.Options;
@@ -409,31 +511,31 @@ namespace Module.MES.ViewModels.VMs
         public string ClientCode
         {
             get => _clientCode;
-            set => SetField(ref _clientCode, value ?? string.Empty);
+            set => SetContentField(ref _clientCode, value ?? string.Empty);
         }
 
         public string MesCode
         {
             get => _mesCode;
-            set => SetField(ref _mesCode, value ?? string.Empty);
+            set => SetContentField(ref _mesCode, value ?? string.Empty);
         }
 
         public string DataType
         {
             get => _dataType;
-            set => SetField(ref _dataType, DataStructureFieldDataTypes.Normalize(value));
+            set => SetContentField(ref _dataType, DataStructureFieldDataTypes.Normalize(value));
         }
 
         public string DefaultValue
         {
             get => _defaultValue;
-            set => SetField(ref _defaultValue, value ?? string.Empty);
+            set => SetContentField(ref _defaultValue, value ?? string.Empty);
         }
 
         public bool IsNull
         {
             get => _isNull;
-            set => SetField(ref _isNull, value);
+            set => SetContentField(ref _isNull, value);
         }
         public bool IsWhile
         {
@@ -443,37 +545,37 @@ namespace Module.MES.ViewModels.VMs
         public int WhileCount
         {
             get => _whileCount;
-            set => SetField(ref _whileCount, value);
+            set => SetContentField(ref _whileCount, value);
         }
 
         public int KeepCount
         {
             get => _keepCount;
-            set => SetField(ref _keepCount, value);
+            set => SetContentField(ref _keepCount, value);
         }
 
         public string XmlNamespace
         {
             get => _xmlNamespace;
-            set => SetField(ref _xmlNamespace, value ?? string.Empty);
+            set => SetContentField(ref _xmlNamespace, value ?? string.Empty);
         }
 
         public string JudgeValue
         {
             get => _judgeValue;
-            set => SetField(ref _judgeValue, value ?? string.Empty);
+            set => SetContentField(ref _judgeValue, value ?? string.Empty);
         }
 
         public string OKText
         {
             get => _okText;
-            set => SetField(ref _okText, value ?? string.Empty);
+            set => SetContentField(ref _okText, value ?? string.Empty);
         }
 
         public string NGText
         {
             get => _ngText;
-            set => SetField(ref _ngText, value ?? string.Empty);
+            set => SetContentField(ref _ngText, value ?? string.Empty);
         }
 
         public ObservableCollection<DataStructureLayout> Children
@@ -494,6 +596,10 @@ namespace Module.MES.ViewModels.VMs
                 OnContentChanged();
             }
         }
+
+        #endregion
+
+        #region 复制方法
 
         public DataStructureLayout Clone()
         {
@@ -519,6 +625,10 @@ namespace Module.MES.ViewModels.VMs
 
             return clone;
         }
+
+        #endregion
+
+        #region 子节点订阅方法
 
         private void Children_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
         {
@@ -565,15 +675,17 @@ namespace Module.MES.ViewModels.VMs
             }
         }
 
-        private bool SetField<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
+        #endregion
+
+        #region 内容变更通知方法
+
+        private bool SetContentField<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
         {
-            if (Equals(field, value))
+            if (!SetField(ref field, value, propertyName))
             {
                 return false;
             }
 
-            field = value;
-            OnPropertyChanged(propertyName);
             OnContentChanged();
             return true;
         }
@@ -583,9 +695,8 @@ namespace Module.MES.ViewModels.VMs
             ContentChanged?.Invoke(this, EventArgs.Empty);
         }
 
-        private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
-        {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-        }
+        #endregion
     }
+
+    #endregion
 }

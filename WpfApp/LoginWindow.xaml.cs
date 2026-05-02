@@ -1,10 +1,10 @@
+using Module.User.Models;
+using Module.User.Services;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
-using WpfApp.Models.UserManagement;
-using WpfApp.Services.UserManagement;
 
 namespace WpfApp;
 

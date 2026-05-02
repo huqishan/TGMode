@@ -61,6 +61,10 @@ namespace ControlLibrary.ControlViews.Communication
         private Brush _connectionStatusBrush = NeutralBrush;
         private string _sendText = string.Empty;
         private string _receiveText = string.Empty;
+        private string _plcAddress = "D100";
+        private string _plcLength = "1";
+        private string _plcWriteValue = "0";
+        private string _selectedPlcDataType = DataType.Decimal.ToString();
 
         public DeviceCommunicationConfigView()
         {
@@ -72,7 +76,7 @@ namespace ControlLibrary.ControlViews.Communication
                 new CommunicationTypeOption(CommuniactionType.TCPServer, "TCPServer", "本地开启端口监听。"),
                 new CommunicationTypeOption(CommuniactionType.UDP, "UDP", "轻量无连接报文通信。"),
                 new CommunicationTypeOption(CommuniactionType.COM, "COM", "串口通信。"),
-                new CommunicationTypeOption(CommuniactionType.Hsl, "Hsl", "Hsl通信。")
+                new CommunicationTypeOption(CommuniactionType.PLC, "PLC", "PLC通信。")
             };
 
             PortNameOptions = new ObservableCollection<string>();
@@ -110,6 +114,9 @@ namespace ControlLibrary.ControlViews.Communication
                 new SelectionOption("2", "2 - Two"),
                 new SelectionOption("3", "3 - OnePointFive")
             };
+            PlcDataTypeOptions = new ObservableCollection<SelectionOption>(
+                Enum.GetValues<DataType>()
+                    .Select(type => new SelectionOption(type.ToString(), type.ToString())));
 
             int loadedProfileCount = LoadProfilesFromDisk();
             if (loadedProfileCount == 0)
@@ -143,6 +150,8 @@ namespace ControlLibrary.ControlViews.Communication
 
         public ObservableCollection<SelectionOption> StopBitOptions { get; }
 
+        public ObservableCollection<SelectionOption> PlcDataTypeOptions { get; }
+
         public ObservableCollection<ConnectedClientOption> ConnectedServerClients { get; } = new ObservableCollection<ConnectedClientOption>();
 
         public DeviceCommunicationProfile? SelectedProfile
@@ -169,6 +178,8 @@ namespace ControlLibrary.ControlViews.Communication
 
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(IsTcpServerClientSelectionVisible));
+                OnPropertyChanged(nameof(IsPlcTestVisible));
+                OnPropertyChanged(nameof(IsGenericSendTestVisible));
             }
         }
 
@@ -232,6 +243,66 @@ namespace ControlLibrary.ControlViews.Communication
             }
         }
 
+        public string PlcAddress
+        {
+            get => _plcAddress;
+            set
+            {
+                if (_plcAddress == value)
+                {
+                    return;
+                }
+
+                _plcAddress = value;
+                OnPropertyChanged();
+            }
+        }
+
+        public string PlcLength
+        {
+            get => _plcLength;
+            set
+            {
+                if (_plcLength == value)
+                {
+                    return;
+                }
+
+                _plcLength = value;
+                OnPropertyChanged();
+            }
+        }
+
+        public string PlcWriteValue
+        {
+            get => _plcWriteValue;
+            set
+            {
+                if (_plcWriteValue == value)
+                {
+                    return;
+                }
+
+                _plcWriteValue = value;
+                OnPropertyChanged();
+            }
+        }
+
+        public string SelectedPlcDataType
+        {
+            get => _selectedPlcDataType;
+            set
+            {
+                if (_selectedPlcDataType == value)
+                {
+                    return;
+                }
+
+                _selectedPlcDataType = value;
+                OnPropertyChanged();
+            }
+        }
+
         public ConnectedClientOption? SelectedServerClient
         {
             get => _selectedServerClient;
@@ -250,6 +321,10 @@ namespace ControlLibrary.ControlViews.Communication
         public bool IsTcpServerClientSelectionVisible =>
             SelectedProfile?.Type == CommuniactionType.TCPServer ||
             _activeCommunicationType == CommuniactionType.TCPServer;
+
+        public bool IsPlcTestVisible => SelectedProfile?.Type == CommuniactionType.PLC;
+
+        public bool IsGenericSendTestVisible => !IsPlcTestVisible;
 
         public string ConnectedServerClientStatusText =>
             ConnectedServerClients.Count == 0
@@ -383,6 +458,12 @@ namespace ControlLibrary.ControlViews.Communication
                 return;
             }
 
+            if (activeType == CommuniactionType.PLC)
+            {
+                AppendReceiveLine("发送失败：PLC 通信请使用 PLC 测试区的读取或写入。");
+                return;
+            }
+
             try
             {
                 ReadWriteModel readWriteModel = new ReadWriteModel(message);
@@ -430,6 +511,44 @@ namespace ControlLibrary.ControlViews.Communication
             }
 
             AppendReceiveLine($"全部发送完成：{successCount}/{clients.Count} 个客户端发送成功。");
+        }
+
+        private async void ReadPlcButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (!TryGetActivePlcCommunication(out ICommunication? communication) ||
+                !TryGetPlcTestArguments(out string address, out int length, out DataType dataType))
+            {
+                return;
+            }
+
+            ReadWriteModel readWriteModel = new ReadWriteModel(string.Empty, address, length, dataType);
+            bool result = await Task.Run(() =>
+            {
+                ReadWriteModel model = readWriteModel;
+                return communication!.Read(ref model);
+            });
+
+            AppendReceiveLine($"PLC 读取 {address}，长度 {length}，结果：{(result ? "成功" : "失败")}，反馈：{FormatMessage(readWriteModel.Result)}");
+        }
+
+        private async void WritePlcButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (!TryGetActivePlcCommunication(out ICommunication? communication) ||
+                !TryGetPlcTestArguments(out string address, out int length, out DataType dataType))
+            {
+                return;
+            }
+
+            string value = PlcWriteValue.Trim();
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                AppendReceiveLine("PLC 写入失败：写入值不能为空。");
+                return;
+            }
+
+            ReadWriteModel readWriteModel = new ReadWriteModel(value, address, length, dataType);
+            bool result = await communication!.WriteAsync(readWriteModel);
+            AppendReceiveLine($"PLC 写入 {address}，值：{value}，结果：{(result ? "成功" : "失败")}，反馈：{FormatMessage(readWriteModel.Result)}");
         }
 
         private void CloseConnectionButton_Click(object sender, RoutedEventArgs e)
@@ -493,6 +612,8 @@ namespace ControlLibrary.ControlViews.Communication
             {
                 RefreshPortNameOptions(SelectedProfile?.IsSerialType == true);
                 OnPropertyChanged(nameof(IsTcpServerClientSelectionVisible));
+                OnPropertyChanged(nameof(IsPlcTestVisible));
+                OnPropertyChanged(nameof(IsGenericSendTestVisible));
             }
         }
 
@@ -688,6 +809,7 @@ namespace ControlLibrary.ControlViews.Communication
                 CommuniactionType.TCPServer => "TCPServer",
                 CommuniactionType.UDP => "UDP",
                 CommuniactionType.COM => "COM",
+                CommuniactionType.PLC => "PLC",
                 _ => "Communication"
             };
 
@@ -765,6 +887,8 @@ namespace ControlLibrary.ControlViews.Communication
                 _activeCommunicationType = null;
                 RefreshConnectedServerClients(Array.Empty<CommunicationClientInfo>());
                 OnPropertyChanged(nameof(IsTcpServerClientSelectionVisible));
+                OnPropertyChanged(nameof(IsPlcTestVisible));
+                OnPropertyChanged(nameof(IsGenericSendTestVisible));
             }
 
             if (updateStatus)
@@ -863,6 +987,44 @@ namespace ControlLibrary.ControlViews.Communication
             });
         }
 
+        private bool TryGetActivePlcCommunication(out ICommunication? communication)
+        {
+            communication = _activeCommunication;
+            if (communication is not null && _activeCommunicationType == CommuniactionType.PLC)
+            {
+                return true;
+            }
+
+            AppendReceiveLine("PLC 测试失败：请先测试连接 PLC。");
+            return false;
+        }
+
+        private bool TryGetPlcTestArguments(out string address, out int length, out DataType dataType)
+        {
+            address = PlcAddress.Trim();
+            length = 0;
+            dataType = DataType.Decimal;
+
+            if (string.IsNullOrWhiteSpace(address))
+            {
+                AppendReceiveLine("PLC 测试失败：PLC 地址不能为空。");
+                return false;
+            }
+
+            if (!int.TryParse(PlcLength.Trim(), out length) || length <= 0)
+            {
+                AppendReceiveLine("PLC 测试失败：读取长度需要是大于 0 的数字。");
+                return false;
+            }
+
+            if (!Enum.TryParse(SelectedPlcDataType, out dataType))
+            {
+                dataType = DataType.Decimal;
+            }
+
+            return true;
+        }
+
         private void SetConnectionStatus(string text, Brush brush)
         {
             RunOnUiThread(() =>
@@ -932,7 +1094,7 @@ namespace ControlLibrary.ControlViews.Communication
                 or CommuniactionType.TCPServer
                 or CommuniactionType.UDP
                 or CommuniactionType.COM
-                or CommuniactionType.Hsl;
+                or CommuniactionType.PLC;
         }
 
         private void OnPropertyChanged([CallerMemberName] string? propertyName = null)

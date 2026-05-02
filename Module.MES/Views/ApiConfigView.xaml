@@ -3,6 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:views="clr-namespace:Module.MES.Views"
+             xmlns:vm="clr-namespace:Module.MES.ViewModels"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              mc:Ignorable="d"
              xmlns:searchBox="clr-namespace:ControlLibrary.Controls.SearchBox.Control;assembly=ControlLibrary"
@@ -12,6 +13,10 @@
              VerticalAlignment="Stretch"
              d:DesignHeight="900"
              d:DesignWidth="1800">
+    <UserControl.DataContext>
+        <vm:ApiConfigViewModel />
+    </UserControl.DataContext>
+
     <UserControl.Resources>
         <ResourceDictionary>
             <converts:ComparisonToVisibilityConvert x:Key="Comp2Vis" />
@@ -187,7 +192,20 @@
             <Setter Property="HorizontalContentAlignment" Value="Left" />
             <Setter Property="Padding" Value="12,10" />
         </Style>
-            
+
+        <Style x:Key="DrawerBackdropButtonStyle" TargetType="{x:Type Button}">
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Focusable" Value="False" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type Button}">
+                        <Border Background="{TemplateBinding Background}" />
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         </ResourceDictionary>
     </UserControl.Resources>
 
@@ -220,16 +238,16 @@
 
                 <UniformGrid Grid.Row="2" Columns="4" Margin="0,16,0,16">
                     <Button Content="新增"
-                            Click="NewProfileButton_Click"
+                            Command="{Binding NewProfileCommand}"
                             Style="{StaticResource PrimaryActionButtonStyle}" />
                     <Button Content="复制"
-                            Click="DuplicateProfileButton_Click"
+                            Command="{Binding DuplicateProfileCommand}"
                             Style="{StaticResource ActionButtonStyle}" />
                     <Button Content="删除"
-                            Click="DeleteProfileButton_Click"
+                            Command="{Binding DeleteProfileCommand}"
                             Style="{StaticResource ActionButtonStyle}" />
                     <Button Content="保存"
-                            Click="SaveProfilesButton_Click"
+                            Command="{Binding SaveProfilesCommand}"
                             Style="{StaticResource ActionButtonStyle}" />
                 </UniformGrid>
 
@@ -330,7 +348,7 @@
                                         Height="{Binding ActualHeight, ElementName=ApiNameTextBox}"
                                         Margin="8,0,0,0"
                                         Padding="10,0"
-                                        Click="RefreshStructuresButton_Click"
+                                        Command="{Binding RefreshStructuresCommand}"
                                         Style="{StaticResource ActionButtonStyle}" />
                                 <ComboBox Height="{Binding ActualHeight, ElementName=ApiNameTextBox}"
                                           VerticalAlignment="Top"
@@ -348,12 +366,14 @@
                             <TextBlock Style="{StaticResource FieldLabelStyle}" Text="操作" />
                             <WrapPanel Margin="0,0,0,6">
                                 <Button Content="生成上传报文"
-                                        Click="GeneratePayloadButton_Click"
+                                        Command="{Binding GeneratePayloadCommand}"
                                         Style="{StaticResource PrimaryActionButtonStyle}" />
                                 <Button Content="测试接口"
-                                        Click="TestInterfaceButton_Click"
+                                        Command="{Binding TestInterfaceCommand}"
                                         Style="{StaticResource PrimaryActionButtonStyle}" />
-                                <Button Content="Lua编辑" Style="{StaticResource PrimaryActionButtonStyle}" Click="LuaButton_Click"/>
+                                <Button Content="Lua编辑"
+                                        Click="LuaButton_Click"
+                                        Style="{StaticResource PrimaryActionButtonStyle}" />
                             </WrapPanel>
                             <CheckBox Margin="0,10,0,0"
                                       Foreground="{DynamicResource AppContentTextBrush}"
@@ -455,7 +475,7 @@
                                                     Height="34"
                                                     Content="..."
                                                     ToolTip="编辑请求头"
-                                                    Click="OpenHeaderDrawerButton_Click"
+                                                    Command="{Binding OpenHeaderDrawerCommand}"
                                                     Style="{StaticResource DrawerIconButtonStyle}" />
                                         </DockPanel>
                                     </Border>
@@ -648,10 +668,11 @@
                   Grid.Row="2"
                   Grid.RowSpan="3"
                   Panel.ZIndex="20"
-                  Opacity="0"
-                  IsHitTestVisible="False">
-                <Border Background="#14000000"
-                        MouseLeftButtonDown="HeaderDrawerBackdrop_MouseLeftButtonDown" />
+                  Opacity="{Binding HeaderDrawerOpacity}"
+                  IsHitTestVisible="{Binding IsHeaderDrawerOpen}">
+                <Button Background="#14000000"
+                        Command="{Binding CloseHeaderDrawerCommand}"
+                        Style="{StaticResource DrawerBackdropButtonStyle}" />
 
                 <Border x:Name="HeaderDrawerSheet"
                         Width="320"
@@ -660,7 +681,8 @@
                         VerticalAlignment="Top"
                         Style="{StaticResource HeaderDrawerBorderStyle}">
                     <Border.RenderTransform>
-                        <TranslateTransform x:Name="HeaderDrawerTranslateTransform" X="40" />
+                        <TranslateTransform x:Name="HeaderDrawerTranslateTransform"
+                                            X="{Binding HeaderDrawerOffset}" />
                     </Border.RenderTransform>
 
                     <Grid>
@@ -676,7 +698,7 @@
                             <TextBlock Style="{StaticResource SectionTitleStyle}" Text="请求头" />
                             <Button DockPanel.Dock="Right"
                                     Content="关闭"
-                                    Click="CloseHeaderDrawerButton_Click"
+                                    Command="{Binding CloseHeaderDrawerCommand}"
                                     Style="{StaticResource ActionButtonStyle}" />
                         </DockPanel>
 
@@ -719,13 +741,13 @@
                                     Orientation="Horizontal"
                                     HorizontalAlignment="Right">
                             <Button Content="新增"
-                                    Click="AddHeaderButton_Click"
+                                    Command="{Binding AddHeaderCommand}"
                                     Style="{StaticResource ActionButtonStyle}" />
                             <Button Content="删除"
-                                    Click="DeleteHeaderButton_Click"
+                                    Command="{Binding DeleteHeaderCommand}"
                                     Style="{StaticResource ActionButtonStyle}" />
                             <Button Content="保存"
-                                    Click="SaveHeaderButton_Click"
+                                    Command="{Binding SaveHeaderCommand}"
                                     Style="{StaticResource PrimaryActionButtonStyle}" />
                         </StackPanel>
                     </Grid>
@@ -738,7 +760,7 @@
                       Opacity="0"
                       IsHitTestVisible="False">
                 <Border Background="#3A000000"
-                            MouseLeftButtonDown="CommandDrawerBackdrop_MouseLeftButtonDown" />
+                        MouseLeftButtonDown="CommandDrawerBackdrop_MouseLeftButtonDown" />
 
                 <Border Margin="0,56,0,0" Style="{StaticResource DrawerBorderStyle}">
                     <Border.RenderTransform>
@@ -754,8 +776,9 @@
                         <DockPanel LastChildFill="False">
                             <TextBlock Style="{StaticResource SectionTitleStyle}" Text="Lua编辑" />
                             <Button DockPanel.Dock="Right"
-                                        Content="关闭" Click="CloseLuaDrawerButton_Click"
-                                        Style="{StaticResource ActionButtonStyle}"/>
+                                    Content="关闭"
+                                    Click="CloseLuaDrawerButton_Click"
+                                    Style="{StaticResource ActionButtonStyle}" />
                         </DockPanel>
 
                         <ScrollViewer Grid.Row="1"
