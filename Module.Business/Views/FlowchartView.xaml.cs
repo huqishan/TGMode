@@ -6,7 +6,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 
-namespace ControlLibrary.ControlViews.Flowchar
+namespace Module.Business.Views
 {
     /// <summary>
     /// FlowchartView.xaml 的交互逻辑

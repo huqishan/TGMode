@@ -1,0 +1,203 @@
+﻿<UserControl x:Class="ControlLibrary.Controls.Navigation.Control.ModernNavigationBarNew"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:local="clr-namespace:ControlLibrary.Controls.Navigation.Control"
+             xmlns:searchBox="clr-namespace:ControlLibrary.Controls.SearchBox.Control"
+             mc:Ignorable="d" d:DesignHeight="760"
+             d:DesignWidth="320">
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <Style TargetType="{x:Type TextBlock}">
+                <Setter Property="Foreground" Value="{DynamicResource NavButtonForegroundBrush}" />
+            </Style>
+
+            <Style x:Key="NavPaneTitleTextBlockStyle" TargetType="{x:Type TextBlock}">
+                <Setter Property="Foreground" Value="{DynamicResource NavTitleTextBrush}" />
+                <Setter Property="FontSize" Value="24" />
+                <Setter Property="FontWeight" Value="SemiBold" />
+            </Style>
+
+            <Style x:Key="NavSubtitleTextBlockStyle" TargetType="{x:Type TextBlock}">
+                <Setter Property="Foreground" Value="{DynamicResource NavSubtitleTextBrush}" />
+                <Setter Property="FontSize" Value="12" />
+            </Style>
+
+            <Style x:Key="NavFlyoutTitleTextBlockStyle" TargetType="{x:Type TextBlock}">
+                <Setter Property="Foreground" Value="{DynamicResource NavTitleTextBrush}" />
+                <Setter Property="FontSize" Value="18" />
+                <Setter Property="FontWeight" Value="SemiBold" />
+            </Style>
+
+            <Style x:Key="NavDescriptionTextBlockStyle" TargetType="{x:Type TextBlock}">
+                <Setter Property="Foreground" Value="{DynamicResource NavDescriptionTextBrush}" />
+                <Setter Property="FontSize" Value="11" />
+            </Style>
+
+            <Style x:Key="NavButtonStyle" TargetType="Button">
+                <Setter Property="Cursor" Value="Hand" />
+                <Setter Property="Foreground" Value="{DynamicResource NavButtonForegroundBrush}" />
+                <Setter Property="Background" Value="Transparent" />
+                <Setter Property="BorderBrush" Value="Transparent" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="Padding" Value="14,12" />
+                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="Chrome"
+                                    Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                    CornerRadius="16"
+                                    SnapsToDevicePixels="True">
+                                <ContentPresenter Margin="{TemplateBinding Padding}"
+                                                  HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                                  VerticalAlignment="Center" />
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="Chrome" Property="BorderBrush" Value="{DynamicResource NavButtonHoverBorderBrush}" />
+                                    <Setter TargetName="Chrome" Property="Background" Value="{DynamicResource NavButtonHoverBackgroundBrush}" />
+                                </Trigger>
+                                <Trigger Property="IsPressed" Value="True">
+                                    <Setter TargetName="Chrome" Property="Opacity" Value="0.85" />
+                                </Trigger>
+                                <Trigger Property="IsEnabled" Value="False">
+                                    <Setter TargetName="Chrome" Property="Opacity" Value="0.45" />
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+        </ResourceDictionary>
+    </UserControl.Resources>
+
+    <Border x:Name="PaneRoot"
+            Padding="22"
+            Background="{DynamicResource NavPaneBrush}"
+            BorderBrush="{DynamicResource NavPaneBorderBrush}"
+            BorderThickness="1">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <!-- Header area that mirrors the NavigationView pane title hierarchy. -->
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition x:Name="PaneToggleColumn" Width="Auto" />
+                    <ColumnDefinition x:Name="HeaderTextColumn" Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <Button x:Name="PaneToggleButton"
+                        Width="52"
+                        Height="52"
+                        Padding="0"
+                        Style="{StaticResource NavButtonStyle}"
+                        ToolTip="Toggle navigation pane"
+                        Click="PaneToggleButton_Click">
+                    <ContentControl x:Name="PaneToggleIconHost"
+                                    Width="18"
+                                    Height="18"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center" />
+                </Button>
+
+                <StackPanel x:Name="HeaderTextStack"
+                            Grid.Column="1"
+                            Margin="14,0,0,0"
+                            VerticalAlignment="Center">
+                    <TextBlock x:Name="PaneTitleText"
+                               Style="{StaticResource NavPaneTitleTextBlockStyle}"
+                               Text="WpfApp" />
+                    <TextBlock Margin="0,4,0,0"
+                               Style="{StaticResource NavSubtitleTextBlockStyle}"
+                               Text="Modern Navigation" />
+                </StackPanel>
+            </Grid>
+
+            <!-- Search box that filters items by title and description. -->
+            <searchBox:SearchBox x:Name="SearchBox"
+                                 Grid.Row="1"
+                                 Margin="0,22,0,18"
+                                 TextChanged="SearchBox_TextChanged" />
+
+            <!-- Dynamic item host rebuilt from the current filter result. -->
+            <ScrollViewer Grid.Row="2"
+                          VerticalScrollBarVisibility="Auto"
+                          HorizontalScrollBarVisibility="Disabled">
+                <StackPanel x:Name="ItemsHost" />
+            </ScrollViewer>
+
+            <!-- Fixed settings entry at the bottom, similar to NavigationView. -->
+            <Button x:Name="SettingsButton"
+                    Grid.Row="3"
+                    Margin="0,18,0,0"
+                    Style="{StaticResource NavButtonStyle}"
+                    Click="SettingsButton_Click">
+                <Grid x:Name="SettingsContentGrid">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <ContentControl x:Name="SettingsIconHost"
+                                    Width="18"
+                                    Height="18"
+                                    VerticalAlignment="Center" />
+
+                    <TextBlock x:Name="SettingsLabelText"
+                               Grid.Column="1"
+                               Margin="14,0,0,0"
+                               VerticalAlignment="Center"
+                               FontSize="15"
+                               FontWeight="SemiBold"
+                               Text="Settings" />
+                </Grid>
+            </Button>
+
+            <!-- Compact mode flyout that mimics NavigationView side expansion. -->
+            <Popup x:Name="CompactPanePopup"
+                   Placement="Right"
+                   PlacementTarget="{Binding ElementName=PaneRoot}"
+                   HorizontalOffset="12"
+                   AllowsTransparency="True"
+                   PopupAnimation="Fade"
+                   StaysOpen="False"
+                   Closed="CompactPanePopup_Closed">
+                <Border MinWidth="248"
+                        MaxWidth="280"
+                        Padding="18"
+                        Background="{DynamicResource NavPaneBrush}"
+                        BorderBrush="{DynamicResource NavFlyoutBorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="24">
+                    <StackPanel>
+                        <TextBlock x:Name="CompactFlyoutTitleText"
+                                   Style="{StaticResource NavFlyoutTitleTextBlockStyle}" />
+                        <TextBlock x:Name="CompactFlyoutDescriptionText"
+                                   Margin="0,6,0,0"
+                                   Style="{StaticResource NavSubtitleTextBlockStyle}"
+                                   TextWrapping="Wrap"
+                                   Visibility="Collapsed" />
+                        <Border x:Name="CompactFlyoutSeparator"
+                                Height="1"
+                                Margin="0,14,0,14"
+                                Background="{DynamicResource NavSeparatorBrush}" />
+                        <ScrollViewer MaxHeight="420"
+                                      VerticalScrollBarVisibility="Auto"
+                                      HorizontalScrollBarVisibility="Disabled">
+                            <StackPanel x:Name="CompactFlyoutItemsHost" />
+                        </ScrollViewer>
+                    </StackPanel>
+                </Border>
+            </Popup>
+        </Grid>
+    </Border>
+</UserControl>

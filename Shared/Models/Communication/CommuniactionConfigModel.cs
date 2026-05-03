@@ -8,6 +8,24 @@ using System.Threading.Tasks;
 
 namespace Shared.Models.Communication
 {
+    public static class PlcCommunicationTypeNames
+    {
+        public const string Modbus = "Modbus";
+        public const string MX = "MX";
+
+        public static string Normalize(string? value)
+        {
+            return string.Equals(value?.Trim(), Modbus, StringComparison.OrdinalIgnoreCase)
+                ? Modbus
+                : MX;
+        }
+
+        public static bool IsModbus(string? value)
+        {
+            return string.Equals(Normalize(value), Modbus, StringComparison.Ordinal);
+        }
+    }
+
     public class CommuniactionConfigModel
     {
         /// <summary>
@@ -52,6 +70,7 @@ namespace Shared.Models.Communication
             this.PLCActLogicalStationNumber = plcActLogicalStationNumber;
             this.PassWord = passWord;
             this.Type = CommuniactionType.MX;
+            this.PLCType = PlcCommunicationTypeNames.MX;
         }
         /// <summary>
         /// PLC/MX Component
@@ -66,6 +85,36 @@ namespace Shared.Models.Communication
             this.PLCActLogicalStationNumber = plcActLogicalStationNumber;
             this.PassWord = passWord;
             this.Type = type;
+            this.PLCType = type == CommuniactionType.PLC
+                ? PlcCommunicationTypeNames.MX
+                : PlcCommunicationTypeNames.Normalize(type.ToString());
+        }
+        /// <summary>
+        /// PLC/Modbus TCP
+        /// </summary>
+        /// <param name="type"></param>
+        /// <param name="localName"></param>
+        /// <param name="remoteIpAddress"></param>
+        /// <param name="remotePort"></param>
+        /// <param name="localIpAddress"></param>
+        /// <param name="localPort"></param>
+        /// <param name="plcType"></param>
+        public CommuniactionConfigModel(
+            CommuniactionType type,
+            string localName,
+            string remoteIpAddress,
+            int remotePort,
+            string localIpAddress,
+            int localPort,
+            string plcType)
+        {
+            this.LocalName = localName;
+            this.RemoteIPAddress = remoteIpAddress;
+            this.RemotePort = remotePort;
+            this.LocalIPAddress = localIpAddress;
+            this.LocalPort = localPort;
+            this.Type = type;
+            this.PLCType = PlcCommunicationTypeNames.Normalize(plcType);
         }
         /// <summary>
         /// RabbitMQ RPC Server/Client
@@ -110,6 +159,7 @@ namespace Shared.Models.Communication
         public int LocalPort { get; private set; } = 0;
         public string RemoteIPAddress { get; private set; } = null;
         public int RemotePort { get; private set; } = 0;
+        public string PLCType { get; private set; } = PlcCommunicationTypeNames.MX;
         public int PLCActLogicalStationNumber { get; private set; } = 0;
         public string PassWord { get; private set; } = null;
         public int Channel { get; private set; } = 0;

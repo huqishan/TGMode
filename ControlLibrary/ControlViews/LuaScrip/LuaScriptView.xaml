@@ -11,7 +11,7 @@
 
     </UserControl.Resources>
 
-    <Grid>
+    <Grid Background="{x:Null}">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="400" />
             <ColumnDefinition Width="16" />

@@ -24,8 +24,15 @@ public static class NavigationCatalog
                 new ObservableCollection<ControlInfoDataItem>
                 {
                     new("设备通讯配置", IconFactory.Router, "ControlLibrary.ControlViews.Communication.DeviceCommunicationConfigView, ControlLibrary", null),
-                    new("流程图", IconFactory.Workflow, "ControlLibrary.ControlViews.Flowchar.FlowchartView, ControlLibrary", null),
                     new("协议配置", IconFactory.FileCog, "ControlLibrary.ControlViews.Protocol.ProtocolConfigView, ControlLibrary", null)
+                },
+                description: "Devices"),
+            new("业务管理", IconFactory.Cpu, null,
+                new ObservableCollection<ControlInfoDataItem>
+                {
+                    new("流程图", IconFactory.Workflow, "Module.Business.Views.FlowchartView, Module.Business", null),
+                    new("方案配置", IconFactory.FileCog, "", null),
+                    new("工步配置", IconFactory.Router, "", null),
                 },
                 description: "Devices"),
             new("脚本管理", IconFactory.FlaskConical, "ControlLibrary.ControlViews.LuaScrip.LuaScriptView, ControlLibrary", null, description: "Lua"),

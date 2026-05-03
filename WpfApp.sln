@@ -15,6 +15,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Module.MES", "Module.MES\Mo
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Module.User", "Module.User\Module.User.csproj", "{7D6C8D1D-A109-47A5-ACA9-E84D354D9D6F}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Module.Business", "Module.Business\Module.Business.csproj", "{D15795E7-0722-476C-892C-2DB6E35ACCBD}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -97,6 +99,18 @@ Global
 		{7D6C8D1D-A109-47A5-ACA9-E84D354D9D6F}.Release|x64.Build.0 = Release|Any CPU
 		{7D6C8D1D-A109-47A5-ACA9-E84D354D9D6F}.Release|x86.ActiveCfg = Release|Any CPU
 		{7D6C8D1D-A109-47A5-ACA9-E84D354D9D6F}.Release|x86.Build.0 = Release|Any CPU
+		{D15795E7-0722-476C-892C-2DB6E35ACCBD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D15795E7-0722-476C-892C-2DB6E35ACCBD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D15795E7-0722-476C-892C-2DB6E35ACCBD}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{D15795E7-0722-476C-892C-2DB6E35ACCBD}.Debug|x64.Build.0 = Debug|Any CPU
+		{D15795E7-0722-476C-892C-2DB6E35ACCBD}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{D15795E7-0722-476C-892C-2DB6E35ACCBD}.Debug|x86.Build.0 = Debug|Any CPU
+		{D15795E7-0722-476C-892C-2DB6E35ACCBD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D15795E7-0722-476C-892C-2DB6E35ACCBD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D15795E7-0722-476C-892C-2DB6E35ACCBD}.Release|x64.ActiveCfg = Release|Any CPU
+		{D15795E7-0722-476C-892C-2DB6E35ACCBD}.Release|x64.Build.0 = Release|Any CPU
+		{D15795E7-0722-476C-892C-2DB6E35ACCBD}.Release|x86.ActiveCfg = Release|Any CPU
+		{D15795E7-0722-476C-892C-2DB6E35ACCBD}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

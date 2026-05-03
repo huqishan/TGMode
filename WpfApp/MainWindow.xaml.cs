@@ -4,9 +4,12 @@ using Module.User.Services;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Interop;
+using System.Windows.Media;
 
 namespace WpfApp
 {
@@ -19,6 +22,8 @@ namespace WpfApp
             new RoutedUICommand("Close tab", nameof(CloseTabCommand), typeof(MainWindow));
 
         private const string SettingsTabKey = "__settings__";
+        private const int WmNclButtonDown = 0x00A1;
+        private const int HtCaption = 0x02;
         // The window keeps menu data and tab hosting only.
         private readonly List<ControlInfoDataItem> _navigationInfo;
 
@@ -26,6 +31,8 @@ namespace WpfApp
         {
             InitializeComponent();
             CommandBindings.Add(new CommandBinding(CloseTabCommand, CloseTabExecuted, CanCloseTabExecuted));
+            StateChanged += (_, _) => UpdateMaximizeRestoreButton();
+            Loaded += (_, _) => UpdateMaximizeRestoreButton();
             UpdateLoginUserDisplay();
 
             // Reuse the existing navigation item model instead of adding a new menu schema.
@@ -46,21 +53,62 @@ namespace WpfApp
 
         private void UpdateLoginUserDisplay()
         {
-            string userName = GetCurrentUserDisplayName();
+            string userName = GetCurrentUserName();
             loginuser.Text = GetLastTwoCharacters(userName);
             loginuser.ToolTip = string.IsNullOrWhiteSpace(userName) ? null : userName;
             loginuserHost.ToolTip = loginuser.ToolTip;
         }
 
-        private static string GetCurrentUserDisplayName()
+        private void MinimizeWindowButton_Click(object sender, RoutedEventArgs e)
         {
-            string? name = CurrentUserSession.Current?.Name;
-            if (!string.IsNullOrWhiteSpace(name))
+            WindowState = WindowState.Minimized;
+        }
+
+        private void MaximizeRestoreWindowButton_Click(object sender, RoutedEventArgs e)
+        {
+            WindowState = WindowState == WindowState.Maximized
+                ? WindowState.Normal
+                : WindowState.Maximized;
+        }
+
+        private void CloseWindowButton_Click(object sender, RoutedEventArgs e)
+        {
+            Close();
+        }
+
+        private void TitleBar_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            if (e.ButtonState != MouseButtonState.Pressed || IsWithinElement<Button>(e.OriginalSource as DependencyObject))
             {
-                return name.Trim();
+                return;
             }
 
-            return CurrentUserSession.Current?.Account?.Trim() ?? string.Empty;
+            if (e.ClickCount == 2)
+            {
+                MaximizeRestoreWindowButton_Click(sender, e);
+                e.Handled = true;
+                return;
+            }
+
+            BeginTitleBarDrag();
+            e.Handled = true;
+        }
+
+        private void UpdateMaximizeRestoreButton()
+        {
+            if (MaximizeRestoreWindowButton is null)
+            {
+                return;
+            }
+
+            bool isMaximized = WindowState == WindowState.Maximized;
+            MaximizeRestoreWindowButton.Content = isMaximized ? "❐" : "□";
+            MaximizeRestoreWindowButton.ToolTip = isMaximized ? "还原" : "最大化";
+        }
+
+        private static string GetCurrentUserName()
+        {
+            return CurrentUserSession.Current?.Name?.Trim() ?? string.Empty;
         }
 
         private static string GetLastTwoCharacters(string text)
@@ -72,6 +120,41 @@ namespace WpfApp
 
             return text[^2..];
         }
+
+        private static bool IsWithinElement<TElement>(DependencyObject? source)
+            where TElement : DependencyObject
+        {
+            while (source is not null)
+            {
+                if (source is TElement)
+                {
+                    return true;
+                }
+
+                source = LogicalTreeHelper.GetParent(source)
+                    ?? (source is Visual ? VisualTreeHelper.GetParent(source) : null);
+            }
+
+            return false;
+        }
+
+        private void BeginTitleBarDrag()
+        {
+            IntPtr handle = new WindowInteropHelper(this).Handle;
+            if (handle == IntPtr.Zero)
+            {
+                return;
+            }
+
+            ReleaseCapture();
+            SendMessage(handle, WmNclButtonDown, new IntPtr(HtCaption), IntPtr.Zero);
+        }
+
+        [DllImport("user32.dll")]
+        private static extern bool ReleaseCapture();
+
+        [DllImport("user32.dll")]
+        private static extern IntPtr SendMessage(IntPtr hWnd, int msg, IntPtr wParam, IntPtr lParam);
 
         private void NavigationBar_SelectionChanged(object? sender, ModernNavigationSelectionChangedEventArgs e)
         {

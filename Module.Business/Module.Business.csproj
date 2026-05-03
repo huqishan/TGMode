@@ -8,17 +8,17 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Shared\Shared.csproj" />
+    <Folder Include="ViewModels\" />
+    <Folder Include="Commands\" />
+    <Folder Include="Propertys\" />
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="ControlViews\LuaScrip\Models\" />
-    <Folder Include="Models\" />
-    <Folder Include="Models\" />
+    <ProjectReference Include="..\ControlLibrary\ControlLibrary.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Update="Controls\Navigation\Control\ModernNavigationBarNew.xaml.cs">
+    <Compile Update="Views\FlowchartView.xaml.cs">
       <SubType>Code</SubType>
     </Compile>
   </ItemGroup>

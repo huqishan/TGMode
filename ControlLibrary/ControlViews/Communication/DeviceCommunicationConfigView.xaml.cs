@@ -78,6 +78,11 @@ namespace ControlLibrary.ControlViews.Communication
                 new CommunicationTypeOption(CommuniactionType.COM, "COM", "串口通信。"),
                 new CommunicationTypeOption(CommuniactionType.PLC, "PLC", "PLC通信。")
             };
+            PLCTypes = new ObservableCollection<SelectionOption>
+            {
+                new SelectionOption(PlcCommunicationTypeNames.Modbus, PlcCommunicationTypeNames.Modbus),
+                new SelectionOption(PlcCommunicationTypeNames.MX, PlcCommunicationTypeNames.MX)
+            };
 
             PortNameOptions = new ObservableCollection<string>();
             RefreshPortNameOptions(false);
@@ -139,6 +144,8 @@ namespace ControlLibrary.ControlViews.Communication
         public ObservableCollection<DeviceCommunicationProfile> Profiles { get; } = new ObservableCollection<DeviceCommunicationProfile>();
 
         public ObservableCollection<CommunicationTypeOption> CommunicationTypes { get; }
+
+        public ObservableCollection<SelectionOption> PLCTypes { get; }
 
         public ObservableCollection<string> PortNameOptions { get; }
 
@@ -458,7 +465,7 @@ namespace ControlLibrary.ControlViews.Communication
                 return;
             }
 
-            if (activeType == CommuniactionType.PLC)
+            if (IsPlcCommunicationType(activeType))
             {
                 AppendReceiveLine("发送失败：PLC 通信请使用 PLC 测试区的读取或写入。");
                 return;
@@ -990,7 +997,7 @@ namespace ControlLibrary.ControlViews.Communication
         private bool TryGetActivePlcCommunication(out ICommunication? communication)
         {
             communication = _activeCommunication;
-            if (communication is not null && _activeCommunicationType == CommuniactionType.PLC)
+            if (communication is not null && IsPlcCommunicationType(_activeCommunicationType))
             {
                 return true;
             }
@@ -1094,7 +1101,13 @@ namespace ControlLibrary.ControlViews.Communication
                 or CommuniactionType.TCPServer
                 or CommuniactionType.UDP
                 or CommuniactionType.COM
+                or CommuniactionType.MX
                 or CommuniactionType.PLC;
+        }
+
+        private static bool IsPlcCommunicationType(CommuniactionType? type)
+        {
+            return type is CommuniactionType.PLC or CommuniactionType.MX;
         }
 
         private void OnPropertyChanged([CallerMemberName] string? propertyName = null)

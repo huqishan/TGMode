@@ -462,6 +462,12 @@ SelectedValuePath="Value" />
           ItemContainerStyle="{StaticResource DataStructureTreeViewItemStyle}"
           ItemTemplate="{StaticResource DataStructureFieldTemplate}"
           ItemsSource="{Binding SelectedProfile.Structure}"
+          AllowDrop="True"
+          PreviewMouseLeftButtonDown="StructureTreeView_PreviewMouseLeftButtonDown"
+          PreviewMouseMove="StructureTreeView_PreviewMouseMove"
+          DragOver="StructureTreeView_DragOver"
+          DragLeave="StructureTreeView_DragLeave"
+          Drop="StructureTreeView_Drop"
           PreviewMouseRightButtonDown="StructureTreeView_PreviewMouseRightButtonDown"
           SelectedItemChanged="StructureTreeView_SelectedItemChanged" PreviewMouseDoubleClick="StructureTreeView_PreviewMouseDoubleClick">
                         <TreeView.Resources>
@@ -471,6 +477,16 @@ SelectedValuePath="Value" />
                             <StaticResource x:Key="{x:Static SystemColors.InactiveSelectionHighlightTextBrushKey}" ResourceKey="NavButtonForegroundBrush" />
                         </TreeView.Resources>
                     </TreeView>
+                    <Canvas x:Name="StructureDropIndicatorCanvas"
+                            Grid.Row="1"
+                            IsHitTestVisible="False"
+                            Panel.ZIndex="3">
+                        <Border x:Name="StructureDropIndicator"
+                                Visibility="Collapsed"
+                                Background="{DynamicResource PrimaryButtonBrush}"
+                                BorderBrush="{DynamicResource PrimaryButtonBrush}"
+                                CornerRadius="2" />
+                    </Canvas>
 
                 </Grid>
 

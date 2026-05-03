@@ -141,7 +141,7 @@
                                 Background="{TemplateBinding Background}"
                                 BorderBrush="{TemplateBinding BorderBrush}"
                                 BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="22" />
+                                />
 
                         <TabPanel Grid.Row="0"
                                   Margin="16,16,16,0"

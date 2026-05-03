@@ -13,6 +13,14 @@ namespace Module.MES.ViewModels
     {
 
     }
+
+    public enum DataStructureFieldDropMode
+    {
+        AsRoot,
+        Before,
+        After,
+        AsChild
+    }
     #region 数据结构选项模型
 
     /// <summary>

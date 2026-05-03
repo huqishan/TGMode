@@ -96,6 +96,8 @@ namespace ControlLibrary.ControlViews.Communication.Models
 
         public string? PLCActLogicalStationNumber { get; set; }
 
+        public string? PLCType { get; set; }
+
         public string? PLCPassword { get; set; }
 
         public static DeviceCommunicationProfileDocument FromProfile(DeviceCommunicationProfile profile)
@@ -114,6 +116,7 @@ namespace ControlLibrary.ControlViews.Communication.Models
                 DataBits = profile.DataBits,
                 StopBits = profile.StopBits,
                 PLCActLogicalStationNumber = profile.PLCActLogicalStationNumber,
+                PLCType = profile.PLCType,
                 PLCPassword = profile.PLCPassword
             };
         }
@@ -139,6 +142,9 @@ namespace ControlLibrary.ControlViews.Communication.Models
             profile.PLCActLogicalStationNumber = string.IsNullOrWhiteSpace(PLCActLogicalStationNumber)
                 ? profile.PLCActLogicalStationNumber
                 : PLCActLogicalStationNumber.Trim();
+            profile.PLCType = string.IsNullOrWhiteSpace(PLCType)
+                ? profile.PLCType
+                : PLCType.Trim();
             profile.PLCPassword = string.IsNullOrWhiteSpace(PLCPassword) ? profile.PLCPassword : PLCPassword.Trim();
             return profile;
         }
@@ -161,6 +167,7 @@ namespace ControlLibrary.ControlViews.Communication.Models
         private string _dataBits = "8";
         private string _stopBits = "1";
         private string _plcActLogicalStationNumber = "0";
+        private string _plcType = PlcCommunicationTypeNames.MX;
         private string _plcPassword = string.Empty;
 
         public event PropertyChangedEventHandler? PropertyChanged;
@@ -243,6 +250,18 @@ namespace ControlLibrary.ControlViews.Communication.Models
             set => SetField(ref _plcActLogicalStationNumber, value, true);
         }
 
+        public string PLCType
+        {
+            get => _plcType;
+            set
+            {
+                if (SetField(ref _plcType, PlcCommunicationTypeNames.Normalize(value), true))
+                {
+                    OnPropertyChanged(nameof(TypeDescription));
+                }
+            }
+        }
+
         public string PLCPassword
         {
             get => _plcPassword;
@@ -275,7 +294,9 @@ namespace ControlLibrary.ControlViews.Communication.Models
             CommuniactionType.TCPServer => "本地开启监听端口，等待设备或上位机主动接入。",
             CommuniactionType.UDP => "无连接报文通信，适合广播、状态上报和轻量级设备交互。",
             CommuniactionType.COM => "串口通信，适合天平、扫码器、打印机等串口设备。",
-            CommuniactionType.PLC => "PLC 通信，使用 Mitsubishi MX Component 逻辑站号进行读写测试。",
+            CommuniactionType.PLC => PlcCommunicationTypeNames.IsModbus(PLCType)
+                ? "PLC 通信，使用 Modbus TCP 进行读写测试。"
+                : "PLC 通信，使用 Mitsubishi MX Component 逻辑站号进行读写测试。",
             _ => "当前通信方式暂未提供说明。"
         };
 
@@ -285,7 +306,9 @@ namespace ControlLibrary.ControlViews.Communication.Models
             CommuniactionType.TCPServer => $"监听 {LocalIPAddress}:{LocalPort}",
             CommuniactionType.UDP => $"远端 {RemoteIPAddress}:{RemotePort}  本地 {LocalIPAddress}:{LocalPort}",
             CommuniactionType.COM => $"{PortName}  {BaudRate}bps  Parity {Parity}  Data {DataBits}  Stop {StopBits}",
-            CommuniactionType.PLC => $"PLC 逻辑站号 {PLCActLogicalStationNumber}",
+            CommuniactionType.PLC => PlcCommunicationTypeNames.IsModbus(PLCType)
+                ? $"PLC {PLCType}  远程 {RemoteIPAddress}:{RemotePort}"
+                : $"PLC {PLCType}  逻辑站号 {PLCActLogicalStationNumber}",
             _ => "未配置"
         };
 
@@ -305,6 +328,7 @@ namespace ControlLibrary.ControlViews.Communication.Models
                 DataBits = DataBits,
                 StopBits = StopBits,
                 PLCActLogicalStationNumber = PLCActLogicalStationNumber,
+                PLCType = PLCType,
                 PLCPassword = PLCPassword
             };
         }
@@ -338,6 +362,7 @@ namespace ControlLibrary.ControlViews.Communication.Models
                     break;
                 case CommuniactionType.PLC:
                     PLCActLogicalStationNumber = "0";
+                    PLCType = PlcCommunicationTypeNames.Normalize(PLCType);
                     PLCPassword = string.Empty;
                     break;
                 default:
@@ -407,6 +432,29 @@ namespace ControlLibrary.ControlViews.Communication.Models
                     return true;
 
                 case CommuniactionType.PLC:
+                    string plcType = PlcCommunicationTypeNames.Normalize(PLCType);
+                    if (PlcCommunicationTypeNames.IsModbus(plcType))
+                    {
+                        if (!TryValidateIpAddress(RemoteIPAddress, "远程 IP 地址", out validationMessage) ||
+                            !TryValidatePort(RemotePort, "远程端口", true, out int plcRemotePort, out validationMessage) ||
+                            !TryValidateIpAddress(LocalIPAddress, "本地 IP 地址", out validationMessage) ||
+                            !TryValidatePort(LocalPort, "本地端口", false, out int plcLocalPort, out validationMessage))
+                        {
+                            return false;
+                        }
+
+                        config = new CommuniactionConfigModel(
+                            CommuniactionType.PLC,
+                            LocalName.Trim(),
+                            RemoteIPAddress.Trim(),
+                            plcRemotePort,
+                            LocalIPAddress.Trim(),
+                            plcLocalPort,
+                            plcType);
+                        validationMessage = "PLC Modbus 配置有效，可生成运行时通信对象。";
+                        return true;
+                    }
+
                     if (!TryValidateNumberInRange(
                             PLCActLogicalStationNumber,
                             "PLC 逻辑站号",
@@ -419,11 +467,11 @@ namespace ControlLibrary.ControlViews.Communication.Models
                     }
 
                     config = new CommuniactionConfigModel(
-                        CommuniactionType.PLC,
+                        CommuniactionType.MX,
                         LocalName.Trim(),
                         stationNumber,
                         string.IsNullOrWhiteSpace(PLCPassword) ? string.Empty : PLCPassword.Trim());
-                    validationMessage = "PLC 配置有效，可生成运行时通信对象。";
+                    validationMessage = "PLC MX 配置有效，可生成运行时通信对象。";
                     return true;
 
                 default:

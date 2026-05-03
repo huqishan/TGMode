@@ -216,6 +216,103 @@ namespace Module.MES.ViewModels
             SetPageStatus($"已删除结构字段：{fieldName}", WarningBrush);
         }
 
+        public bool CanMoveField(
+            DataStructureLayout draggedField,
+            DataStructureLayout? targetField,
+            DataStructureFieldDropMode dropMode)
+        {
+            if (SelectedProfile is null || draggedField is null)
+            {
+                return false;
+            }
+
+            if (ReferenceEquals(draggedField, targetField))
+            {
+                return false;
+            }
+
+            if (targetField is not null && IsDescendantOf(draggedField, targetField))
+            {
+                return false;
+            }
+
+            if (FindOwnerCollection(SelectedProfile.Structure, draggedField) is null)
+            {
+                return false;
+            }
+
+            if (targetField is not null && FindOwnerCollection(SelectedProfile.Structure, targetField) is null)
+            {
+                return false;
+            }
+
+            return true;
+        }
+
+        public bool MoveField(
+            DataStructureLayout draggedField,
+            DataStructureLayout? targetField,
+            DataStructureFieldDropMode dropMode)
+        {
+            if (!CanMoveField(draggedField, targetField, dropMode) || SelectedProfile is null)
+            {
+                return false;
+            }
+
+            ObservableCollection<DataStructureLayout>? sourceFields =
+                FindOwnerCollection(SelectedProfile.Structure, draggedField);
+            if (sourceFields is null)
+            {
+                return false;
+            }
+
+            ObservableCollection<DataStructureLayout> targetFields;
+            int targetIndex;
+
+            switch (dropMode)
+            {
+                case DataStructureFieldDropMode.Before when targetField is not null:
+                    targetFields = FindOwnerCollection(SelectedProfile.Structure, targetField) ?? SelectedProfile.Structure;
+                    targetIndex = targetFields.IndexOf(targetField);
+                    break;
+                case DataStructureFieldDropMode.After when targetField is not null:
+                    targetFields = FindOwnerCollection(SelectedProfile.Structure, targetField) ?? SelectedProfile.Structure;
+                    targetIndex = targetFields.IndexOf(targetField) + 1;
+                    break;
+                case DataStructureFieldDropMode.AsChild when targetField is not null:
+                    targetFields = targetField.Children;
+                    targetIndex = targetFields.Count;
+                    break;
+                default:
+                    targetFields = SelectedProfile.Structure;
+                    targetIndex = targetFields.Count;
+                    break;
+            }
+
+            int sourceIndex = sourceFields.IndexOf(draggedField);
+            if (sourceIndex < 0)
+            {
+                return false;
+            }
+
+            if (ReferenceEquals(sourceFields, targetFields) && sourceIndex < targetIndex)
+            {
+                targetIndex--;
+            }
+
+            targetIndex = Math.Clamp(targetIndex, 0, targetFields.Count);
+            if (ReferenceEquals(sourceFields, targetFields) && sourceIndex == targetIndex)
+            {
+                return false;
+            }
+
+            sourceFields.RemoveAt(sourceIndex);
+            targetFields.Insert(targetIndex, draggedField);
+            SelectedField = draggedField;
+            SetPageStatus($"已调整结构字段位置：{draggedField.ClientCode}", SuccessBrush);
+            return true;
+        }
+
         #endregion
 
         #region 抽屉命令方法
@@ -441,6 +538,40 @@ namespace Module.MES.ViewModels
             foreach (DataStructureLayout field in fields)
             {
                 if (RemoveField(field.Children, targetField))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private static ObservableCollection<DataStructureLayout>? FindOwnerCollection(
+            ObservableCollection<DataStructureLayout> fields,
+            DataStructureLayout targetField)
+        {
+            if (fields.Contains(targetField))
+            {
+                return fields;
+            }
+
+            foreach (DataStructureLayout field in fields)
+            {
+                ObservableCollection<DataStructureLayout>? owner = FindOwnerCollection(field.Children, targetField);
+                if (owner is not null)
+                {
+                    return owner;
+                }
+            }
+
+            return null;
+        }
+
+        private static bool IsDescendantOf(DataStructureLayout parentField, DataStructureLayout possibleDescendant)
+        {
+            foreach (DataStructureLayout child in parentField.Children)
+            {
+                if (ReferenceEquals(child, possibleDescendant) || IsDescendantOf(child, possibleDescendant))
                 {
                     return true;
                 }
