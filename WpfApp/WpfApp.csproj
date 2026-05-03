@@ -14,6 +14,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\ControlLibrary\ControlLibrary.csproj" />
+    <ProjectReference Include="..\Module.Business\Module.Business.csproj" />
     <ProjectReference Include="..\Module.MES\Module.MES.csproj" />
     <ProjectReference Include="..\Module.User\Module.User.csproj" />
     <ProjectReference Include="..\Shared\Shared.csproj" />

@@ -4,9 +4,14 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:controls="clr-namespace:ControlLibrary.Controls.FlowchartEditor.Control;assembly=ControlLibrary"
+             xmlns:vm="clr-namespace:Module.Business.ViewModels"
              mc:Ignorable="d" 
              d:DesignHeight="600"
              d:DesignWidth="1100">
+    <UserControl.DataContext>
+        <vm:FlowchartViewModel />
+    </UserControl.DataContext>
+
     <UserControl.Resources>
         <Style x:Key="PaletteButtonStyle" TargetType="Button">
             <Setter Property="Height" Value="44" />
@@ -20,7 +25,7 @@
             <Setter Property="FontSize" Value="15" />
             <Setter Property="Foreground" Value="{DynamicResource AppContentTextBrush}" />
         </Style>
-</UserControl.Resources>
+    </UserControl.Resources>
 
     <Grid>
         <Grid.ColumnDefinitions>
@@ -43,60 +48,65 @@
                            TextWrapping="Wrap" />
 
                 <UniformGrid Columns="2" Margin="0,0,0,12">
+                    <Button x:Name="NewButton"
+                            Style="{StaticResource ActionButtonStyle}"
+                            Content="新建"
+                            Command="{Binding NewFlowchartCommand}"
+                            CommandParameter="{Binding ElementName=Editor}" />
                     <Button x:Name="SaveButton"
                             Style="{StaticResource ActionButtonStyle}"
                             Content="保存"
-                            Click="SaveButton_Click" />
+                            Command="{Binding SaveFlowchartCommand}"
+                            CommandParameter="{Binding ElementName=Editor}" />
                     <Button x:Name="OpenButton"
                             Style="{StaticResource ActionButtonStyle}"
                             Content="打开"
-                            Click="OpenButton_Click" />
+                            Command="{Binding OpenFlowchartCommand}"
+                            CommandParameter="{Binding ElementName=Editor}" />
                     <Button x:Name="ExecuteButton"
                             Style="{StaticResource ActionButtonStyle}"
                             Content="执行"
-                            Click="ExecuteButton_Click" />
+                            Command="{Binding ExecuteFlowchartCommand}"
+                            CommandParameter="{Binding ElementName=Editor}" />
                     <Button x:Name="PauseButton"
-                            Style="{StaticResource ActionButtonStyle}"
-                            Content="暂停"
-                            Click="PauseButton_Click"
-                            IsEnabled="False" />
+                            Command="{Binding PauseFlowchartCommand}"
+                            CommandParameter="{Binding ElementName=Editor}">
+                        <Button.Style>
+                            <Style TargetType="Button" BasedOn="{StaticResource ActionButtonStyle}">
+                                <Setter Property="Content" Value="暂停" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsPaused}" Value="True">
+                                        <Setter Property="Content" Value="继续" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                    </Button>
                     <Button x:Name="StopButton"
                             Style="{StaticResource ActionButtonStyle}"
                             Content="结束"
-                            Click="StopButton_Click"
-                            IsEnabled="False" />
+                            Command="{Binding StopFlowchartCommand}"
+                            CommandParameter="{Binding ElementName=Editor}" />
                 </UniformGrid>
 
                 <TextBlock x:Name="ExecutionStatusText"
                            Margin="0,0,0,18"
-                           Foreground="{DynamicResource AppMutedTextBrush}"
-                           Text="状态：等待操作"
+                           Foreground="{Binding ExecutionStatusBrush}"
+                           Text="{Binding ExecutionStatusText}"
                            TextWrapping="Wrap" />
 
-                <Button Style="{StaticResource PaletteButtonStyle}"
-                        Content="开始" 
-                        Tag="开始"
-                        PreviewMouseLeftButtonDown="PaletteItem_PreviewMouseLeftButtonDown"
-                        PreviewMouseLeftButtonUp="PaletteItem_PreviewMouseLeftButtonUp"
-                        PreviewMouseMove="PaletteItem_PreviewMouseMove" />
-                <Button Style="{StaticResource PaletteButtonStyle}"
-                        Content="处理"
-                        Tag="处理"
-                        PreviewMouseLeftButtonDown="PaletteItem_PreviewMouseLeftButtonDown"
-                        PreviewMouseLeftButtonUp="PaletteItem_PreviewMouseLeftButtonUp"
-                        PreviewMouseMove="PaletteItem_PreviewMouseMove" />
-                <Button Style="{StaticResource PaletteButtonStyle}"
-                        Content="判断"
-                        Tag="判断"
-                        PreviewMouseLeftButtonDown="PaletteItem_PreviewMouseLeftButtonDown"
-                        PreviewMouseLeftButtonUp="PaletteItem_PreviewMouseLeftButtonUp"
-                        PreviewMouseMove="PaletteItem_PreviewMouseMove" />
-                <Button Style="{StaticResource PaletteButtonStyle}"
-                        Content="结束"
-                        Tag="结束"
-                        PreviewMouseLeftButtonDown="PaletteItem_PreviewMouseLeftButtonDown"
-                        PreviewMouseLeftButtonUp="PaletteItem_PreviewMouseLeftButtonUp"
-                        PreviewMouseMove="PaletteItem_PreviewMouseMove" />
+                <ItemsControl ItemsSource="{Binding NodeTemplates}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="{x:Type vm:FlowchartNodeTemplate}">
+                            <Button Style="{StaticResource PaletteButtonStyle}"
+                                    Content="{Binding DisplayName}"
+                                    Tag="{Binding}"
+                                    PreviewMouseLeftButtonDown="PaletteItem_PreviewMouseLeftButtonDown"
+                                    PreviewMouseLeftButtonUp="PaletteItem_PreviewMouseLeftButtonUp"
+                                    PreviewMouseMove="PaletteItem_PreviewMouseMove" />
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
 
                 <Separator Margin="0,12,0,12" />
 

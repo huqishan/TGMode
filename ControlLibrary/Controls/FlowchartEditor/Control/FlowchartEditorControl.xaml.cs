@@ -86,6 +86,30 @@ namespace ControlLibrary.Controls.FlowchartEditor.Control
 
         public bool IsExecutionPaused => _isExecuting && _isExecutionPaused;
 
+        #region 页面命令公开方法
+
+        /// <summary>
+        /// 供流程图页面命令在当前视口中心添加节点。
+        /// </summary>
+        public void AddNodeAtCenter(string text, FlowchartNodeKind kind)
+        {
+            EnsureWorkspaceInitialized();
+            AddNode(text, kind, new Point(Viewport.ActualWidth / 2, Viewport.ActualHeight / 2));
+        }
+
+        /// <summary>
+        /// 供流程图页面命令清空当前文档。
+        /// </summary>
+        public void ClearDocument()
+        {
+            StopExecution();
+            LoadDocument(new FlowchartDocument());
+            EnsureWorkspaceInitialized();
+            Focus();
+        }
+
+        #endregion
+
         public void SaveToFile(string filePath)
         {
             // 先把当前画布模型整理成纯数据对象，再统一序列化成 JSON 文件。
