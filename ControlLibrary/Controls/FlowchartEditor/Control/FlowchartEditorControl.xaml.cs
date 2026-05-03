@@ -72,6 +72,8 @@ namespace ControlLibrary.Controls.FlowchartEditor.Control
         private string? _lastProcessedDragId;
         private bool _isExecuting;
         private bool _isExecutionPaused;
+        private bool _isApplyingDocumentProperty;
+        private bool _isUpdatingDocumentProperty;
         private CancellationTokenSource? _executionCancellationTokenSource;
         private TaskCompletionSource<bool>? _executionResumeSignal;
 
@@ -80,7 +82,23 @@ namespace ControlLibrary.Controls.FlowchartEditor.Control
             InitializeComponent();
         }
 
+        public static readonly DependencyProperty DocumentProperty =
+            DependencyProperty.Register(
+                nameof(Document),
+                typeof(FlowchartDocument),
+                typeof(FlowchartEditorControl),
+                new FrameworkPropertyMetadata(
+                    null,
+                    FrameworkPropertyMetadataOptions.BindsTwoWayByDefault,
+                    OnDocumentChanged));
+
         public event EventHandler<FlowchartExecutionStepEventArgs>? ExecutionStepChanged;
+
+        public FlowchartDocument? Document
+        {
+            get => (FlowchartDocument?)GetValue(DocumentProperty);
+            set => SetValue(DocumentProperty, value);
+        }
 
         public bool IsExecuting => _isExecuting;
 
@@ -98,14 +116,28 @@ namespace ControlLibrary.Controls.FlowchartEditor.Control
         }
 
         /// <summary>
+        /// 获取当前画布的纯数据快照，供配置页保存多个流程图。
+        /// </summary>
+        public FlowchartDocument CreateDocumentSnapshot()
+        {
+            return CloneDocument(CreateDocument());
+        }
+
+        /// <summary>
+        /// 从纯数据快照重建画布，供配置页切换当前流程图。
+        /// </summary>
+        public void LoadDocumentSnapshot(FlowchartDocument? document)
+        {
+            ApplyDocument(document);
+            SynchronizeDocumentProperty();
+        }
+
+        /// <summary>
         /// 供流程图页面命令清空当前文档。
         /// </summary>
         public void ClearDocument()
         {
-            StopExecution();
-            LoadDocument(new FlowchartDocument());
-            EnsureWorkspaceInitialized();
-            Focus();
+            LoadDocumentSnapshot(new FlowchartDocument());
         }
 
         #endregion
@@ -128,7 +160,7 @@ namespace ControlLibrary.Controls.FlowchartEditor.Control
                 throw new InvalidDataException("流程图文件内容为空或格式不正确。");
             }
 
-            LoadDocument(document);
+            LoadDocumentSnapshot(document);
         }
 
         public async Task<FlowchartExecutionResult> ExecuteFlowAsync()
@@ -283,6 +315,87 @@ namespace ControlLibrary.Controls.FlowchartEditor.Control
             };
             options.Converters.Add(new JsonStringEnumConverter());
             return options;
+        }
+
+        private static void OnDocumentChanged(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs e)
+        {
+            if (dependencyObject is not FlowchartEditorControl editor || editor._isUpdatingDocumentProperty)
+            {
+                return;
+            }
+
+            editor.ApplyDocument(e.NewValue as FlowchartDocument);
+        }
+
+        private void ApplyDocument(FlowchartDocument? document)
+        {
+            StopExecution();
+            _isApplyingDocumentProperty = true;
+
+            try
+            {
+                LoadDocument(CloneDocument(document));
+                EnsureWorkspaceInitialized();
+                Focus();
+            }
+            finally
+            {
+                _isApplyingDocumentProperty = false;
+            }
+        }
+
+        private void SynchronizeDocumentProperty()
+        {
+            if (_isApplyingDocumentProperty)
+            {
+                return;
+            }
+
+            _isUpdatingDocumentProperty = true;
+
+            try
+            {
+                SetCurrentValue(DocumentProperty, CreateDocumentSnapshot());
+            }
+            finally
+            {
+                _isUpdatingDocumentProperty = false;
+            }
+        }
+
+        private static FlowchartDocument CloneDocument(FlowchartDocument? document)
+        {
+            if (document is null)
+            {
+                return new FlowchartDocument();
+            }
+
+            return new FlowchartDocument
+            {
+                Version = document.Version,
+                Nodes = (document.Nodes ?? new List<FlowchartNodeDocument>())
+                    .Select(node => new FlowchartNodeDocument
+                    {
+                        Id = node.Id,
+                        Text = node.Text ?? string.Empty,
+                        Kind = node.Kind,
+                        X = node.X,
+                        Y = node.Y,
+                        Width = node.Width,
+                        Height = node.Height
+                    })
+                    .ToList(),
+                Connections = (document.Connections ?? new List<FlowchartConnectionDocument>())
+                    .Select(connection => new FlowchartConnectionDocument
+                    {
+                        Id = connection.Id,
+                        SourceNodeId = connection.SourceNodeId,
+                        SourceAnchor = connection.SourceAnchor,
+                        TargetNodeId = connection.TargetNodeId,
+                        TargetAnchor = connection.TargetAnchor
+                    })
+                    .ToList()
+            };
         }
 
         private FlowchartDocument CreateDocument()
@@ -520,6 +633,7 @@ namespace ControlLibrary.Controls.FlowchartEditor.Control
             CreateNodeVisual(node);
             SelectNode(node.Id);
             Focus();
+            SynchronizeDocumentProperty();
         }
 
         private void CreateNodeVisual(FlowchartNodeModel node)
@@ -735,6 +849,7 @@ namespace ControlLibrary.Controls.FlowchartEditor.Control
             }
 
             _draggingNode = null;
+            SynchronizeDocumentProperty();
             e.Handled = true;
         }
 
@@ -874,6 +989,7 @@ namespace ControlLibrary.Controls.FlowchartEditor.Control
             _connections.Add(connectionModel);
             SelectConnection(connectionModel.Id);
             RenderConnections();
+            SynchronizeDocumentProperty();
         }
 
         private bool TryGetAnchorHandleAt(Point viewportPoint, out FlowchartNodeModel? node, out FlowchartAnchor anchor)
@@ -967,6 +1083,7 @@ namespace ControlLibrary.Controls.FlowchartEditor.Control
             _selectedConnectionId = null;
             UpdateNodeSelectionVisuals();
             RenderConnections();
+            SynchronizeDocumentProperty();
         }
 
         private void RemoveConnection(Guid connectionId)
@@ -974,6 +1091,7 @@ namespace ControlLibrary.Controls.FlowchartEditor.Control
             _connections.RemoveAll(connection => connection.Id == connectionId);
             _selectedConnectionId = null;
             RenderConnections();
+            SynchronizeDocumentProperty();
         }
 
         private void SelectNode(Guid nodeId)

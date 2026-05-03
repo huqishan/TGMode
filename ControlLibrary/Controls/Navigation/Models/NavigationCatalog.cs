@@ -1,5 +1,5 @@
 using ControlLibrary;
-using ControlLibrary.Controls.Navigation.Models;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 
 namespace ControlLibrary.Controls.Navigation.Models;
@@ -23,18 +23,19 @@ public static class NavigationCatalog
             new("设备管理", IconFactory.Cpu, null,
                 new ObservableCollection<ControlInfoDataItem>
                 {
-                    new("设备通讯配置", IconFactory.Router, "ControlLibrary.ControlViews.Communication.DeviceCommunicationConfigView, ControlLibrary", null),
+                    new("设备通信配置", IconFactory.Router, "ControlLibrary.ControlViews.Communication.DeviceCommunicationConfigView, ControlLibrary", null),
                     new("协议配置", IconFactory.FileCog, "ControlLibrary.ControlViews.Protocol.ProtocolConfigView, ControlLibrary", null)
                 },
                 description: "Devices"),
             new("业务管理", IconFactory.Cpu, null,
                 new ObservableCollection<ControlInfoDataItem>
                 {
+                    new("产品配置", IconFactory.Boxes, "Module.Business.Views.ProductConfigurationView, Module.Business", null),
+                    new("工步配置", IconFactory.Router, "Module.Business.Views.WorkStepConfigurationView, Module.Business", null),
+                    new("方案配置", IconFactory.FileCog, "Module.Business.Views.SchemeConfigurationView, Module.Business", null),
                     new("流程图", IconFactory.Workflow, "Module.Business.Views.FlowchartView, Module.Business", null),
-                    new("方案配置", IconFactory.FileCog, "", null),
-                    new("工步配置", IconFactory.Router, "", null),
                 },
-                description: "Devices"),
+                description: "Business"),
             new("脚本管理", IconFactory.FlaskConical, "ControlLibrary.ControlViews.LuaScrip.LuaScriptView, ControlLibrary", null, description: "Lua"),
             new("数据管理", IconFactory.Cpu, null,
                 new ObservableCollection<ControlInfoDataItem>

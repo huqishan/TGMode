@@ -1,11 +1,20 @@
 using ControlLibrary;
 using ControlLibrary.Controls.FlowchartEditor.Models;
+using Module.Business.Models;
+using Module.Business.Services;
+using System;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
+using System.Linq;
+using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
 
 namespace Module.Business.ViewModels;
 
+/// <summary>
+/// 流程图页面的属性集中声明。
+/// </summary>
 public sealed partial class FlowchartViewModel
 {
     #region 状态颜色字段
@@ -35,14 +44,24 @@ public sealed partial class FlowchartViewModel
 
     #region 私有状态字段
 
+    private FlowchartConfigurationCatalog _catalog = FlowchartConfigurationStore.LoadCatalog();
+    private FlowchartProfile? _selectedFlowchart;
+    private string _searchText = string.Empty;
+    private string _pageStatusText = "等待编辑";
+    private Brush _pageStatusBrush = NeutralBrush;
     private string _executionStatusText = "状态：等待操作";
     private Brush _executionStatusBrush = NeutralBrush;
     private bool _isExecuting;
     private bool _isPaused;
+    private DateTime _lastCreateOrCopyCommandAt = DateTime.MinValue;
 
     #endregion
 
     #region 集合属性
+
+    public ObservableCollection<FlowchartProfile> Flowcharts => _catalog.Flowcharts;
+
+    public ICollectionView FlowchartsView { get; private set; } = null!;
 
     public ObservableCollection<FlowchartNodeTemplate> NodeTemplates { get; } = new();
 
@@ -50,7 +69,75 @@ public sealed partial class FlowchartViewModel
 
     #endregion
 
+    #region 搜索与当前编辑属性
+
+    public string SearchText
+    {
+        get => _searchText;
+        set
+        {
+            if (!SetField(ref _searchText, value ?? string.Empty))
+            {
+                return;
+            }
+
+            FlowchartsView.Refresh();
+        }
+    }
+
+    public FlowchartProfile? SelectedFlowchart
+    {
+        get => _selectedFlowchart;
+        set
+        {
+            if (ReferenceEquals(_selectedFlowchart, value))
+            {
+                return;
+            }
+
+            if (_selectedFlowchart is not null)
+            {
+                _selectedFlowchart.PropertyChanged -= SelectedFlowchart_PropertyChanged;
+            }
+
+            _selectedFlowchart = value;
+
+            if (_selectedFlowchart is not null)
+            {
+                _selectedFlowchart.PropertyChanged += SelectedFlowchart_PropertyChanged;
+            }
+
+            ExecutionLogs.Clear();
+            SetExecutionStatus("状态：等待操作", NeutralBrush);
+            OnPropertyChanged();
+            RaisePageSummaryChanged();
+            RaiseCommandStatesChanged();
+        }
+    }
+
+    #endregion
+
     #region 页面状态属性
+
+    public string PageStatusText
+    {
+        get => _pageStatusText;
+        private set => SetField(ref _pageStatusText, value);
+    }
+
+    public Brush PageStatusBrush
+    {
+        get => _pageStatusBrush;
+        private set => SetField(ref _pageStatusBrush, value);
+    }
+
+    public string FlowchartCountText => $"{Flowcharts.Count} 个流程图";
+
+    public string CurrentFlowchartSummary => SelectedFlowchart?.Summary ?? "未选择流程图";
+
+    #endregion
+
+    #region 执行状态属性
 
     public string ExecutionStatusText
     {
@@ -97,15 +184,44 @@ public sealed partial class FlowchartViewModel
 
     public ICommand NewFlowchartCommand { get; private set; } = null!;
 
+    public ICommand DuplicateFlowchartCommand { get; private set; } = null!;
+
+    public ICommand DeleteFlowchartCommand { get; private set; } = null!;
+
     public ICommand SaveFlowchartCommand { get; private set; } = null!;
 
     public ICommand OpenFlowchartCommand { get; private set; } = null!;
+
+    public ICommand ExportFlowchartCommand { get; private set; } = null!;
 
     public ICommand ExecuteFlowchartCommand { get; private set; } = null!;
 
     public ICommand PauseFlowchartCommand { get; private set; } = null!;
 
     public ICommand StopFlowchartCommand { get; private set; } = null!;
+
+    #endregion
+
+    #region 属性联动方法
+
+    private void SelectedFlowchart_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is nameof(FlowchartProfile.Name)
+            or nameof(FlowchartProfile.NodeCount)
+            or nameof(FlowchartProfile.ConnectionCount)
+            or nameof(FlowchartProfile.Summary)
+            or nameof(FlowchartProfile.Document))
+        {
+            RaisePageSummaryChanged();
+            FlowchartsView.Refresh();
+        }
+    }
+
+    private void RaisePageSummaryChanged()
+    {
+        OnPropertyChanged(nameof(FlowchartCountText));
+        OnPropertyChanged(nameof(CurrentFlowchartSummary));
+    }
 
     #endregion
 }

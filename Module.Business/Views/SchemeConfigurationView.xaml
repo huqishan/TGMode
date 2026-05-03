@@ -1,0 +1,385 @@
+<UserControl x:Class="Module.Business.Views.SchemeConfigurationView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:searchBox="clr-namespace:ControlLibrary.Controls.SearchBox.Control;assembly=ControlLibrary"
+             xmlns:vm="clr-namespace:Module.Business.ViewModels"
+             mc:Ignorable="d"
+             HorizontalAlignment="Stretch"
+             VerticalAlignment="Stretch"
+             d:DesignHeight="760"
+             d:DesignWidth="1800">
+    <UserControl.DataContext>
+        <vm:SchemeConfigurationViewModel />
+    </UserControl.DataContext>
+
+    <UserControl.Resources>
+        <Style x:Key="BusinessDataGridHeaderStyle" TargetType="{x:Type DataGridColumnHeader}">
+            <Setter Property="Background" Value="{DynamicResource TabItemSelectedBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource TabItemSelectedBorderBrush}" />
+            <Setter Property="BorderThickness" Value="0,0,0,1" />
+            <Setter Property="Foreground" Value="{DynamicResource AppContentTextBrush}" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Padding" Value="10,8" />
+        </Style>
+
+        <Style x:Key="BusinessDataGridRowStyle" TargetType="{x:Type DataGridRow}">
+            <Setter Property="Background" Value="{DynamicResource TabCardBackgroundBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource AppContentTextBrush}" />
+            <Style.Triggers>
+                <Trigger Property="AlternationIndex" Value="1">
+                    <Setter Property="Background" Value="{DynamicResource TabItemBackgroundBrush}" />
+                </Trigger>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource TabItemHoverBrush}" />
+                </Trigger>
+                <Trigger Property="IsSelected" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource NavSelectedItemBrush}" />
+                    <Setter Property="Foreground" Value="{DynamicResource NavButtonForegroundBrush}" />
+                    <Setter Property="FontWeight" Value="SemiBold" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="BusinessDataGridCellStyle" TargetType="{x:Type DataGridCell}">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="{DynamicResource TabItemBorderBrush}" />
+            <Setter Property="BorderThickness" Value="0,0,0,1" />
+            <Setter Property="Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type DataGridRow}}}" />
+            <Setter Property="Padding" Value="8,0" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type DataGridCell}">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}">
+                            <ContentPresenter Margin="{TemplateBinding Padding}"
+                                              VerticalAlignment="Center" />
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="BusinessCellTextBlockStyle" TargetType="{x:Type TextBlock}">
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+            <Setter Property="Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type DataGridCell}}}" />
+        </Style>
+
+        <Style x:Key="BusinessInputTextBoxStyle" TargetType="{x:Type TextBox}">
+            <Setter Property="MinHeight" Value="38" />
+            <Setter Property="Padding" Value="12,8" />
+            <Setter Property="Background" Value="{DynamicResource TabCardBackgroundBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource TabItemBorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Foreground" Value="{DynamicResource AppContentTextBrush}" />
+            <Setter Property="CaretBrush" Value="{DynamicResource AppContentTextBrush}" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+        </Style>
+
+        <Style x:Key="BusinessComboBoxStyle" TargetType="{x:Type ComboBox}">
+            <Setter Property="MinHeight" Value="38" />
+            <Setter Property="Padding" Value="8,5" />
+            <Setter Property="Background" Value="{DynamicResource TabCardBackgroundBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource TabItemBorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Foreground" Value="{DynamicResource AppContentTextBrush}" />
+        </Style>
+    </UserControl.Resources>
+
+    <Grid HorizontalAlignment="Stretch"
+          VerticalAlignment="Stretch">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="400" />
+            <ColumnDefinition Width="16" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <Border Grid.Column="0" Style="{StaticResource CardBorderStyle}">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+
+                <StackPanel>
+                    <DockPanel LastChildFill="False">
+                        <TextBlock Style="{StaticResource SectionTitleStyle}" Text="方案配置" />
+                        <Border DockPanel.Dock="Right"
+                                Margin="16,0,0,0"
+                                Padding="10,5"
+                                Background="{DynamicResource TabCardBackgroundBrush}"
+                                BorderBrush="{DynamicResource TabItemBorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="999">
+                            <TextBlock FontWeight="SemiBold"
+                                       Foreground="{DynamicResource AppMutedTextBrush}"
+                                       Text="{Binding SchemeCountText}" />
+                        </Border>
+                    </DockPanel>
+                    <TextBlock Margin="0,8,0,0"
+                               Foreground="{DynamicResource AppMutedTextBrush}"
+                               Text="方案按产品名称筛选工步，添加工步时只显示当前产品已配置的工步。"
+                               TextWrapping="Wrap" />
+                </StackPanel>
+
+                <searchBox:SearchBox Grid.Row="1"
+                                     Margin="0,16,0,0"
+                                     PlaceholderText="搜索方案配置..."
+                                     Text="{Binding SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+
+                <UniformGrid Grid.Row="2" Columns="6" Margin="0,16,0,16">
+                    <Button Content="新建"
+                            Command="{Binding NewSchemeCommand}"
+                            Style="{StaticResource PrimaryActionButtonStyle}" />
+                    <Button Content="复制"
+                            Command="{Binding DuplicateSchemeCommand}"
+                            Style="{StaticResource ActionButtonStyle}" />
+                    <Button Content="删除"
+                            Command="{Binding DeleteSchemeCommand}"
+                            Style="{StaticResource ActionButtonStyle}" />
+                    <Button Content="保存"
+                            Command="{Binding SaveSchemesCommand}"
+                            Style="{StaticResource ActionButtonStyle}" />
+                    <Button Content="导入"
+                            Command="{Binding ImportSchemeCommand}"
+                            Style="{StaticResource ActionButtonStyle}" />
+                    <Button Content="导出"
+                            Command="{Binding ExportSchemeCommand}"
+                            Style="{StaticResource ActionButtonStyle}" />
+                </UniformGrid>
+
+                <ListBox Grid.Row="3"
+                         BorderThickness="0"
+                         Background="Transparent"
+                         ItemContainerStyle="{StaticResource ListBoxItemStyle}"
+                         ItemsSource="{Binding SchemesView}"
+                         SelectedItem="{Binding SelectedScheme, Mode=TwoWay}">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <StackPanel>
+                                <DockPanel LastChildFill="False">
+                                    <TextBlock FontSize="15"
+                                               FontWeight="SemiBold"
+                                               Foreground="{DynamicResource AppContentTextBrush}"
+                                               Text="{Binding SchemeName}" />
+                                    <Border DockPanel.Dock="Right"
+                                            Margin="10,0,0,0"
+                                            Padding="8,2"
+                                            Background="{DynamicResource PrimaryButtonBrush}"
+                                            BorderBrush="{DynamicResource TabItemBorderBrush}"
+                                            BorderThickness="1"
+                                            CornerRadius="999">
+                                        <TextBlock FontSize="11"
+                                                   FontWeight="SemiBold"
+                                                   Foreground="{DynamicResource SecondaryButtonForegroundBrush}"
+                                                   Text="{Binding StepCount}" />
+                                    </Border>
+                                </DockPanel>
+                                <TextBlock Margin="0,8,0,0"
+                                           Foreground="{DynamicResource AppMutedTextBrush}"
+                                           Text="{Binding ProductName}"
+                                           TextWrapping="Wrap" />
+                            </StackPanel>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </Grid>
+        </Border>
+
+        <Grid Grid.Column="2"
+              HorizontalAlignment="Stretch"
+              VerticalAlignment="Stretch">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="16" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <Border Grid.Row="0"
+                    MinHeight="130"
+                    HorizontalAlignment="Stretch"
+                    VerticalAlignment="Stretch"
+                    Style="{StaticResource CardBorderStyle}">
+                <StackPanel>
+                    <DockPanel LastChildFill="False">
+                        <TextBlock Style="{StaticResource SectionTitleStyle}" Text="当前方案" />
+                        <Border DockPanel.Dock="Right"
+                                Margin="16,0,0,0"
+                                Padding="12,6"
+                                VerticalAlignment="Top"
+                                Background="{DynamicResource TabCardBackgroundBrush}"
+                                BorderBrush="{DynamicResource TabItemBorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="999">
+                            <TextBlock FontWeight="SemiBold"
+                                       Foreground="{Binding PageStatusBrush}"
+                                       Text="{Binding PageStatusText}" />
+                        </Border>
+                    </DockPanel>
+
+                    <Grid Margin="0,14,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="16" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource FieldLabelStyle}" Text="方案名称" />
+                            <TextBox x:Name="SchemeNameTextBox"
+                                     Style="{StaticResource BusinessInputTextBoxStyle}"
+                                     Text="{Binding SelectedScheme.SchemeName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="2">
+                            <TextBlock Style="{StaticResource FieldLabelStyle}" Text="产品名称" />
+                            <StackPanel Orientation="Horizontal">
+                                <ComboBox ItemsSource="{Binding ProductOptions}" Width="300"
+Height="{Binding ActualHeight, ElementName=SchemeNameTextBox}"
+Style="{StaticResource InputComboBoxStyle}"
+ItemContainerStyle="{StaticResource InputComboBoxItemStyle}"
+SelectedItem="{Binding SelectedScheme.ProductName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                <Button Margin="16,0,0,0"
+        Content="刷新"
+        Command="{Binding RefreshWorkStepsCommand}"
+        Style="{StaticResource ActionButtonStyle}" />
+                            </StackPanel>
+                            
+                        </StackPanel>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <Border Grid.Row="2" Style="{StaticResource CardBorderStyle}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <DockPanel Grid.Row="0" LastChildFill="False">
+                        <TextBlock Style="{StaticResource SectionTitleStyle}" Text="方案工步" />
+                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                            <Border Margin="0,0,12,0"
+                                    Padding="10,5"
+                                    Background="{DynamicResource TabCardBackgroundBrush}"
+                                    BorderBrush="{DynamicResource TabItemBorderBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="999">
+                                <TextBlock FontWeight="SemiBold" Text="{Binding SchemeStepCountText}" VerticalAlignment="Center"/>
+                            </Border>
+                            <Button Content="上移"
+                                    Command="{Binding MoveSchemeStepUpCommand}"
+                                    Style="{StaticResource ActionButtonStyle}" />
+                            <Button Content="下移"
+                                    Command="{Binding MoveSchemeStepDownCommand}"
+                                    Style="{StaticResource ActionButtonStyle}" />
+                            <Button Content="移除"
+                                    Command="{Binding RemoveWorkStepFromSchemeCommand}"
+                                    Style="{StaticResource ActionButtonStyle}" />
+                        </StackPanel>
+                    </DockPanel>
+
+                    <TextBlock Grid.Row="1"
+                               Margin="0,8,0,10"
+                               Foreground="{DynamicResource AppMutedTextBrush}"
+                               Text="左侧为当前方案工步列表，右侧只显示当前产品名称下可添加的工步。"
+                               TextWrapping="Wrap" />
+
+                    <Grid Grid.Row="2">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="1.35*" />
+                            <ColumnDefinition Width="16" />
+                            <ColumnDefinition Width="0.9*" />
+                        </Grid.ColumnDefinitions>
+
+                        <DataGrid Grid.Column="0"
+                                  ItemsSource="{Binding SelectedScheme.Steps}"
+                                  SelectedItem="{Binding SelectedSchemeStep, Mode=TwoWay}"
+                                  AutoGenerateColumns="False"
+                                  CanUserAddRows="False"
+                                  IsReadOnly="True"
+                                  AlternationCount="2"
+                                  HeadersVisibility="Column"
+                                  GridLinesVisibility="Horizontal"
+                                  Background="{DynamicResource TabCardBackgroundBrush}"
+                                  Foreground="{DynamicResource AppContentTextBrush}"
+                                  RowBackground="{DynamicResource TabCardBackgroundBrush}"
+                                  AlternatingRowBackground="{DynamicResource TabItemBackgroundBrush}"
+                                  ColumnHeaderStyle="{StaticResource BusinessDataGridHeaderStyle}"
+                                  RowStyle="{StaticResource BusinessDataGridRowStyle}"
+                                  CellStyle="{StaticResource BusinessDataGridCellStyle}"
+                                  RowHeight="42">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Width="1.1*"
+                                                    Header="工步名称"
+                                                    Binding="{Binding StepName}"
+                                                    ElementStyle="{StaticResource BusinessCellTextBlockStyle}" />
+                                <DataGridTextColumn Width="1.8*"
+                                                    Header="步骤摘要"
+                                                    Binding="{Binding OperationSummary}"
+                                                    ElementStyle="{StaticResource BusinessCellTextBlockStyle}" />
+                            </DataGrid.Columns>
+                        </DataGrid>
+
+                        <Grid Grid.Column="2">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="12" />
+                                <RowDefinition Height="*" />
+                                <RowDefinition Height="12" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+
+                            <DockPanel LastChildFill="False">
+                                <TextBlock Style="{StaticResource SectionTitleStyle}" Text="可添加工步" />
+                                <Border DockPanel.Dock="Right"
+                                        Margin="12,0,0,0"
+                                        Padding="10,5"
+                                        Background="{DynamicResource TabCardBackgroundBrush}"
+                                        BorderBrush="{DynamicResource TabItemBorderBrush}"
+                                        BorderThickness="1"
+                                        CornerRadius="999">
+                                    <TextBlock FontWeight="SemiBold" Text="{Binding AvailableWorkStepCountText}" />
+                                </Border>
+                            </DockPanel>
+
+                            <ListBox Grid.Row="2"
+                                     ItemsSource="{Binding AvailableWorkSteps}"
+                                     SelectedItem="{Binding SelectedAvailableWorkStep, Mode=TwoWay}"
+                                     BorderThickness="0"
+                                     Background="Transparent"
+                                     ItemContainerStyle="{StaticResource ListBoxItemStyle}">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <StackPanel>
+                                            <TextBlock FontSize="15"
+                                                       FontWeight="SemiBold"
+                                                       Foreground="{DynamicResource AppContentTextBrush}"
+                                                       Text="{Binding StepName}" />
+                                            <TextBlock Margin="0,8,0,0"
+                                                       Foreground="{DynamicResource AppMutedTextBrush}"
+                                                       Text="{Binding OperationSummary}"
+                                                       TextWrapping="Wrap" />
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+
+                            <Button Grid.Row="4"
+                                    Content="添加到方案"
+                                    Command="{Binding AddWorkStepToSchemeCommand}"
+                                    Style="{StaticResource PrimaryActionButtonStyle}" />
+                        </Grid>
+                    </Grid>
+                </Grid>
+            </Border>
+        </Grid>
+    </Grid>
+</UserControl>

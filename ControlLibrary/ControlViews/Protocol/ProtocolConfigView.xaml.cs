@@ -13,6 +13,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Data;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 
@@ -59,6 +60,7 @@ namespace ControlLibrary.ControlViews.Protocol
         private string _responsePreviewText = "请填写示例返回数据后查看解析预览。";
         private string _generatedCommandText = string.Empty;
         private string _parsedResultText = string.Empty;
+        private string _searchText = string.Empty;
         private bool _isCommandDrawerOpen;
 
         public ProtocolConfigView()
@@ -91,6 +93,9 @@ namespace ControlLibrary.ControlViews.Protocol
                 SetPageStatus($"已从 {ProtocolConfigDirectory} 读取 {loadedProfileCount} 个协议配置。", SuccessBrush);
             }
 
+            ProfilesView = CollectionViewSource.GetDefaultView(Profiles);
+            ProfilesView.Filter = FilterProfiles;
+
             DataContext = this;
             SelectedProfile = Profiles.FirstOrDefault();
             Loaded += ProtocolConfigView_Loaded;
@@ -100,6 +105,8 @@ namespace ControlLibrary.ControlViews.Protocol
         public event PropertyChangedEventHandler? PropertyChanged;
 
         public ObservableCollection<ProtocolConfigProfile> Profiles { get; } = new ObservableCollection<ProtocolConfigProfile>();
+
+        public ICollectionView ProfilesView { get; private set; } = null!;
 
         public ObservableCollection<ProtocolOption<ProtocolPayloadFormat>> PayloadFormats { get; }
 
@@ -297,6 +304,22 @@ namespace ControlLibrary.ControlViews.Protocol
 
                 _isCommandDrawerOpen = value;
                 OnPropertyChanged();
+            }
+        }
+
+        public string SearchText
+        {
+            get => _searchText;
+            set
+            {
+                if (string.Equals(_searchText, value, StringComparison.Ordinal))
+                {
+                    return;
+                }
+
+                _searchText = value ?? string.Empty;
+                OnPropertyChanged();
+                ProfilesView?.Refresh();
             }
         }
 
@@ -659,7 +682,35 @@ namespace ControlLibrary.ControlViews.Protocol
 
         private void SelectedProfile_PropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
+            if (e.PropertyName is nameof(ProtocolConfigProfile.Name) or nameof(ProtocolConfigProfile.Summary))
+            {
+                ProfilesView.Refresh();
+            }
+
             UpdatePreviews();
+        }
+
+        private bool FilterProfiles(object item)
+        {
+            if (item is not ProtocolConfigProfile profile)
+            {
+                return false;
+            }
+
+            if (string.IsNullOrWhiteSpace(SearchText))
+            {
+                return true;
+            }
+
+            string keyword = SearchText.Trim();
+            return Contains(profile.Name, keyword) ||
+                   Contains(profile.Summary, keyword) ||
+                   profile.Commands.Any(command => Contains(command.Name, keyword));
+        }
+
+        private static bool Contains(string? source, string keyword)
+        {
+            return source?.IndexOf(keyword, StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
         private void UpdatePreviews()
