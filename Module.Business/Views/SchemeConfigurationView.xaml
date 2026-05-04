@@ -15,60 +15,6 @@
     </UserControl.DataContext>
 
     <UserControl.Resources>
-        <Style x:Key="BusinessDataGridHeaderStyle" TargetType="{x:Type DataGridColumnHeader}">
-            <Setter Property="Background" Value="{DynamicResource TabItemSelectedBrush}" />
-            <Setter Property="BorderBrush" Value="{DynamicResource TabItemSelectedBorderBrush}" />
-            <Setter Property="BorderThickness" Value="0,0,0,1" />
-            <Setter Property="Foreground" Value="{DynamicResource AppContentTextBrush}" />
-            <Setter Property="FontSize" Value="13" />
-            <Setter Property="FontWeight" Value="SemiBold" />
-            <Setter Property="Padding" Value="10,8" />
-        </Style>
-
-        <Style x:Key="BusinessDataGridRowStyle" TargetType="{x:Type DataGridRow}">
-            <Setter Property="Background" Value="{DynamicResource TabCardBackgroundBrush}" />
-            <Setter Property="Foreground" Value="{DynamicResource AppContentTextBrush}" />
-            <Style.Triggers>
-                <Trigger Property="AlternationIndex" Value="1">
-                    <Setter Property="Background" Value="{DynamicResource TabItemBackgroundBrush}" />
-                </Trigger>
-                <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="{DynamicResource TabItemHoverBrush}" />
-                </Trigger>
-                <Trigger Property="IsSelected" Value="True">
-                    <Setter Property="Background" Value="{DynamicResource NavSelectedItemBrush}" />
-                    <Setter Property="Foreground" Value="{DynamicResource NavButtonForegroundBrush}" />
-                    <Setter Property="FontWeight" Value="SemiBold" />
-                </Trigger>
-            </Style.Triggers>
-        </Style>
-
-        <Style x:Key="BusinessDataGridCellStyle" TargetType="{x:Type DataGridCell}">
-            <Setter Property="Background" Value="Transparent" />
-            <Setter Property="BorderBrush" Value="{DynamicResource TabItemBorderBrush}" />
-            <Setter Property="BorderThickness" Value="0,0,0,1" />
-            <Setter Property="Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type DataGridRow}}}" />
-            <Setter Property="Padding" Value="8,0" />
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="{x:Type DataGridCell}">
-                        <Border Background="{TemplateBinding Background}"
-                                BorderBrush="{TemplateBinding BorderBrush}"
-                                BorderThickness="{TemplateBinding BorderThickness}">
-                            <ContentPresenter Margin="{TemplateBinding Padding}"
-                                              VerticalAlignment="Center" />
-                        </Border>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
-        <Style x:Key="BusinessCellTextBlockStyle" TargetType="{x:Type TextBlock}">
-            <Setter Property="VerticalAlignment" Value="Center" />
-            <Setter Property="TextTrimming" Value="CharacterEllipsis" />
-            <Setter Property="Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type DataGridCell}}}" />
-        </Style>
-
         <Style x:Key="BusinessInputTextBoxStyle" TargetType="{x:Type TextBox}">
             <Setter Property="MinHeight" Value="38" />
             <Setter Property="Padding" Value="12,8" />
@@ -302,29 +248,15 @@ SelectedItem="{Binding SelectedScheme.ProductName, Mode=TwoWay, UpdateSourceTrig
                         <DataGrid Grid.Column="0"
                                   ItemsSource="{Binding SelectedScheme.Steps}"
                                   SelectedItem="{Binding SelectedSchemeStep, Mode=TwoWay}"
-                                  AutoGenerateColumns="False"
-                                  CanUserAddRows="False"
                                   IsReadOnly="True"
-                                  AlternationCount="2"
-                                  HeadersVisibility="Column"
-                                  GridLinesVisibility="Horizontal"
-                                  Background="{DynamicResource TabCardBackgroundBrush}"
-                                  Foreground="{DynamicResource AppContentTextBrush}"
-                                  RowBackground="{DynamicResource TabCardBackgroundBrush}"
-                                  AlternatingRowBackground="{DynamicResource TabItemBackgroundBrush}"
-                                  ColumnHeaderStyle="{StaticResource BusinessDataGridHeaderStyle}"
-                                  RowStyle="{StaticResource BusinessDataGridRowStyle}"
-                                  CellStyle="{StaticResource BusinessDataGridCellStyle}"
-                                  RowHeight="42">
+                                  Style="{StaticResource ColumnsDataGridStyle}">
                             <DataGrid.Columns>
                                 <DataGridTextColumn Width="1.1*"
                                                     Header="工步名称"
-                                                    Binding="{Binding StepName}"
-                                                    ElementStyle="{StaticResource BusinessCellTextBlockStyle}" />
+                                                    Binding="{Binding StepName}" ElementStyle="{StaticResource CellTextBlockStyle}" EditingElementStyle="{StaticResource CellTextBoxStyle}"/>
                                 <DataGridTextColumn Width="1.8*"
                                                     Header="步骤摘要"
-                                                    Binding="{Binding OperationSummary}"
-                                                    ElementStyle="{StaticResource BusinessCellTextBlockStyle}" />
+                                                    Binding="{Binding OperationSummary}" ElementStyle="{StaticResource CellTextBlockStyle}" EditingElementStyle="{StaticResource CellTextBoxStyle}"/>
                             </DataGrid.Columns>
                         </DataGrid>
 

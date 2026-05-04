@@ -561,7 +561,14 @@ public sealed partial class SchemeConfigurationViewModel
                 {
                     Id = Guid.NewGuid().ToString("N"),
                     OperationObject = operation.OperationObject,
-                    InvokeMethod = operation.InvokeMethod
+                    ProtocolName = operation.ProtocolName,
+                    CommandName = operation.CommandName,
+                    InvokeMethod = operation.InvokeMethod,
+                    ReturnValue = operation.ReturnValue,
+                    DelayMilliseconds = operation.DelayMilliseconds,
+                    Remark = operation.Remark,
+                    Parameters = new ObservableCollection<WorkStepOperationParameter>(
+                        operation.Parameters.Select(parameter => parameter.Clone()))
                 }))
         };
     }
@@ -681,6 +688,8 @@ public sealed partial class SchemeConfigurationViewModel
             WorkStepOperation leftOperation = left.Steps[index];
             WorkStepOperation rightOperation = right.Steps[index];
             if (!TextEquals(leftOperation.OperationObject, rightOperation.OperationObject) ||
+                !TextEquals(leftOperation.ProtocolName, rightOperation.ProtocolName) ||
+                !TextEquals(leftOperation.CommandName, rightOperation.CommandName) ||
                 !TextEquals(leftOperation.InvokeMethod, rightOperation.InvokeMethod))
             {
                 return false;

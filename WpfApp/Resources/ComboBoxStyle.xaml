@@ -116,6 +116,14 @@
         </Setter>
     </Style>
 
+    <Style x:Key="EditableInputComboBoxStyle"
+           TargetType="ComboBox"
+           BasedOn="{StaticResource InputComboBoxStyle}">
+        <Setter Property="IsEditable" Value="True" />
+        <Setter Property="IsTextSearchEnabled" Value="False" />
+        <Setter Property="StaysOpenOnEdit" Value="True" />
+    </Style>
+
     <Style x:Key="InputComboBoxItemStyle" TargetType="ComboBoxItem">
         <Setter Property="Foreground" Value="{DynamicResource AppContentTextBrush}" />
         <Setter Property="Background" Value="{DynamicResource TabCardBackgroundBrush}" />

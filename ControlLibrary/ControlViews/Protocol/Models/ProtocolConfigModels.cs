@@ -1,6 +1,7 @@
 using Shared.Infrastructure.Extensions;
 using System;
 using System.Collections.Generic;
+using System.Collections.Specialized;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
@@ -186,8 +187,43 @@ namespace ControlLibrary.ControlViews.Protocol.Models
         }
     }
 
+    public sealed class ProtocolPlaceholderValue : INotifyPropertyChanged
+    {
+        private string _name = string.Empty;
+        private string _value = string.Empty;
+
+        public event PropertyChangedEventHandler? PropertyChanged;
+
+        public string Name
+        {
+            get => _name;
+            set => SetField(ref _name, value?.Trim() ?? string.Empty);
+        }
+
+        public string Value
+        {
+            get => _value;
+            set => SetField(ref _value, value ?? string.Empty);
+        }
+
+        private bool SetField<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
+        {
+            if (Equals(field, value))
+            {
+                return false;
+            }
+
+            field = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+            return true;
+        }
+    }
+
     public sealed class ProtocolCommandConfig : INotifyPropertyChanged
     {
+        private static readonly Regex PlaceholderRegex =
+            new Regex(@"\{\{\s*(?<name>[^{}\r\n]+?)\s*\}\}", RegexOptions.Compiled);
+
         private string _name = "指令 1";
         private ProtocolPayloadFormat _requestFormat = ProtocolPayloadFormat.Hex;
         private ProtocolPayloadFormat _responseFormat = ProtocolPayloadFormat.Hex;
@@ -198,8 +234,17 @@ namespace ControlLibrary.ControlViews.Protocol.Models
         private string _placeholderValuesText = "Address=01\r\nCommand=03";
         private string _sampleResponseText = "AA 01 03";
         private string _parseRulesText = "FullHex = hex\r\nLength = len";
+        private bool _isSyncingPlaceholders;
+
+        public ProtocolCommandConfig()
+        {
+            PlaceholderValues.CollectionChanged += PlaceholderValues_CollectionChanged;
+            SyncPlaceholderValuesFromTemplate(preferTextValues: true);
+        }
 
         public event PropertyChangedEventHandler? PropertyChanged;
+
+        public ObservableCollection<ProtocolPlaceholderValue> PlaceholderValues { get; } = new ObservableCollection<ProtocolPlaceholderValue>();
 
         public string Name
         {
@@ -240,13 +285,25 @@ namespace ControlLibrary.ControlViews.Protocol.Models
         public string ContentTemplate
         {
             get => _contentTemplate;
-            set => SetField(ref _contentTemplate, value);
+            set
+            {
+                if (SetField(ref _contentTemplate, value ?? string.Empty))
+                {
+                    SyncPlaceholderValuesFromTemplate(preferTextValues: false);
+                }
+            }
         }
 
         public string PlaceholderValuesText
         {
             get => _placeholderValuesText;
-            set => SetField(ref _placeholderValuesText, value);
+            set
+            {
+                if (SetField(ref _placeholderValuesText, value ?? string.Empty))
+                {
+                    SyncPlaceholderValuesFromTemplate(preferTextValues: true);
+                }
+            }
         }
 
         public string SampleResponseText
@@ -298,6 +355,166 @@ namespace ControlLibrary.ControlViews.Protocol.Models
             OnPropertyChanged(propertyName);
             RaiseStateChanged();
             return true;
+        }
+
+        private void SyncPlaceholderValuesFromTemplate(bool preferTextValues)
+        {
+            if (_isSyncingPlaceholders)
+            {
+                return;
+            }
+
+            _isSyncingPlaceholders = true;
+            try
+            {
+                Dictionary<string, string> valuesByName = ParsePlaceholderValuesText(_placeholderValuesText);
+                Dictionary<string, ProtocolPlaceholderValue> existingByName = PlaceholderValues
+                    .Where(item => !string.IsNullOrWhiteSpace(item.Name))
+                    .GroupBy(item => item.Name.Trim(), StringComparer.OrdinalIgnoreCase)
+                    .ToDictionary(group => group.Key, group => group.First(), StringComparer.OrdinalIgnoreCase);
+
+                if (!preferTextValues)
+                {
+                    foreach (ProtocolPlaceholderValue item in PlaceholderValues)
+                    {
+                        if (!string.IsNullOrWhiteSpace(item.Name))
+                        {
+                            valuesByName[item.Name.Trim()] = item.Value;
+                        }
+                    }
+                }
+
+                List<string> placeholderNames = ExtractPlaceholderNames(_contentTemplate).ToList();
+                PlaceholderValues.CollectionChanged -= PlaceholderValues_CollectionChanged;
+                foreach (ProtocolPlaceholderValue item in PlaceholderValues)
+                {
+                    item.PropertyChanged -= PlaceholderValue_PropertyChanged;
+                }
+
+                PlaceholderValues.Clear();
+                foreach (string placeholderName in placeholderNames)
+                {
+                    ProtocolPlaceholderValue item = existingByName.TryGetValue(placeholderName, out ProtocolPlaceholderValue? existing)
+                        ? existing
+                        : new ProtocolPlaceholderValue();
+
+                    item.PropertyChanged -= PlaceholderValue_PropertyChanged;
+                    item.Name = placeholderName;
+                    if (valuesByName.TryGetValue(placeholderName, out string? value))
+                    {
+                        item.Value = value;
+                    }
+
+                    item.PropertyChanged += PlaceholderValue_PropertyChanged;
+                    PlaceholderValues.Add(item);
+                }
+
+                PlaceholderValues.CollectionChanged += PlaceholderValues_CollectionChanged;
+                UpdatePlaceholderValuesTextFromCollection();
+            }
+            finally
+            {
+                _isSyncingPlaceholders = false;
+            }
+
+            OnPropertyChanged(nameof(PlaceholderValues));
+        }
+
+        private void PlaceholderValues_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+        {
+            if (e.NewItems is not null)
+            {
+                foreach (ProtocolPlaceholderValue item in e.NewItems.OfType<ProtocolPlaceholderValue>())
+                {
+                    item.PropertyChanged += PlaceholderValue_PropertyChanged;
+                }
+            }
+
+            if (e.OldItems is not null)
+            {
+                foreach (ProtocolPlaceholderValue item in e.OldItems.OfType<ProtocolPlaceholderValue>())
+                {
+                    item.PropertyChanged -= PlaceholderValue_PropertyChanged;
+                }
+            }
+
+            if (!_isSyncingPlaceholders)
+            {
+                UpdatePlaceholderValuesTextFromCollection();
+            }
+        }
+
+        private void PlaceholderValue_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+        {
+            if (!_isSyncingPlaceholders &&
+                e.PropertyName is nameof(ProtocolPlaceholderValue.Name) or nameof(ProtocolPlaceholderValue.Value))
+            {
+                UpdatePlaceholderValuesTextFromCollection();
+            }
+        }
+
+        private void UpdatePlaceholderValuesTextFromCollection()
+        {
+            string text = string.Join(
+                Environment.NewLine,
+                PlaceholderValues
+                    .Where(item => !string.IsNullOrWhiteSpace(item.Name))
+                    .Select(item => $"{item.Name.Trim()}={item.Value}"));
+
+            if (string.Equals(_placeholderValuesText, text, StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            _placeholderValuesText = text;
+            OnPropertyChanged(nameof(PlaceholderValuesText));
+            RaiseStateChanged();
+        }
+
+        private static IEnumerable<string> ExtractPlaceholderNames(string contentTemplate)
+        {
+            HashSet<string> seenNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (Match match in PlaceholderRegex.Matches(contentTemplate ?? string.Empty))
+            {
+                string placeholderName = match.Groups["name"].Value.Trim();
+                if (!string.IsNullOrWhiteSpace(placeholderName) && seenNames.Add(placeholderName))
+                {
+                    yield return placeholderName;
+                }
+            }
+        }
+
+        private static Dictionary<string, string> ParsePlaceholderValuesText(string placeholderValuesText)
+        {
+            Dictionary<string, string> values = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            string[] lines = (placeholderValuesText ?? string.Empty)
+                .Split(new[] { "\r\n", "\n", "\r" }, StringSplitOptions.None);
+
+            foreach (string rawLine in lines)
+            {
+                string line = rawLine.Trim();
+                if (string.IsNullOrWhiteSpace(line) ||
+                    line.StartsWith("#", StringComparison.Ordinal) ||
+                    line.StartsWith("//", StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
+                int equalsIndex = line.IndexOf('=');
+                if (equalsIndex <= 0)
+                {
+                    continue;
+                }
+
+                string key = line[..equalsIndex].Trim();
+                string value = line[(equalsIndex + 1)..].Trim();
+                if (!string.IsNullOrWhiteSpace(key))
+                {
+                    values[key] = value;
+                }
+            }
+
+            return values;
         }
 
         private void RaiseStateChanged()
@@ -443,6 +660,8 @@ namespace ControlLibrary.ControlViews.Protocol.Models
             }
         }
 
+        public ObservableCollection<ProtocolPlaceholderValue> PlaceholderValues => CurrentCommand.PlaceholderValues;
+
         public string SampleResponseText
         {
             get => CurrentCommand.SampleResponseText;
@@ -575,6 +794,7 @@ namespace ControlLibrary.ControlViews.Protocol.Models
             OnPropertyChanged(nameof(CrcMode));
             OnPropertyChanged(nameof(ContentTemplate));
             OnPropertyChanged(nameof(PlaceholderValuesText));
+            OnPropertyChanged(nameof(PlaceholderValues));
             OnPropertyChanged(nameof(SampleResponseText));
             OnPropertyChanged(nameof(ParseRulesText));
             OnPropertyChanged(nameof(RequestFormatDisplayName));

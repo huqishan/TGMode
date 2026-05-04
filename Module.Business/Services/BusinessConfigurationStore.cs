@@ -290,16 +290,73 @@ public static class BusinessConfigurationStore
 
     private static WorkStepOperation NormalizeOperation(WorkStepOperation operation)
     {
+        string operationObject = ResolveOperationObject(operation);
+        bool isSystemOperation = IsSystemOperationObject(operationObject);
+        string protocolName = isSystemOperation
+            ? string.Empty
+            : operation.ProtocolName?.Trim() ?? string.Empty;
+        string commandName = isSystemOperation
+            ? string.Empty
+            : (string.IsNullOrWhiteSpace(operation.CommandName)
+                ? operation.InvokeMethod?.Trim() ?? string.Empty
+                : operation.CommandName.Trim());
+        string invokeMethod = isSystemOperation
+            ? (string.IsNullOrWhiteSpace(operation.InvokeMethod) ? "等待" : operation.InvokeMethod.Trim())
+            : (string.IsNullOrWhiteSpace(commandName) ? "指令" : commandName);
+
         return new WorkStepOperation
         {
             Id = string.IsNullOrWhiteSpace(operation.Id) ? Guid.NewGuid().ToString("N") : operation.Id.Trim(),
-            OperationObject = string.IsNullOrWhiteSpace(operation.OperationObject)
-                ? "操作对象"
-                : operation.OperationObject.Trim(),
-            InvokeMethod = string.IsNullOrWhiteSpace(operation.InvokeMethod)
-                ? "调用方法"
-                : operation.InvokeMethod.Trim()
+            OperationType = isSystemOperation ? "系统" : "设备",
+            OperationObject = operationObject,
+            ProtocolName = protocolName,
+            CommandName = commandName,
+            InvokeMethod = invokeMethod,
+            ReturnValue = operation.ReturnValue?.Trim() ?? string.Empty,
+            DelayMilliseconds = Math.Max(0, operation.DelayMilliseconds),
+            Remark = operation.Remark?.Trim() ?? string.Empty,
+            Parameters = new ObservableCollection<WorkStepOperationParameter>(
+                operation.Parameters
+                    .Where(parameter => parameter is not null)
+                    .Select((parameter, index) => NormalizeOperationParameter(parameter, index))
+                    .OrderBy(parameter => parameter.Sequence))
         };
+    }
+
+    private static string ResolveOperationObject(WorkStepOperation operation)
+    {
+        if (IsLegacySystemOperationType(operation.OperationType) ||
+            IsSystemOperationObject(operation.OperationObject))
+        {
+            return "System";
+        }
+
+        return string.IsNullOrWhiteSpace(operation.OperationObject)
+            ? "System"
+            : operation.OperationObject.Trim();
+    }
+
+    private static WorkStepOperationParameter NormalizeOperationParameter(WorkStepOperationParameter parameter, int index)
+    {
+        return new WorkStepOperationParameter
+        {
+            Id = string.IsNullOrWhiteSpace(parameter.Id) ? Guid.NewGuid().ToString("N") : parameter.Id.Trim(),
+            Sequence = parameter.Sequence <= 0 ? index + 1 : parameter.Sequence,
+            Name = string.IsNullOrWhiteSpace(parameter.Name) ? "设置值" : parameter.Name.Trim(),
+            Value = parameter.Value?.Trim() ?? string.Empty,
+            Remark = parameter.Remark?.Trim() ?? string.Empty
+        };
+    }
+
+    private static bool IsLegacySystemOperationType(string? operationType)
+    {
+        return string.Equals(operationType?.Trim(), "系统", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsSystemOperationObject(string? operationObject)
+    {
+        return string.Equals(operationObject?.Trim(), "System", StringComparison.OrdinalIgnoreCase) ||
+               string.Equals(operationObject?.Trim(), "系统", StringComparison.OrdinalIgnoreCase);
     }
 
     private static void NormalizeSchemes(

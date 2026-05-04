@@ -15,54 +15,6 @@
     </UserControl.DataContext>
 
     <UserControl.Resources>
-        <Style x:Key="BusinessDataGridHeaderStyle" TargetType="{x:Type DataGridColumnHeader}">
-            <Setter Property="Background" Value="{DynamicResource TabItemSelectedBrush}" />
-            <Setter Property="BorderBrush" Value="{DynamicResource TabItemSelectedBorderBrush}" />
-            <Setter Property="BorderThickness" Value="0,0,0,1" />
-            <Setter Property="Foreground" Value="{DynamicResource AppContentTextBrush}" />
-            <Setter Property="FontSize" Value="13" />
-            <Setter Property="FontWeight" Value="SemiBold" />
-            <Setter Property="Padding" Value="10,8" />
-        </Style>
-
-        <Style x:Key="BusinessDataGridRowStyle" TargetType="{x:Type DataGridRow}">
-            <Setter Property="Background" Value="{DynamicResource TabCardBackgroundBrush}" />
-            <Setter Property="Foreground" Value="{DynamicResource AppContentTextBrush}" />
-            <Style.Triggers>
-                <Trigger Property="AlternationIndex" Value="1">
-                    <Setter Property="Background" Value="{DynamicResource TabItemBackgroundBrush}" />
-                </Trigger>
-                <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="{DynamicResource TabItemHoverBrush}" />
-                </Trigger>
-                <Trigger Property="IsSelected" Value="True">
-                    <Setter Property="Background" Value="{DynamicResource NavSelectedItemBrush}" />
-                    <Setter Property="Foreground" Value="{DynamicResource NavButtonForegroundBrush}" />
-                    <Setter Property="FontWeight" Value="SemiBold" />
-                </Trigger>
-            </Style.Triggers>
-        </Style>
-
-        <Style x:Key="BusinessDataGridCellStyle" TargetType="{x:Type DataGridCell}">
-            <Setter Property="Background" Value="Transparent" />
-            <Setter Property="BorderBrush" Value="{DynamicResource TabItemBorderBrush}" />
-            <Setter Property="BorderThickness" Value="0,0,0,1" />
-            <Setter Property="Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type DataGridRow}}}" />
-            <Setter Property="Padding" Value="8,0" />
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="{x:Type DataGridCell}">
-                        <Border Background="{TemplateBinding Background}"
-                                BorderBrush="{TemplateBinding BorderBrush}"
-                                BorderThickness="{TemplateBinding BorderThickness}">
-                            <ContentPresenter Margin="{TemplateBinding Padding}"
-                                              VerticalAlignment="Center" />
-                        </Border>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
         <Style x:Key="BusinessInputTextBoxStyle" TargetType="{x:Type TextBox}">
             <Setter Property="MinHeight" Value="38" />
             <Setter Property="Padding" Value="12,8" />
@@ -187,7 +139,7 @@
                                                    Text="{Binding OperationCount}" />
                                     </Border>
                                 </DockPanel>
-                                <TextBlock Margin="0,8,0,0"
+                                <TextBlock Margin="0,8,0,0" x:Name="remarks"
                                            Foreground="{DynamicResource AppMutedTextBrush}"
                                            Text="{Binding ProductName}"
                                            TextWrapping="Wrap" />
@@ -231,10 +183,6 @@
 
                     <Grid Margin="0,14,0,0">
                         <StackPanel>
-                            <!--
-                            <TextBlock Style="{StaticResource FieldLabelStyle}" Text="产品名称" />
-                            <TextBlock Style="{StaticResource FieldLabelStyle}" Text="工步名称" />
-                            -->
                             <TextBlock Style="{StaticResource FieldLabelStyle}" Text="工步名称" />
                             <TextBox Style="{StaticResource BusinessInputTextBoxStyle}"
                                      Text="{Binding SelectedWorkStep.StepName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
@@ -277,31 +225,276 @@
                                Text="选择工步后，在这里维护该工步的操作对象与调用方法。"
                                TextWrapping="Wrap" />
 
-                    <DataGrid Grid.Row="2"
-                              ItemsSource="{Binding SelectedWorkStep.Steps}"
-                              SelectedItem="{Binding SelectedOperation, Mode=TwoWay}"
-                              AutoGenerateColumns="False"
-                              CanUserAddRows="False"
-                              AlternationCount="2"
-                              HeadersVisibility="Column"
-                              GridLinesVisibility="Horizontal"
-                              Background="{DynamicResource TabCardBackgroundBrush}"
-                              Foreground="{DynamicResource AppContentTextBrush}"
-                              RowBackground="{DynamicResource TabCardBackgroundBrush}"
-                              AlternatingRowBackground="{DynamicResource TabItemBackgroundBrush}"
-                              ColumnHeaderStyle="{StaticResource BusinessDataGridHeaderStyle}"
-                              RowStyle="{StaticResource BusinessDataGridRowStyle}"
-                              CellStyle="{StaticResource BusinessDataGridCellStyle}"
-                              RowHeight="42">
-                        <DataGrid.Columns>
-                            <DataGridTextColumn Width="*"
-                                                Header="操作对象"
-                                                Binding="{Binding OperationObject, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                            <DataGridTextColumn Width="*"
-                                                Header="调用方法"
-                                                Binding="{Binding InvokeMethod, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                        </DataGrid.Columns>
-                    </DataGrid>
+                    <Grid Grid.Row="2">
+                        <DataGrid x:Name="OperationsDataGrid"
+                                  ItemsSource="{Binding SelectedWorkStep.Steps}"
+                                  SelectedItem="{Binding SelectedOperation, Mode=TwoWay}"
+                                  AllowDrop="True"
+                                  PreviewMouseLeftButtonDown="OperationsDataGrid_PreviewMouseLeftButtonDown"
+                                  PreviewMouseMove="OperationsDataGrid_PreviewMouseMove"
+                                  DragOver="OperationsDataGrid_DragOver"
+                                  DragLeave="OperationsDataGrid_DragLeave"
+                                  Drop="OperationsDataGrid_Drop"
+                                  MouseDoubleClick="OperationsDataGrid_MouseDoubleClick"
+                                  Style="{StaticResource ColumnsDataGridStyle}">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Width="*"
+                                                    Header="操作对象"
+                                                    IsReadOnly="True"
+                                                    ElementStyle="{StaticResource CellTextBlockStyle}"
+                                                    Binding="{Binding OperationObject, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                <DataGridTextColumn Width="*"
+                                                    Header="协议"
+                                                    IsReadOnly="True"
+                                                    ElementStyle="{StaticResource CellTextBlockStyle}"
+                                                    Binding="{Binding ProtocolName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                <DataGridTextColumn Width="*"
+                                                    Header="调用方法"
+                                                    IsReadOnly="True"
+                                                    ElementStyle="{StaticResource CellTextBlockStyle}"
+                                                    Binding="{Binding InvokeMethod, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                <DataGridTextColumn Width="*"
+                                                    Header="返回值"
+                                                    IsReadOnly="True"
+                                                    ElementStyle="{StaticResource CellTextBlockStyle}"
+                                                    Binding="{Binding ReturnValue, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                <DataGridTextColumn Width="96"
+                                                    Header="延时(ms)"
+                                                    ElementStyle="{StaticResource CellTextBlockStyle}"
+                                                    EditingElementStyle="{StaticResource CellTextBoxStyle}"
+                                                    Binding="{Binding DelayMilliseconds, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                <DataGridTextColumn Width="1.4*"
+                                                    Header="描述"
+                                                    ElementStyle="{StaticResource CellTextBlockStyle}"
+                                                    EditingElementStyle="{StaticResource CellTextBoxStyle}"
+                                                    Binding="{Binding Remark, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            </DataGrid.Columns>
+                        </DataGrid>
+
+                        <Canvas x:Name="OperationDropIndicatorCanvas"
+                                HorizontalAlignment="Stretch"
+                                VerticalAlignment="Stretch"
+                                IsHitTestVisible="False">
+                            <Border x:Name="OperationDropIndicator"
+                                    Height="3"
+                                    CornerRadius="2"
+                                    Visibility="Collapsed"
+                                    Background="{DynamicResource PrimaryButtonBrush}" />
+                        </Canvas>
+                    </Grid>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <Grid x:Name="OperationDrawerHost"
+              Grid.ColumnSpan="3"
+              Panel.ZIndex="30"
+              Opacity="0"
+              IsHitTestVisible="False">
+            <Border Background="#3A000000"
+                    MouseLeftButtonDown="OperationDrawerBackdrop_MouseLeftButtonDown" />
+
+            <Border x:Name="OperationDrawerSheet"
+                    Width="800"
+                    HorizontalAlignment="Right"
+                    Style="{StaticResource DrawerBorderStyle}">
+                <Border.RenderTransform>
+                    <TranslateTransform x:Name="OperationDrawerTranslateTransform" X="56" />
+                </Border.RenderTransform>
+
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <DockPanel LastChildFill="False">
+                        <StackPanel DockPanel.Dock="Left">
+                            <TextBlock Style="{StaticResource SectionTitleStyle}"
+                                       Text="{Binding OperationDrawerTitle}" />
+                            <TextBlock Margin="0,8,0,0"
+                                       Foreground="{DynamicResource AppMutedTextBrush}"
+                                       Text="{Binding SelectedWorkStep.StepName}" />
+                        </StackPanel>
+                        <StackPanel DockPanel.Dock="Right"
+             HorizontalAlignment="Right"
+             Orientation="Horizontal">
+                            <Button Content="取消"
+             Command="{Binding CloseOperationDrawerCommand}"
+             Style="{StaticResource ActionButtonStyle}" />
+                            <Button Content="保存"
+             Command="{Binding SaveOperationDrawerCommand}"
+             Style="{StaticResource PrimaryActionButtonStyle}" />
+                        </StackPanel>
+                    </DockPanel>
+
+                    <ScrollViewer Grid.Row="1"
+                                  Margin="0,18,0,18"
+                                  VerticalScrollBarVisibility="Auto">
+                        <StackPanel Margin="0,0,16,0">
+                            <TextBlock Style="{StaticResource FieldLabelStyle}" Text="操作对象" />
+                            <DockPanel LastChildFill="True">
+                                <Button DockPanel.Dock="Right"
+                                        Margin="12,0,0,0"
+                                        Content="刷新"
+                                        Command="{Binding RefreshOperationObjectsCommand}"
+                                        Style="{StaticResource ActionButtonStyle}" />
+                                <ComboBox Style="{StaticResource InputComboBoxStyle}"
+                                          ItemContainerStyle="{StaticResource InputComboBoxItemStyle}"
+                                          ItemsSource="{Binding OperationObjectOptions}"
+                                          SelectedItem="{Binding EditingOperationObject, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            </DockPanel>
+
+                            <Grid>
+                                <Grid.Style>
+                                    <Style TargetType="{x:Type Grid}">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsProtocolCommandSelectionVisible}" Value="True">
+                                                <Setter Property="Visibility" Value="Visible" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Grid.Style>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="12" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="协议" />
+                                    <ComboBox Style="{StaticResource InputComboBoxStyle}"
+                                              ItemContainerStyle="{StaticResource InputComboBoxItemStyle}"
+                                              ItemsSource="{Binding ProtocolOptions}"
+                                              SelectedItem="{Binding EditingProtocolName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                </StackPanel>
+
+                                <StackPanel Grid.Column="2">
+                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="指令" />
+                                    <ComboBox Style="{StaticResource InputComboBoxStyle}"
+                                              ItemContainerStyle="{StaticResource InputComboBoxItemStyle}"
+                                              ItemsSource="{Binding CommandOptions}"
+                                              SelectedItem="{Binding EditingCommandName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                </StackPanel>
+                            </Grid>
+
+                            <StackPanel>
+                                <StackPanel.Style>
+                                    <Style TargetType="{x:Type StackPanel}">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsSystemOperationSelected}" Value="True">
+                                                <Setter Property="Visibility" Value="Visible" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </StackPanel.Style>
+
+                                <TextBlock Style="{StaticResource FieldLabelStyle}" Text="调用方法" />
+                                <ComboBox Style="{StaticResource InputComboBoxStyle}"
+                                          ItemContainerStyle="{StaticResource InputComboBoxItemStyle}"
+                                          ItemsSource="{Binding InvokeMethodOptions}"
+                                          SelectedItem="{Binding EditingInvokeMethod, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            </StackPanel>
+
+                            <DockPanel Margin="0,14,0,8" LastChildFill="False">
+                                <TextBlock DockPanel.Dock="Left"
+                                           Style="{StaticResource FieldLabelStyle}"
+                                           Text="调用方法参数" />
+                                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                                    <Button Content="新增参数"
+                                            Command="{Binding AddInvokeParameterCommand}"
+                                            Style="{StaticResource ActionButtonStyle}" />
+                                    <Button Content="删除参数"
+                                            Command="{Binding DeleteInvokeParameterCommand}"
+                                            Style="{StaticResource ActionButtonStyle}" />
+                                </StackPanel>
+                            </DockPanel>
+
+                            <DataGrid Height="300"
+                                      ItemsSource="{Binding EditingInvokeParameters}" HorizontalScrollBarVisibility="Disabled"
+                                      SelectedItem="{Binding SelectedEditingInvokeParameter, Mode=TwoWay}"
+                                      Style="{StaticResource ColumnsDataGridStyle}">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Width="72"
+                                                        Header="序号"
+                                                        ElementStyle="{StaticResource CellTextBlockStyle}"
+                                                        EditingElementStyle="{StaticResource CellTextBoxStyle}"
+                                                        Binding="{Binding Sequence, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                                    <DataGridTemplateColumn Width="1.1*" Header="类型">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Style="{StaticResource CellTextBlockStyle}"
+                                                           Text="{Binding Type}" />
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                        <DataGridTemplateColumn.CellEditingTemplate>
+                                            <DataTemplate>
+                                                <ComboBox Style="{StaticResource InputComboBoxStyle}"
+                                                          ItemContainerStyle="{StaticResource InputComboBoxItemStyle}"
+                                                          ItemsSource="{Binding DataContext.ParameterTypeOptions, RelativeSource={RelativeSource AncestorType={x:Type DataGrid}}}"
+                                                          SelectedItem="{Binding Type, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellEditingTemplate>
+                                    </DataGridTemplateColumn>
+                                    <DataGridTemplateColumn Width="1.3*" Header="参数值">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Style="{StaticResource CellTextBlockStyle}"
+                                                           Text="{Binding Value}" />
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                        <DataGridTemplateColumn.CellEditingTemplate>
+                                            <DataTemplate>
+                                                <Grid>
+                                                    <TextBox x:Name="ParameterValueTextBox"
+                                                             Style="{StaticResource CellTextBoxStyle}"
+                                                             Text="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                                    <ComboBox x:Name="ParameterValueComboBox"
+                                                              Style="{StaticResource EditableInputComboBoxStyle}"
+                                                              ItemContainerStyle="{StaticResource InputComboBoxItemStyle}"
+                                                              ItemsSource="{Binding ValueOptions}"
+                                                              Text="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                              Visibility="Collapsed" />
+                                                </Grid>
+                                                <DataTemplate.Triggers>
+                                                    <DataTrigger Binding="{Binding UsesComboValueEditor}" Value="True">
+                                                        <Setter TargetName="ParameterValueTextBox" Property="Visibility" Value="Collapsed" />
+                                                        <Setter TargetName="ParameterValueComboBox" Property="Visibility" Value="Visible" />
+                                                    </DataTrigger>
+                                                </DataTemplate.Triggers>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellEditingTemplate>
+                                    </DataGridTemplateColumn>
+                                    <DataGridTextColumn Width="1.4*"
+                                                        Header="描述" IsReadOnly="True"
+                                                        ElementStyle="{StaticResource CellTextBlockStyle}"
+                                                        EditingElementStyle="{StaticResource CellTextBoxStyle}"
+                                                        Binding="{Binding Description, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                </DataGrid.Columns>
+                            </DataGrid>
+
+                            <TextBlock Style="{StaticResource FieldLabelStyle}" Text="返回值" />
+                            <TextBox Style="{StaticResource BusinessInputTextBoxStyle}"
+                                     Text="{Binding EditingReturnValue, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+
+                            <TextBlock Style="{StaticResource FieldLabelStyle}" Text="延时(ms)" />
+                            <TextBox Style="{StaticResource BusinessInputTextBoxStyle}"
+                                     Text="{Binding EditingDelayMillisecondsText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+
+                            <TextBlock Style="{StaticResource FieldLabelStyle}" Text="描述" />
+                            <TextBox Height="50"
+                                     Style="{StaticResource BusinessInputTextBoxStyle}"
+                                     AcceptsReturn="True"
+                                     TextWrapping="Wrap"
+                                     VerticalContentAlignment="Top"
+                                     Text="{Binding EditingRemark, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                        </StackPanel>
+                    </ScrollViewer>
+
+                   
                 </Grid>
             </Border>
         </Grid>

@@ -1,5 +1,6 @@
 using Module.Business.Models;
 using Module.Business.Services;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
@@ -33,11 +34,24 @@ public sealed partial class WorkStepConfigurationViewModel
     private BusinessConfigurationCatalog _catalog = BusinessConfigurationStore.LoadCatalog();
     private WorkStepProfile? _selectedWorkStep;
     private WorkStepOperation? _selectedOperation;
+    private WorkStepOperation? _drawerOperation;
+    private WorkStepOperationParameter? _selectedEditingInvokeParameter;
     private string _selectedProductName = string.Empty;
     private string _searchText = string.Empty;
     private string _pageStatusText = "等待编辑";
+    private string _editingOperationObject = string.Empty;
+    private string _editingProtocolName = string.Empty;
+    private string _editingCommandName = string.Empty;
+    private string _editingInvokeMethod = string.Empty;
+    private string _editingReturnValue = string.Empty;
+    private string _editingDelayMillisecondsText = "0";
+    private string _editingRemark = string.Empty;
     private Brush _pageStatusBrush = NeutralBrush;
     private DateTime _lastCreateOrCopyCommandAt = DateTime.MinValue;
+    private bool _isOperationDrawerOpen;
+    private bool _isNewOperationInDrawer;
+    private bool _isSortingInvokeParameters;
+    private readonly HashSet<WorkStepOperationParameter> _trackedEditingInvokeParameters = new();
 
     #endregion
 
@@ -48,6 +62,26 @@ public sealed partial class WorkStepConfigurationViewModel
     public ICollectionView WorkStepsView { get; private set; } = null!;
 
     public ObservableCollection<string> ProductOptions { get; } = new();
+
+    public ObservableCollection<string> OperationObjectOptions { get; } = new();
+
+    public ObservableCollection<string> ProtocolOptions { get; } = new();
+
+    public ObservableCollection<string> CommandOptions { get; } = new();
+
+    public ObservableCollection<string> InvokeMethodOptions { get; } = new();
+
+    public ObservableCollection<string> ParameterTypeOptions { get; } = new()
+    {
+        "设置值",
+        "工步值",
+        "返回值",
+        "全局值",
+        "系统值",
+        "产品值"
+    };
+
+    public ObservableCollection<WorkStepOperationParameter> EditingInvokeParameters { get; } = new();
 
     #endregion
 
@@ -65,6 +99,7 @@ public sealed partial class WorkStepConfigurationViewModel
 
             WorkStepsView.Refresh();
             SelectFirstVisibleWorkStep();
+            RefreshParameterValueOptions();
         }
     }
 
@@ -108,6 +143,7 @@ public sealed partial class WorkStepConfigurationViewModel
             SelectedOperation = _selectedWorkStep?.Steps.FirstOrDefault();
             OnPropertyChanged();
             OnPropertyChanged(nameof(OperationCountText));
+            RefreshParameterValueOptions();
             RaiseCommandStatesChanged();
         }
     }
@@ -118,6 +154,108 @@ public sealed partial class WorkStepConfigurationViewModel
         set
         {
             if (SetField(ref _selectedOperation, value))
+            {
+                RaiseCommandStatesChanged();
+            }
+        }
+    }
+
+    public bool IsOperationDrawerOpen
+    {
+        get => _isOperationDrawerOpen;
+        private set
+        {
+            if (SetField(ref _isOperationDrawerOpen, value))
+            {
+                OnPropertyChanged(nameof(OperationDrawerTitle));
+                RaiseCommandStatesChanged();
+            }
+        }
+    }
+
+    public string OperationDrawerTitle => _isNewOperationInDrawer ? "新建步骤" : "编辑步骤";
+
+    public string EditingOperationObject
+    {
+        get => _editingOperationObject;
+        set
+        {
+            if (SetField(ref _editingOperationObject, value ?? string.Empty))
+            {
+                OnPropertyChanged(nameof(IsSystemOperationSelected));
+                OnPropertyChanged(nameof(IsProtocolCommandSelectionVisible));
+                RefreshProtocolOptions(updateStatus: false);
+                RefreshInvokeMethodOptions(updateStatus: false);
+            }
+        }
+    }
+
+    public bool IsSystemOperationSelected => IsSystemOperationObject(EditingOperationObject);
+
+    public bool IsProtocolCommandSelectionVisible => !IsSystemOperationSelected;
+
+    public string EditingProtocolName
+    {
+        get => _editingProtocolName;
+        set
+        {
+            if (SetField(ref _editingProtocolName, value ?? string.Empty))
+            {
+                RefreshCommandOptions(updateStatus: false);
+            }
+        }
+    }
+
+    public string EditingCommandName
+    {
+        get => _editingCommandName;
+        set
+        {
+            if (SetField(ref _editingCommandName, value ?? string.Empty) &&
+                !IsSystemOperationSelected)
+            {
+                EditingInvokeMethod = _editingCommandName;
+                RefreshInvokeParametersFromSelectedCommand();
+            }
+        }
+    }
+
+    public string EditingInvokeMethod
+    {
+        get => _editingInvokeMethod;
+        set => SetField(ref _editingInvokeMethod, value ?? string.Empty);
+    }
+
+    public string EditingReturnValue
+    {
+        get => _editingReturnValue;
+        set
+        {
+            if (SetField(ref _editingReturnValue, value ?? string.Empty))
+            {
+                RefreshParameterValueOptions();
+            }
+        }
+    }
+
+    public string EditingDelayMillisecondsText
+    {
+        get => _editingDelayMillisecondsText;
+        set => SetField(ref _editingDelayMillisecondsText, value ?? string.Empty);
+    }
+
+    public string EditingRemark
+    {
+        get => _editingRemark;
+        set => SetField(ref _editingRemark, value ?? string.Empty);
+    }
+
+    public WorkStepOperationParameter? SelectedEditingInvokeParameter
+    {
+        get => _selectedEditingInvokeParameter;
+        set
+        {
+            if (SetField(ref _selectedEditingInvokeParameter, value))
             {
                 RaiseCommandStatesChanged();
             }
@@ -163,6 +301,16 @@ public sealed partial class WorkStepConfigurationViewModel
     public ICommand AddOperationCommand { get; private set; } = null!;
 
     public ICommand DeleteOperationCommand { get; private set; } = null!;
+
+    public ICommand SaveOperationDrawerCommand { get; private set; } = null!;
+
+    public ICommand CloseOperationDrawerCommand { get; private set; } = null!;
+
+    public ICommand RefreshOperationObjectsCommand { get; private set; } = null!;
+
+    public ICommand AddInvokeParameterCommand { get; private set; } = null!;
+
+    public ICommand DeleteInvokeParameterCommand { get; private set; } = null!;
 
     #endregion
 

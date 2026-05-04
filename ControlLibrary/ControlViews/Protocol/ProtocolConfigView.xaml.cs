@@ -330,7 +330,7 @@ namespace ControlLibrary.ControlViews.Protocol
             "发送帧预览会按当前 CRC 方式自动在末尾追加校验字节，便于直接检查最终报文。";
 
         public string PlaceholderHelpText =>
-            "模板中使用 {{Placeholder}} 形式占位；占位符值区域每行一个 Key=Value。可用注释前缀：# 或 //。";
+            "模板中使用 {{Placeholder}} 形式占位；占位符值会从模板自动提取，可在表格中填写对应值。";
 
         public string ParseRuleHelpText =>
             "规则格式：Field = Expression。支持 hex、ascii、utf8、text、len、hex(start,length)、ascii(start,length)、utf8(start,length)、u8(index)、u16le(index)、u16be(index)、u32le(index)、u32be(index)，其中 length=-1 表示截取到末尾。";

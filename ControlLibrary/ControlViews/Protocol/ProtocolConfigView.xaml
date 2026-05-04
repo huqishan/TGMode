@@ -333,13 +333,22 @@ CornerRadius="999">
                                                 </Grid.ColumnDefinitions>
 
                                                 <TextBlock Style="{StaticResource FieldLabelStyle}" Text="占位符值" />
-                                                <TextBox Grid.Row="1"
-                                                         Style="{StaticResource InputTextBoxStyle}"
-                                                         AcceptsReturn="True"
-                                                         FontFamily="Consolas"
-                                                         VerticalAlignment="Stretch"
-                                                         VerticalScrollBarVisibility="Auto"
-                                                         Text="{Binding SelectedProfile.PlaceholderValuesText, UpdateSourceTrigger=PropertyChanged}" />
+                                                <DataGrid Grid.Row="1"
+                                                          ItemsSource="{Binding SelectedProfile.PlaceholderValues}"
+                                                          Style="{StaticResource ColumnsDataGridStyle}">
+                                                    <DataGrid.Columns>
+                                                        <DataGridTextColumn Width="1.1*"
+                                                                            Header="占位符"
+                                                                            IsReadOnly="True"
+                                                                            ElementStyle="{StaticResource CellTextBlockStyle}"
+                                                                            Binding="{Binding Name}" />
+                                                        <DataGridTextColumn Width="1.2*"
+                                                                            Header="值"
+                                                                            ElementStyle="{StaticResource CellTextBlockStyle}"
+                                                                            EditingElementStyle="{StaticResource CellTextBoxStyle}"
+                                                                            Binding="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                                    </DataGrid.Columns>
+                                                </DataGrid>
 
                                                 <Button Grid.Column="1"
                                                         Grid.Row="1" Grid.RowSpan="2"

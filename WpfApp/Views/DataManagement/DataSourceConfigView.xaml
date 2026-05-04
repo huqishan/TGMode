@@ -8,83 +8,6 @@
              VerticalAlignment="Stretch"
              d:DesignHeight="760"
              d:DesignWidth="1800">
-    <UserControl.Resources>
-        <Style x:Key="DataGridHeaderStyle" TargetType="{x:Type DataGridColumnHeader}">
-            <Setter Property="Background" Value="{DynamicResource TabItemSelectedBrush}" />
-            <Setter Property="BorderBrush" Value="{DynamicResource TabItemSelectedBorderBrush}" />
-            <Setter Property="BorderThickness" Value="0,0,0,1" />
-            <Setter Property="Foreground" Value="{DynamicResource AppContentTextBrush}" />
-            <Setter Property="FontSize" Value="13" />
-            <Setter Property="FontWeight" Value="SemiBold" />
-            <Setter Property="Padding" Value="10,8" />
-        </Style>
-
-        <Style x:Key="DataGridRowStyle" TargetType="{x:Type DataGridRow}">
-            <Setter Property="Background" Value="{DynamicResource TabCardBackgroundBrush}" />
-            <Setter Property="Foreground" Value="{DynamicResource AppContentTextBrush}" />
-            <Setter Property="BorderBrush" Value="Transparent" />
-            <Setter Property="BorderThickness" Value="0" />
-            <Style.Triggers>
-                <Trigger Property="AlternationIndex" Value="1">
-                    <Setter Property="Background" Value="{DynamicResource TabItemBackgroundBrush}" />
-                </Trigger>
-                <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="{DynamicResource TabItemHoverBrush}" />
-                </Trigger>
-                <Trigger Property="IsSelected" Value="True">
-                    <Setter Property="Background" Value="{DynamicResource NavSelectedItemBrush}" />
-                    <Setter Property="Foreground" Value="{DynamicResource NavButtonForegroundBrush}" />
-                    <Setter Property="BorderBrush" Value="{DynamicResource NavSelectedBorderBrush}" />
-                    <Setter Property="BorderThickness" Value="1" />
-                    <Setter Property="FontWeight" Value="SemiBold" />
-                </Trigger>
-            </Style.Triggers>
-        </Style>
-
-        <Style x:Key="DataGridCellStyle" TargetType="{x:Type DataGridCell}">
-            <Setter Property="Background" Value="Transparent" />
-            <Setter Property="BorderBrush" Value="{DynamicResource TabItemBorderBrush}" />
-            <Setter Property="BorderThickness" Value="0,0,0,1" />
-            <Setter Property="Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type DataGridRow}}}" />
-            <Setter Property="Padding" Value="8,0" />
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="{x:Type DataGridCell}">
-                        <Border Background="{TemplateBinding Background}"
-                                BorderBrush="{TemplateBinding BorderBrush}"
-                                BorderThickness="{TemplateBinding BorderThickness}">
-                            <ContentPresenter Margin="{TemplateBinding Padding}"
-                                              VerticalAlignment="Center" />
-                        </Border>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-            <Style.Triggers>
-                <Trigger Property="IsSelected" Value="True">
-                    <Setter Property="Background" Value="{DynamicResource NavSelectedItemBrush}" />
-                    <Setter Property="Foreground" Value="{DynamicResource NavButtonForegroundBrush}" />
-                    <Setter Property="BorderBrush" Value="{DynamicResource NavSelectedBorderBrush}" />
-                    <Setter Property="FontWeight" Value="SemiBold" />
-                </Trigger>
-            </Style.Triggers>
-        </Style>
-
-        <Style x:Key="CellTextBlockStyle" TargetType="{x:Type TextBlock}">
-            <Setter Property="VerticalAlignment" Value="Center" />
-            <Setter Property="TextTrimming" Value="CharacterEllipsis" />
-            <Setter Property="Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type DataGridCell}}}" />
-        </Style>
-
-        <Style x:Key="CellTextBoxStyle" TargetType="{x:Type TextBox}">
-            <Setter Property="Padding" Value="8,4" />
-            <Setter Property="Margin" Value="0" />
-            <Setter Property="Background" Value="{DynamicResource TabCardBackgroundBrush}" />
-            <Setter Property="BorderBrush" Value="{DynamicResource TabItemBorderBrush}" />
-            <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="Foreground" Value="{DynamicResource AppContentTextBrush}" />
-        </Style>
-    </UserControl.Resources>
-
     <Grid HorizontalAlignment="Stretch"
           VerticalAlignment="Stretch">
         <Grid.ColumnDefinitions>
@@ -330,19 +253,7 @@
                                   Grid.Row="2"
                                   ItemsSource="{Binding SelectedConfiguration.Columns}"
                                   SelectedItem="{Binding SelectedColumn, Mode=TwoWay}"
-                                  AutoGenerateColumns="False"
-                                  CanUserAddRows="False"
-                                  AlternationCount="2"
-                                  HeadersVisibility="Column"
-                                  GridLinesVisibility="Horizontal"
-                                  Background="{DynamicResource TabCardBackgroundBrush}"
-                                  Foreground="{DynamicResource AppContentTextBrush}"
-                                  RowBackground="{DynamicResource TabCardBackgroundBrush}"
-                                  AlternatingRowBackground="{DynamicResource TabItemBackgroundBrush}"
-                                  ColumnHeaderStyle="{StaticResource DataGridHeaderStyle}"
-                                  RowStyle="{StaticResource DataGridRowStyle}"
-                                  CellStyle="{StaticResource DataGridCellStyle}"
-                                  RowHeight="42">
+                                  Style="{StaticResource ColumnsDataGridStyle}">
                             <DataGrid.Columns>
                                 <DataGridTextColumn Header="列名"
                                                     Width="1.2*"
@@ -458,19 +369,7 @@
                     <DataGrid x:Name="PreviewDataGrid"
                               Grid.Row="2"
                               ItemsSource="{Binding PreviewRows}"
-                              AutoGenerateColumns="False"
-                              CanUserAddRows="False"
-                              IsReadOnly="True"
-                              AlternationCount="2"
-                              HeadersVisibility="Column"
-                              GridLinesVisibility="Horizontal"
-                              Background="{DynamicResource TabCardBackgroundBrush}"
-                              Foreground="{DynamicResource AppContentTextBrush}"
-                              RowBackground="{DynamicResource TabCardBackgroundBrush}"
-                              AlternatingRowBackground="{DynamicResource TabItemBackgroundBrush}"
-                              ColumnHeaderStyle="{StaticResource DataGridHeaderStyle}"
-                              RowStyle="{StaticResource DataGridRowStyle}"
-                              CellStyle="{StaticResource DataGridCellStyle}" />
+                              IsReadOnly="True" Style="{StaticResource ColumnsDataGridStyle}"/>
                 </Grid>
             </Border>
         </Grid>

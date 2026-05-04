@@ -13,6 +13,7 @@
                 <ResourceDictionary Source="Resources/TabControlStyles.xaml" />
                 <ResourceDictionary Source="Resources/ComboBoxStyle.xaml" />
                 <ResourceDictionary Source="Resources/TextBoxStyle.xaml" />
+                <ResourceDictionary Source="Resources/DataGridStyle.xaml" />
                 <ResourceDictionary Source="Resources/ButtonStyle.xaml" />
                 <ResourceDictionary Source="Resources/TitleStyle.xaml" />
                 <ResourceDictionary Source="Resources/BorderStyle.xaml" />

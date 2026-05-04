@@ -341,6 +341,12 @@ public sealed class WorkStepProfile : ViewModelProperties
 
     private void Steps_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
+        if (e.Action == NotifyCollectionChangedAction.Move)
+        {
+            RaiseStepSummaryChanged();
+            return;
+        }
+
         if (e.NewItems is not null)
         {
             foreach (WorkStepOperation step in e.NewItems.OfType<WorkStepOperation>())
@@ -363,7 +369,13 @@ public sealed class WorkStepProfile : ViewModelProperties
     private void Step_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName is nameof(WorkStepOperation.OperationObject)
+            or nameof(WorkStepOperation.ProtocolName)
+            or nameof(WorkStepOperation.CommandName)
             or nameof(WorkStepOperation.InvokeMethod)
+            or nameof(WorkStepOperation.ReturnValue)
+            or nameof(WorkStepOperation.DelayMilliseconds)
+            or nameof(WorkStepOperation.Remark)
+            or nameof(WorkStepOperation.ParameterCount)
             or nameof(WorkStepOperation.DisplayText))
         {
             RaiseStepSummaryChanged();
@@ -404,8 +416,24 @@ public sealed class WorkStepOperation : ViewModelProperties
     #region 私有字段
 
     private string _id = Guid.NewGuid().ToString("N");
-    private string _operationObject = "操作对象";
-    private string _invokeMethod = "调用方法";
+    private string _operationType = "设备";
+    private string _operationObject = "System";
+    private string _protocolName = string.Empty;
+    private string _commandName = string.Empty;
+    private string _invokeMethod = "等待";
+    private string _returnValue = string.Empty;
+    private int _delayMilliseconds;
+    private string _remark = string.Empty;
+    private ObservableCollection<WorkStepOperationParameter> _parameters = new();
+
+    #endregion
+
+    #region 构造方法
+
+    public WorkStepOperation()
+    {
+        AttachParameters(_parameters);
+    }
 
     #endregion
 
@@ -417,12 +445,48 @@ public sealed class WorkStepOperation : ViewModelProperties
         set => SetField(ref _id, string.IsNullOrWhiteSpace(value) ? Guid.NewGuid().ToString("N") : value.Trim());
     }
 
+    public string OperationType
+    {
+        get => _operationType;
+        set
+        {
+            if (SetField(ref _operationType, string.IsNullOrWhiteSpace(value) ? "设备" : value, true))
+            {
+                OnPropertyChanged(nameof(DisplayText));
+            }
+        }
+    }
+
     public string OperationObject
     {
         get => _operationObject;
         set
         {
             if (SetField(ref _operationObject, value ?? string.Empty, true))
+            {
+                OnPropertyChanged(nameof(DisplayText));
+            }
+        }
+    }
+
+    public string ProtocolName
+    {
+        get => _protocolName;
+        set
+        {
+            if (SetField(ref _protocolName, value ?? string.Empty, true))
+            {
+                OnPropertyChanged(nameof(DisplayText));
+            }
+        }
+    }
+
+    public string CommandName
+    {
+        get => _commandName;
+        set
+        {
+            if (SetField(ref _commandName, value ?? string.Empty, true))
             {
                 OnPropertyChanged(nameof(DisplayText));
             }
@@ -441,8 +505,143 @@ public sealed class WorkStepOperation : ViewModelProperties
         }
     }
 
+    public string ReturnValue
+    {
+        get => _returnValue;
+        set
+        {
+            if (SetField(ref _returnValue, value ?? string.Empty, true))
+            {
+                OnPropertyChanged(nameof(DisplayText));
+            }
+        }
+    }
+
+    public int DelayMilliseconds
+    {
+        get => _delayMilliseconds;
+        set
+        {
+            int normalizedValue = Math.Max(0, value);
+            if (SetField(ref _delayMilliseconds, normalizedValue))
+            {
+                OnPropertyChanged(nameof(DisplayText));
+            }
+        }
+    }
+
+    public string Remark
+    {
+        get => _remark;
+        set
+        {
+            if (SetField(ref _remark, value ?? string.Empty, true))
+            {
+                OnPropertyChanged(nameof(DisplayText));
+            }
+        }
+    }
+
+    public ObservableCollection<WorkStepOperationParameter> Parameters
+    {
+        get => _parameters;
+        set
+        {
+            if (ReferenceEquals(_parameters, value))
+            {
+                return;
+            }
+
+            DetachParameters(_parameters);
+            _parameters = value ?? new ObservableCollection<WorkStepOperationParameter>();
+            AttachParameters(_parameters);
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(ParameterCount));
+            OnPropertyChanged(nameof(DisplayText));
+        }
+    }
+
     [JsonIgnore]
-    public string DisplayText => $"{OperationObject}.{InvokeMethod}";
+    public int ParameterCount => Parameters.Count;
+
+    [JsonIgnore]
+    public string DisplayText
+    {
+        get
+        {
+            string returnText = string.IsNullOrWhiteSpace(ReturnValue) ? string.Empty : $" -> {ReturnValue}";
+            string delayText = DelayMilliseconds <= 0 ? string.Empty : $" / {DelayMilliseconds}ms";
+            string remarkText = string.IsNullOrWhiteSpace(Remark) ? string.Empty : $" / {Remark}";
+            string parameterText = ParameterCount == 0 ? string.Empty : $" / 参数{ParameterCount}";
+            string methodText = string.IsNullOrWhiteSpace(CommandName) ? InvokeMethod : CommandName;
+            string protocolText = string.IsNullOrWhiteSpace(ProtocolName) ? string.Empty : $"{ProtocolName}.";
+            string actionText = IsSystemOperationObject(OperationObject)
+                ? InvokeMethod
+                : $"{protocolText}{methodText}";
+            string operationPath = string.IsNullOrWhiteSpace(OperationObject)
+                ? actionText
+                : $"{OperationObject}.{actionText}";
+
+            return $"{operationPath}{returnText}{delayText}{remarkText}{parameterText}";
+        }
+    }
+
+    #endregion
+
+    #region 集合通知
+
+    private void AttachParameters(ObservableCollection<WorkStepOperationParameter> parameters)
+    {
+        parameters.CollectionChanged += Parameters_CollectionChanged;
+        foreach (WorkStepOperationParameter parameter in parameters)
+        {
+            parameter.PropertyChanged += Parameter_PropertyChanged;
+        }
+    }
+
+    private void DetachParameters(ObservableCollection<WorkStepOperationParameter> parameters)
+    {
+        parameters.CollectionChanged -= Parameters_CollectionChanged;
+        foreach (WorkStepOperationParameter parameter in parameters)
+        {
+            parameter.PropertyChanged -= Parameter_PropertyChanged;
+        }
+    }
+
+    private void Parameters_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        if (e.NewItems is not null)
+        {
+            foreach (WorkStepOperationParameter parameter in e.NewItems.OfType<WorkStepOperationParameter>())
+            {
+                parameter.PropertyChanged += Parameter_PropertyChanged;
+            }
+        }
+
+        if (e.OldItems is not null)
+        {
+            foreach (WorkStepOperationParameter parameter in e.OldItems.OfType<WorkStepOperationParameter>())
+            {
+                parameter.PropertyChanged -= Parameter_PropertyChanged;
+            }
+        }
+
+        OnPropertyChanged(nameof(ParameterCount));
+        OnPropertyChanged(nameof(DisplayText));
+    }
+
+    private void Parameter_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is nameof(WorkStepOperationParameter.Name)
+            or nameof(WorkStepOperationParameter.Type)
+            or nameof(WorkStepOperationParameter.Sequence)
+            or nameof(WorkStepOperationParameter.Value)
+            or nameof(WorkStepOperationParameter.Remark)
+            or nameof(WorkStepOperationParameter.Description))
+        {
+            OnPropertyChanged(nameof(DisplayText));
+        }
+    }
 
     #endregion
 
@@ -453,8 +652,144 @@ public sealed class WorkStepOperation : ViewModelProperties
         return new WorkStepOperation
         {
             Id = Id,
+            OperationType = OperationType,
             OperationObject = OperationObject,
-            InvokeMethod = InvokeMethod
+            ProtocolName = ProtocolName,
+            CommandName = CommandName,
+            InvokeMethod = InvokeMethod,
+            ReturnValue = ReturnValue,
+            DelayMilliseconds = DelayMilliseconds,
+            Remark = Remark,
+            Parameters = new ObservableCollection<WorkStepOperationParameter>(Parameters.Select(parameter => parameter.Clone()))
+        };
+    }
+
+    #endregion
+
+    #region 静态工具
+
+    private static bool IsSystemOperationObject(string? operationObject)
+    {
+        return string.Equals(operationObject?.Trim(), "System", StringComparison.OrdinalIgnoreCase) ||
+               string.Equals(operationObject?.Trim(), "系统", StringComparison.OrdinalIgnoreCase);
+    }
+
+    #endregion
+}
+
+/// <summary>
+/// 工步步骤调用方法参数。
+/// </summary>
+public sealed class WorkStepOperationParameter : ViewModelProperties
+{
+    #region 私有字段
+
+    private string _id = Guid.NewGuid().ToString("N");
+    private int _sequence = 1;
+    private string _name = "设置值";
+    private string _value = string.Empty;
+    private string _remark = string.Empty;
+
+    #endregion
+
+    #region 绑定属性
+
+    public string Id
+    {
+        get => _id;
+        set => SetField(ref _id, string.IsNullOrWhiteSpace(value) ? Guid.NewGuid().ToString("N") : value.Trim());
+    }
+
+    public int Sequence
+    {
+        get => _sequence;
+        set => SetField(ref _sequence, Math.Max(1, value));
+    }
+
+    public string Name
+    {
+        get => _name;
+        set => SetParameterType(value, nameof(Name));
+    }
+
+    [JsonIgnore]
+    public string Type
+    {
+        get => _name;
+        set => SetParameterType(value, nameof(Type));
+    }
+
+    public string Value
+    {
+        get => _value;
+        set => SetField(ref _value, value ?? string.Empty, true);
+    }
+
+    public string Remark
+    {
+        get => _remark;
+        set => SetParameterDescription(value, nameof(Remark));
+    }
+
+    [JsonIgnore]
+    public string Description
+    {
+        get => _remark;
+        set => SetParameterDescription(value, nameof(Description));
+    }
+
+    [JsonIgnore]
+    public ObservableCollection<string> ValueOptions { get; } = new();
+
+    [JsonIgnore]
+    public bool UsesTextValueEditor =>
+        string.Equals(Type, "设置值", StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(Type, "工步值", StringComparison.OrdinalIgnoreCase);
+
+    [JsonIgnore]
+    public bool UsesComboValueEditor => !UsesTextValueEditor;
+
+    #endregion
+
+    #region 属性别名方法
+
+    private void SetParameterType(string? value, string propertyName)
+    {
+        string normalizedValue = string.IsNullOrWhiteSpace(value) ? "设置值" : value.Trim();
+        if (!SetField(ref _name, normalizedValue, propertyName))
+        {
+            return;
+        }
+
+        OnPropertyChanged(propertyName == nameof(Name) ? nameof(Type) : nameof(Name));
+        OnPropertyChanged(nameof(UsesTextValueEditor));
+        OnPropertyChanged(nameof(UsesComboValueEditor));
+    }
+
+    private void SetParameterDescription(string? value, string propertyName)
+    {
+        string normalizedValue = value?.Trim() ?? string.Empty;
+        if (!SetField(ref _remark, normalizedValue, propertyName))
+        {
+            return;
+        }
+
+        OnPropertyChanged(propertyName == nameof(Remark) ? nameof(Description) : nameof(Remark));
+    }
+
+    #endregion
+
+    #region 复制方法
+
+    public WorkStepOperationParameter Clone()
+    {
+        return new WorkStepOperationParameter
+        {
+            Id = Id,
+            Sequence = Sequence,
+            Name = Name,
+            Value = Value,
+            Remark = Remark
         };
     }
 
