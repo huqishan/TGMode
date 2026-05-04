@@ -556,15 +556,18 @@ public sealed partial class SchemeConfigurationViewModel
             Id = Guid.NewGuid().ToString("N"),
             ProductName = productName,
             StepName = GenerateUniqueWorkStepName(productName, AppendSchemeNameSuffix(stepName, schemeName)),
+            LastModifiedAt = DateTime.Now,
             Steps = new ObservableCollection<WorkStepOperation>(
                 source.Steps.Select(operation => new WorkStepOperation
                 {
                     Id = Guid.NewGuid().ToString("N"),
+                    OperationType = operation.OperationType,
                     OperationObject = operation.OperationObject,
                     ProtocolName = operation.ProtocolName,
                     CommandName = operation.CommandName,
                     InvokeMethod = operation.InvokeMethod,
                     ReturnValue = operation.ReturnValue,
+                    LuaScript = operation.LuaScript,
                     DelayMilliseconds = operation.DelayMilliseconds,
                     Remark = operation.Remark,
                     Parameters = new ObservableCollection<WorkStepOperationParameter>(
@@ -689,14 +692,22 @@ public sealed partial class SchemeConfigurationViewModel
             WorkStepOperation rightOperation = right.Steps[index];
             if (!TextEquals(leftOperation.OperationObject, rightOperation.OperationObject) ||
                 !TextEquals(leftOperation.ProtocolName, rightOperation.ProtocolName) ||
-                !TextEquals(leftOperation.CommandName, rightOperation.CommandName) ||
-                !TextEquals(leftOperation.InvokeMethod, rightOperation.InvokeMethod))
+                !TextEquals(GetComparableCommandName(leftOperation), GetComparableCommandName(rightOperation)) ||
+                !TextEquals(leftOperation.InvokeMethod, rightOperation.InvokeMethod) ||
+                !TextEquals(leftOperation.LuaScript, rightOperation.LuaScript))
             {
                 return false;
             }
         }
 
         return true;
+    }
+
+    private static string GetComparableCommandName(WorkStepOperation operation)
+    {
+        return string.IsNullOrWhiteSpace(operation.CommandName)
+            ? operation.InvokeMethod
+            : operation.CommandName;
     }
 
     private static bool IsSameWorkStepIdentity(WorkStepProfile left, WorkStepProfile right)

@@ -43,7 +43,9 @@ public sealed partial class WorkStepConfigurationViewModel
     private string _editingProtocolName = string.Empty;
     private string _editingCommandName = string.Empty;
     private string _editingInvokeMethod = string.Empty;
+    private string _editingInvokeMethodRemark = string.Empty;
     private string _editingReturnValue = string.Empty;
+    private string _editingLuaScript = string.Empty;
     private string _editingDelayMillisecondsText = "0";
     private string _editingRemark = string.Empty;
     private Brush _pageStatusBrush = NeutralBrush;
@@ -51,6 +53,8 @@ public sealed partial class WorkStepConfigurationViewModel
     private bool _isOperationDrawerOpen;
     private bool _isNewOperationInDrawer;
     private bool _isSortingInvokeParameters;
+    private bool _isInitializingOperationDrawer;
+    private bool _isSyncingSystemInvokeMethodSelection;
     private readonly HashSet<WorkStepOperationParameter> _trackedEditingInvokeParameters = new();
 
     #endregion
@@ -70,6 +74,8 @@ public sealed partial class WorkStepConfigurationViewModel
     public ObservableCollection<string> CommandOptions { get; } = new();
 
     public ObservableCollection<string> InvokeMethodOptions { get; } = new();
+
+    public ObservableCollection<string> InvokeMethodRemarkOptions { get; } = new();
 
     public ObservableCollection<string> ParameterTypeOptions { get; } = new()
     {
@@ -183,16 +189,26 @@ public sealed partial class WorkStepConfigurationViewModel
             if (SetField(ref _editingOperationObject, value ?? string.Empty))
             {
                 OnPropertyChanged(nameof(IsSystemOperationSelected));
+                OnPropertyChanged(nameof(IsLuaOperationSelected));
                 OnPropertyChanged(nameof(IsProtocolCommandSelectionVisible));
+                OnPropertyChanged(nameof(IsInvokeParameterEditorVisible));
+                OnPropertyChanged(nameof(IsReturnValueVisible));
                 RefreshProtocolOptions(updateStatus: false);
                 RefreshInvokeMethodOptions(updateStatus: false);
+                RaiseCommandStatesChanged();
             }
         }
     }
 
     public bool IsSystemOperationSelected => IsSystemOperationObject(EditingOperationObject);
 
-    public bool IsProtocolCommandSelectionVisible => !IsSystemOperationSelected;
+    public bool IsLuaOperationSelected => IsLuaOperationObject(EditingOperationObject);
+
+    public bool IsProtocolCommandSelectionVisible => !IsSystemOperationSelected && !IsLuaOperationSelected;
+
+    public bool IsInvokeParameterEditorVisible => !IsLuaOperationSelected;
+
+    public bool IsReturnValueVisible => !IsLuaOperationSelected;
 
     public string EditingProtocolName
     {
@@ -212,7 +228,8 @@ public sealed partial class WorkStepConfigurationViewModel
         set
         {
             if (SetField(ref _editingCommandName, value ?? string.Empty) &&
-                !IsSystemOperationSelected)
+                !IsSystemOperationSelected &&
+                !IsLuaOperationSelected)
             {
                 EditingInvokeMethod = _editingCommandName;
                 RefreshInvokeParametersFromSelectedCommand();
@@ -223,7 +240,41 @@ public sealed partial class WorkStepConfigurationViewModel
     public string EditingInvokeMethod
     {
         get => _editingInvokeMethod;
-        set => SetField(ref _editingInvokeMethod, value ?? string.Empty);
+        set
+        {
+            if (!SetField(ref _editingInvokeMethod, value ?? string.Empty))
+            {
+                return;
+            }
+
+            if (IsSystemOperationSelected &&
+                !_isInitializingOperationDrawer &&
+                !_isSyncingSystemInvokeMethodSelection)
+            {
+                SyncSystemInvokeMethodRemarkFromMethod();
+                RefreshInvokeParametersFromSelectedSystemMethod(clearWhenNoMetadata: true);
+            }
+        }
+    }
+
+    public string EditingInvokeMethodRemark
+    {
+        get => _editingInvokeMethodRemark;
+        set
+        {
+            if (!SetField(ref _editingInvokeMethodRemark, value ?? string.Empty))
+            {
+                return;
+            }
+
+            if (IsSystemOperationSelected &&
+                !_isInitializingOperationDrawer &&
+                !_isSyncingSystemInvokeMethodSelection)
+            {
+                SyncSystemInvokeMethodFromRemark();
+                RefreshInvokeParametersFromSelectedSystemMethod(clearWhenNoMetadata: true);
+            }
+        }
     }
 
     public string EditingReturnValue
@@ -236,6 +287,12 @@ public sealed partial class WorkStepConfigurationViewModel
                 RefreshParameterValueOptions();
             }
         }
+    }
+
+    public string EditingLuaScript
+    {
+        get => _editingLuaScript;
+        set => SetField(ref _editingLuaScript, value ?? string.Empty);
     }
 
     public string EditingDelayMillisecondsText
@@ -322,6 +379,16 @@ public sealed partial class WorkStepConfigurationViewModel
             or nameof(WorkStepProfile.OperationSummary)
             or nameof(WorkStepProfile.ProductName)
             or nameof(WorkStepProfile.StepName))
+        {
+            SelectedWorkStep?.MarkModified();
+        }
+
+        if (e.PropertyName is nameof(WorkStepProfile.OperationCount)
+            or nameof(WorkStepProfile.OperationSummary)
+            or nameof(WorkStepProfile.ProductName)
+            or nameof(WorkStepProfile.StepName)
+            or nameof(WorkStepProfile.LastModifiedAt)
+            or nameof(WorkStepProfile.LastModifiedText))
         {
             OnPropertyChanged(nameof(OperationCountText));
             OnPropertyChanged(nameof(WorkStepCountText));

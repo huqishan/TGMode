@@ -257,6 +257,7 @@ public sealed class WorkStepProfile : ViewModelProperties
     private string _id = Guid.NewGuid().ToString("N");
     private string _productName = "默认产品";
     private string _stepName = "工步 1";
+    private DateTime _lastModifiedAt = DateTime.Now;
     private ObservableCollection<WorkStepOperation> _steps = new();
 
     #endregion
@@ -290,6 +291,19 @@ public sealed class WorkStepProfile : ViewModelProperties
         set => SetField(ref _stepName, value ?? string.Empty, true);
     }
 
+    public DateTime LastModifiedAt
+    {
+        get => _lastModifiedAt;
+        set
+        {
+            DateTime normalizedValue = value == default ? DateTime.Now : value;
+            if (SetField(ref _lastModifiedAt, normalizedValue))
+            {
+                OnPropertyChanged(nameof(LastModifiedText));
+            }
+        }
+    }
+
     public ObservableCollection<WorkStepOperation> Steps
     {
         get => _steps;
@@ -316,6 +330,9 @@ public sealed class WorkStepProfile : ViewModelProperties
         Steps.Count == 0
             ? "未配置步骤"
             : string.Join(" / ", Steps.Select(step => step.DisplayText));
+
+    [JsonIgnore]
+    public string LastModifiedText => $"最后修改：{LastModifiedAt:yyyy-MM-dd HH:mm:ss}";
 
     #endregion
 
@@ -373,6 +390,7 @@ public sealed class WorkStepProfile : ViewModelProperties
             or nameof(WorkStepOperation.CommandName)
             or nameof(WorkStepOperation.InvokeMethod)
             or nameof(WorkStepOperation.ReturnValue)
+            or nameof(WorkStepOperation.LuaScript)
             or nameof(WorkStepOperation.DelayMilliseconds)
             or nameof(WorkStepOperation.Remark)
             or nameof(WorkStepOperation.ParameterCount)
@@ -399,10 +417,20 @@ public sealed class WorkStepProfile : ViewModelProperties
             Id = Id,
             ProductName = ProductName,
             StepName = StepName,
+            LastModifiedAt = LastModifiedAt,
             Steps = new ObservableCollection<WorkStepOperation>(Steps.Select(step => step.Clone()))
         };
 
         return clone;
+    }
+
+    #endregion
+
+    #region 修改时间方法
+
+    public void MarkModified()
+    {
+        LastModifiedAt = DateTime.Now;
     }
 
     #endregion
@@ -422,6 +450,7 @@ public sealed class WorkStepOperation : ViewModelProperties
     private string _commandName = string.Empty;
     private string _invokeMethod = "等待";
     private string _returnValue = string.Empty;
+    private string _luaScript = string.Empty;
     private int _delayMilliseconds;
     private string _remark = string.Empty;
     private ObservableCollection<WorkStepOperationParameter> _parameters = new();
@@ -517,6 +546,18 @@ public sealed class WorkStepOperation : ViewModelProperties
         }
     }
 
+    public string LuaScript
+    {
+        get => _luaScript;
+        set
+        {
+            if (SetField(ref _luaScript, value ?? string.Empty))
+            {
+                OnPropertyChanged(nameof(DisplayText));
+            }
+        }
+    }
+
     public int DelayMilliseconds
     {
         get => _delayMilliseconds;
@@ -573,6 +614,11 @@ public sealed class WorkStepOperation : ViewModelProperties
             string delayText = DelayMilliseconds <= 0 ? string.Empty : $" / {DelayMilliseconds}ms";
             string remarkText = string.IsNullOrWhiteSpace(Remark) ? string.Empty : $" / {Remark}";
             string parameterText = ParameterCount == 0 ? string.Empty : $" / 参数{ParameterCount}";
+            if (IsLuaOperationObject(OperationObject) || IsLuaOperationObject(OperationType))
+            {
+                return $"Lua{delayText}{remarkText}";
+            }
+
             string methodText = string.IsNullOrWhiteSpace(CommandName) ? InvokeMethod : CommandName;
             string protocolText = string.IsNullOrWhiteSpace(ProtocolName) ? string.Empty : $"{ProtocolName}.";
             string actionText = IsSystemOperationObject(OperationObject)
@@ -658,6 +704,7 @@ public sealed class WorkStepOperation : ViewModelProperties
             CommandName = CommandName,
             InvokeMethod = InvokeMethod,
             ReturnValue = ReturnValue,
+            LuaScript = LuaScript,
             DelayMilliseconds = DelayMilliseconds,
             Remark = Remark,
             Parameters = new ObservableCollection<WorkStepOperationParameter>(Parameters.Select(parameter => parameter.Clone()))
@@ -672,6 +719,11 @@ public sealed class WorkStepOperation : ViewModelProperties
     {
         return string.Equals(operationObject?.Trim(), "System", StringComparison.OrdinalIgnoreCase) ||
                string.Equals(operationObject?.Trim(), "系统", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsLuaOperationObject(string? operationObject)
+    {
+        return string.Equals(operationObject?.Trim(), "Lua", StringComparison.OrdinalIgnoreCase);
     }
 
     #endregion

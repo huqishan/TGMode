@@ -277,6 +277,7 @@ public static class BusinessConfigurationStore
                 string.IsNullOrWhiteSpace(workStep.StepName) ? fallbackStepName : workStep.StepName.Trim(),
                 workStep.ProductName,
                 usedProductStepNames);
+            workStep.LastModifiedAt = workStep.LastModifiedAt == default ? DateTime.Now : workStep.LastModifiedAt;
 
             ObservableCollection<WorkStepOperation> normalizedOperations = new(
                 workStep.Steps
@@ -291,40 +292,53 @@ public static class BusinessConfigurationStore
     private static WorkStepOperation NormalizeOperation(WorkStepOperation operation)
     {
         string operationObject = ResolveOperationObject(operation);
-        bool isSystemOperation = IsSystemOperationObject(operationObject);
-        string protocolName = isSystemOperation
+        bool isLuaOperation = IsLuaOperationObject(operationObject);
+        bool isSystemOperation = !isLuaOperation && IsSystemOperationObject(operationObject);
+        string protocolName = isSystemOperation || isLuaOperation
             ? string.Empty
             : operation.ProtocolName?.Trim() ?? string.Empty;
-        string commandName = isSystemOperation
+        string commandName = isSystemOperation || isLuaOperation
             ? string.Empty
             : (string.IsNullOrWhiteSpace(operation.CommandName)
                 ? operation.InvokeMethod?.Trim() ?? string.Empty
                 : operation.CommandName.Trim());
-        string invokeMethod = isSystemOperation
-            ? (string.IsNullOrWhiteSpace(operation.InvokeMethod) ? "等待" : operation.InvokeMethod.Trim())
-            : (string.IsNullOrWhiteSpace(commandName) ? "指令" : commandName);
+        string invokeMethod = isLuaOperation
+            ? "Lua"
+            : isSystemOperation
+                ? (string.IsNullOrWhiteSpace(operation.InvokeMethod) ? "等待" : operation.InvokeMethod.Trim())
+                : (string.IsNullOrWhiteSpace(commandName) ? "指令" : commandName);
+        ObservableCollection<WorkStepOperationParameter> parameters = isLuaOperation
+            ? new ObservableCollection<WorkStepOperationParameter>()
+            : new ObservableCollection<WorkStepOperationParameter>(
+                operation.Parameters
+                    .Where(parameter => parameter is not null)
+                    .Select((parameter, index) => NormalizeOperationParameter(parameter, index))
+                    .OrderBy(parameter => parameter.Sequence));
 
         return new WorkStepOperation
         {
             Id = string.IsNullOrWhiteSpace(operation.Id) ? Guid.NewGuid().ToString("N") : operation.Id.Trim(),
-            OperationType = isSystemOperation ? "系统" : "设备",
+            OperationType = isLuaOperation ? "Lua" : isSystemOperation ? "系统" : "设备",
             OperationObject = operationObject,
             ProtocolName = protocolName,
             CommandName = commandName,
             InvokeMethod = invokeMethod,
-            ReturnValue = operation.ReturnValue?.Trim() ?? string.Empty,
+            ReturnValue = isLuaOperation ? string.Empty : operation.ReturnValue?.Trim() ?? string.Empty,
+            LuaScript = isLuaOperation ? operation.LuaScript ?? string.Empty : string.Empty,
             DelayMilliseconds = Math.Max(0, operation.DelayMilliseconds),
             Remark = operation.Remark?.Trim() ?? string.Empty,
-            Parameters = new ObservableCollection<WorkStepOperationParameter>(
-                operation.Parameters
-                    .Where(parameter => parameter is not null)
-                    .Select((parameter, index) => NormalizeOperationParameter(parameter, index))
-                    .OrderBy(parameter => parameter.Sequence))
+            Parameters = parameters
         };
     }
 
     private static string ResolveOperationObject(WorkStepOperation operation)
     {
+        if (IsLuaOperationObject(operation.OperationType) ||
+            IsLuaOperationObject(operation.OperationObject))
+        {
+            return "Lua";
+        }
+
         if (IsLegacySystemOperationType(operation.OperationType) ||
             IsSystemOperationObject(operation.OperationObject))
         {
@@ -357,6 +371,11 @@ public static class BusinessConfigurationStore
     {
         return string.Equals(operationObject?.Trim(), "System", StringComparison.OrdinalIgnoreCase) ||
                string.Equals(operationObject?.Trim(), "系统", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsLuaOperationObject(string? operationObject)
+    {
+        return string.Equals(operationObject?.Trim(), "Lua", StringComparison.OrdinalIgnoreCase);
     }
 
     private static void NormalizeSchemes(

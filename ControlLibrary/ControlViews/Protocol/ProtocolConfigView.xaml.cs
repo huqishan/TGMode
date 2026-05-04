@@ -849,18 +849,18 @@ namespace ControlLibrary.ControlViews.Protocol
                 ParseRulesText = "FullText = text\r\nLength = len\r\nPrefix = ascii(0,2)"
             };
 
-            profile.AddCommand(new ProtocolCommandConfig
-            {
-                Name = "写入通道",
-                RequestFormat = ProtocolPayloadFormat.Ascii,
-                ResponseFormat = ProtocolPayloadFormat.Ascii,
-                ReplyAggregationMilliseconds = "300",
-                CrcMode = ProtocolCrcMode.None,
-                ContentTemplate = "WRITE {{Channel}} {{Value}}",
-                PlaceholderValuesText = "Channel=T1\r\nValue=25.6",
-                SampleResponseText = "OK,T1",
-                ParseRulesText = "FullText = text\r\nLength = len"
-            });
+            //profile.AddCommand(new ProtocolCommandConfig
+            //{
+            //    Name = "写入通道",
+            //    RequestFormat = ProtocolPayloadFormat.Ascii,
+            //    ResponseFormat = ProtocolPayloadFormat.Ascii,
+            //    ReplyAggregationMilliseconds = "300",
+            //    CrcMode = ProtocolCrcMode.None,
+            //    ContentTemplate = "WRITE {{Channel}} {{Value}}",
+            //    PlaceholderValuesText = "Channel=T1\r\nValue=25.6",
+            //    SampleResponseText = "OK,T1",
+            //    ParseRulesText = "FullText = text\r\nLength = len"
+            //});
 
             profile.SelectedCommand = null;
             return profile;

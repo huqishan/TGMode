@@ -321,6 +321,35 @@ public class BusinessConfigurationViewModelTests
         Assert.That(importedWorkStep.Steps.Single().InvokeMethod, Is.EqualTo("停止"));
     }
 
+    [Test]
+    public void SystemOperationLoadsInvokeMethodRemarksAndParametersFromSystemSource()
+    {
+        BusinessConfigurationStore.SaveCatalog(CreateCatalog(new ProductProfile { ProductName = "产品A" }));
+        WorkStepConfigurationViewModel viewModel = new();
+
+        viewModel.NewWorkStepCommand.Execute(null);
+
+        Assert.That(viewModel.IsOperationDrawerOpen, Is.True);
+        Assert.That(viewModel.InvokeMethodOptions, Does.Contain("HextoString"));
+        Assert.That(viewModel.InvokeMethodOptions, Does.Contain("StringtoHex"));
+        Assert.That(viewModel.InvokeMethodRemarkOptions, Does.Contain("十六进制字符串转换为普通字符串"));
+        Assert.That(viewModel.InvokeMethodRemarkOptions, Does.Contain("字符串转换为十六进制字符串"));
+
+        viewModel.EditingInvokeMethod = "HextoString";
+
+        Assert.That(viewModel.EditingInvokeMethodRemark, Is.EqualTo("十六进制字符串转换为普通字符串"));
+        WorkStepOperationParameter parameter = viewModel.EditingInvokeParameters.Single();
+        Assert.That(parameter.Description, Is.EqualTo("十六进制字符串"));
+        Assert.That(parameter.Value, Is.EqualTo("string"));
+
+        viewModel.EditingInvokeMethodRemark = "字符串转换为十六进制字符串";
+
+        Assert.That(viewModel.EditingInvokeMethod, Is.EqualTo("StringtoHex"));
+        parameter = viewModel.EditingInvokeParameters.Single();
+        Assert.That(parameter.Description, Is.EqualTo("要转换的字符串"));
+        Assert.That(parameter.Value, Is.EqualTo("string"));
+    }
+
     private static BusinessConfigurationCatalog CreateCatalog(ProductProfile product, params WorkStepProfile[] workSteps)
     {
         return new BusinessConfigurationCatalog

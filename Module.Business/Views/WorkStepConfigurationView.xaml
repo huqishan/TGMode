@@ -3,8 +3,10 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:luaEditor="clr-namespace:ControlLibrary.Controls.LuaScripEditor.Control;assembly=ControlLibrary"
              xmlns:searchBox="clr-namespace:ControlLibrary.Controls.SearchBox.Control;assembly=ControlLibrary"
              xmlns:vm="clr-namespace:Module.Business.ViewModels"
+             xmlns:converts="clr-namespace:ControlLibrary.Converts;assembly=ControlLibrary"
              mc:Ignorable="d"
              HorizontalAlignment="Stretch"
              VerticalAlignment="Stretch"
@@ -15,25 +17,9 @@
     </UserControl.DataContext>
 
     <UserControl.Resources>
-        <Style x:Key="BusinessInputTextBoxStyle" TargetType="{x:Type TextBox}">
-            <Setter Property="MinHeight" Value="38" />
-            <Setter Property="Padding" Value="12,8" />
-            <Setter Property="Background" Value="{DynamicResource TabCardBackgroundBrush}" />
-            <Setter Property="BorderBrush" Value="{DynamicResource TabItemBorderBrush}" />
-            <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="Foreground" Value="{DynamicResource AppContentTextBrush}" />
-            <Setter Property="CaretBrush" Value="{DynamicResource AppContentTextBrush}" />
-            <Setter Property="VerticalContentAlignment" Value="Center" />
-        </Style>
-
-        <Style x:Key="BusinessComboBoxStyle" TargetType="{x:Type ComboBox}">
-            <Setter Property="MinHeight" Value="38" />
-            <Setter Property="Padding" Value="8,5" />
-            <Setter Property="Background" Value="{DynamicResource TabCardBackgroundBrush}" />
-            <Setter Property="BorderBrush" Value="{DynamicResource TabItemBorderBrush}" />
-            <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="Foreground" Value="{DynamicResource AppContentTextBrush}" />
-        </Style>
+        <converts:ComparisonToVisibilityConvert x:Key="comp2Vis"/>
+        <converts:InvertVisibilityConvert x:Key="invertVis"/>
+        
     </UserControl.Resources>
 
     <Grid HorizontalAlignment="Stretch"
@@ -141,7 +127,7 @@
                                 </DockPanel>
                                 <TextBlock Margin="0,8,0,0" x:Name="remarks"
                                            Foreground="{DynamicResource AppMutedTextBrush}"
-                                           Text="{Binding ProductName}"
+                                           Text="{Binding LastModifiedText}"
                                            TextWrapping="Wrap" />
                             </StackPanel>
                         </DataTemplate>
@@ -184,7 +170,7 @@
                     <Grid Margin="0,14,0,0">
                         <StackPanel>
                             <TextBlock Style="{StaticResource FieldLabelStyle}" Text="工步名称" />
-                            <TextBox Style="{StaticResource BusinessInputTextBoxStyle}"
+                            <TextBox Style="{StaticResource InputTextBoxStyle}"
                                      Text="{Binding SelectedWorkStep.StepName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                         </StackPanel>
                     </Grid>
@@ -340,7 +326,7 @@
                                         Content="刷新"
                                         Command="{Binding RefreshOperationObjectsCommand}"
                                         Style="{StaticResource ActionButtonStyle}" />
-                                <ComboBox Style="{StaticResource InputComboBoxStyle}"
+                                <ComboBox Style="{StaticResource InputComboBoxStyle}" x:Name="operationObj"
                                           ItemContainerStyle="{StaticResource InputComboBoxItemStyle}"
                                           ItemsSource="{Binding OperationObjectOptions}"
                                           SelectedItem="{Binding EditingOperationObject, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
@@ -380,8 +366,8 @@
                                 </StackPanel>
                             </Grid>
 
-                            <StackPanel>
-                                <StackPanel.Style>
+                            <StackPanel Visibility="{Binding ElementName=operationObj, Path=SelectedItem, Converter={StaticResource comp2Vis},ConverterParameter='System'}">
+                                <!--<StackPanel.Style>
                                     <Style TargetType="{x:Type StackPanel}">
                                         <Setter Property="Visibility" Value="Collapsed" />
                                         <Style.Triggers>
@@ -390,16 +376,38 @@
                                             </DataTrigger>
                                         </Style.Triggers>
                                     </Style>
-                                </StackPanel.Style>
+                                </StackPanel.Style>-->
 
-                                <TextBlock Style="{StaticResource FieldLabelStyle}" Text="调用方法" />
-                                <ComboBox Style="{StaticResource InputComboBoxStyle}"
-                                          ItemContainerStyle="{StaticResource InputComboBoxItemStyle}"
-                                          ItemsSource="{Binding InvokeMethodOptions}"
-                                          SelectedItem="{Binding EditingInvokeMethod, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="12" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <StackPanel Grid.Column="0">
+                                        <TextBlock Style="{StaticResource FieldLabelStyle}" Text="调用方法" />
+                                        <ComboBox Style="{StaticResource InputComboBoxStyle}"
+                                                  ItemContainerStyle="{StaticResource InputComboBoxItemStyle}"
+                                                  ItemsSource="{Binding InvokeMethodOptions}"
+                                                  SelectedItem="{Binding EditingInvokeMethod, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                    </StackPanel>
+
+                                    <StackPanel Grid.Column="2">
+                                        <TextBlock Style="{StaticResource FieldLabelStyle}" Text="调用方法（注释）" />
+                                        <ComboBox Style="{StaticResource InputComboBoxStyle}"
+                                                  ItemContainerStyle="{StaticResource InputComboBoxItemStyle}"
+                                                  ItemsSource="{Binding InvokeMethodRemarkOptions}"
+                                                  SelectedItem="{Binding EditingInvokeMethodRemark, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                    </StackPanel>
+                                </Grid>
                             </StackPanel>
 
-                            <DockPanel Margin="0,14,0,8" LastChildFill="False">
+                            <Grid x:Name="luaEditorGrid" Height="490" Margin="0,14,0,0" Visibility="{Binding ElementName=operationObj, Path=SelectedItem, Converter={StaticResource comp2Vis},ConverterParameter='Lua'}">
+                                <luaEditor:LuaScriptEditor ScriptText="{Binding EditingLuaScript, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            </Grid>
+
+                            <DockPanel Margin="0,14,0,8" LastChildFill="False" Visibility="{Binding ElementName=luaEditorGrid,Path=Visibility, Converter={StaticResource invertVis}}">
                                 <TextBlock DockPanel.Dock="Left"
                                            Style="{StaticResource FieldLabelStyle}"
                                            Text="调用方法参数" />
@@ -413,10 +421,9 @@
                                 </StackPanel>
                             </DockPanel>
 
-                            <DataGrid Height="300"
+                            <DataGrid Height="300" Visibility="{Binding ElementName=luaEditorGrid,Path=Visibility, Converter={StaticResource invertVis}}"
                                       ItemsSource="{Binding EditingInvokeParameters}" HorizontalScrollBarVisibility="Disabled"
-                                      SelectedItem="{Binding SelectedEditingInvokeParameter, Mode=TwoWay}"
-                                      Style="{StaticResource ColumnsDataGridStyle}">
+                                      SelectedItem="{Binding SelectedEditingInvokeParameter, Mode=TwoWay}" Style="{StaticResource ColumnsDataGridStyle}">
                                 <DataGrid.Columns>
                                     <DataGridTextColumn Width="72"
                                                         Header="序号"
@@ -475,18 +482,20 @@
                                                         Binding="{Binding Description, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                                 </DataGrid.Columns>
                             </DataGrid>
-
-                            <TextBlock Style="{StaticResource FieldLabelStyle}" Text="返回值" />
-                            <TextBox Style="{StaticResource BusinessInputTextBoxStyle}"
-                                     Text="{Binding EditingReturnValue, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <StackPanel Visibility="{Binding ElementName=luaEditorGrid,Path=Visibility, Converter={StaticResource invertVis}}">
+                                <TextBlock Style="{StaticResource FieldLabelStyle}" Text="返回值"/>
+                                <TextBox Style="{StaticResource InputTextBoxStyle}"
+         Text="{Binding EditingReturnValue, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            </StackPanel>
+                            
 
                             <TextBlock Style="{StaticResource FieldLabelStyle}" Text="延时(ms)" />
-                            <TextBox Style="{StaticResource BusinessInputTextBoxStyle}"
+                            <TextBox Style="{StaticResource InputTextBoxStyle}"
                                      Text="{Binding EditingDelayMillisecondsText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
 
                             <TextBlock Style="{StaticResource FieldLabelStyle}" Text="描述" />
                             <TextBox Height="50"
-                                     Style="{StaticResource BusinessInputTextBoxStyle}"
+                                     Style="{StaticResource InputTextBoxStyle}"
                                      AcceptsReturn="True"
                                      TextWrapping="Wrap"
                                      VerticalContentAlignment="Top"

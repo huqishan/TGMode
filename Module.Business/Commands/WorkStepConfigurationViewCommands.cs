@@ -11,6 +11,7 @@ using System.Linq;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using System.Xml.Linq;
 using System.Windows.Input;
 using System.Windows.Data;
 using System.Windows.Media;
@@ -25,6 +26,11 @@ public sealed partial class WorkStepConfigurationViewModel
 {
     private static readonly Regex ProtocolPlaceholderRegex =
         new Regex(@"\{\{\s*(?<name>[^{}\r\n]+?)\s*\}\}", RegexOptions.Compiled);
+
+    private static readonly Regex SystemMethodSignatureRegex =
+        new Regex(
+            @"^\s*public\s+static\s+(?:async\s+)?(?<return>[A-Za-z_][\w\.<>,\[\]\?]*)\s+(?<name>[A-Za-z_]\w*(?:<[^>]+>)?)\s*\((?<parameters>.*)\)",
+            RegexOptions.Compiled);
 
     #region 构造与初始化
 
@@ -56,8 +62,8 @@ public sealed partial class WorkStepConfigurationViewModel
         SaveOperationDrawerCommand = new RelayCommand(_ => SaveOperationDrawer(), _ => IsOperationDrawerOpen);
         CloseOperationDrawerCommand = new RelayCommand(_ => CloseOperationDrawer());
         RefreshOperationObjectsCommand = new RelayCommand(_ => RefreshOperationObjectOptions(updateStatus: true), _ => IsOperationDrawerOpen);
-        AddInvokeParameterCommand = new RelayCommand(_ => AddInvokeParameter(), _ => IsOperationDrawerOpen);
-        DeleteInvokeParameterCommand = new RelayCommand(_ => DeleteSelectedInvokeParameter(), _ => IsOperationDrawerOpen && SelectedEditingInvokeParameter is not null);
+        AddInvokeParameterCommand = new RelayCommand(_ => AddInvokeParameter(), _ => IsOperationDrawerOpen && !IsLuaOperationSelected);
+        DeleteInvokeParameterCommand = new RelayCommand(_ => DeleteSelectedInvokeParameter(), _ => IsOperationDrawerOpen && !IsLuaOperationSelected && SelectedEditingInvokeParameter is not null);
     }
 
     #endregion
@@ -260,19 +266,23 @@ public sealed partial class WorkStepConfigurationViewModel
             return;
         }
 
-        if (!IsSystemOperationSelected && string.IsNullOrWhiteSpace(EditingProtocolName))
+        if (IsProtocolCommandSelectionVisible && string.IsNullOrWhiteSpace(EditingProtocolName))
         {
             SetPageStatus("协议不能为空。", WarningBrush);
             return;
         }
 
-        if (!IsSystemOperationSelected && string.IsNullOrWhiteSpace(EditingCommandName))
+        if (IsProtocolCommandSelectionVisible && string.IsNullOrWhiteSpace(EditingCommandName))
         {
             SetPageStatus("指令不能为空。", WarningBrush);
             return;
         }
 
-        string invokeMethod = IsSystemOperationSelected ? EditingInvokeMethod : EditingCommandName;
+        string invokeMethod = IsLuaOperationSelected
+            ? LuaOperationObjectName
+            : IsSystemOperationSelected
+                ? EditingInvokeMethod
+                : EditingCommandName;
         if (string.IsNullOrWhiteSpace(invokeMethod))
         {
             SetPageStatus("调用方法不能为空。", WarningBrush);
@@ -285,19 +295,32 @@ public sealed partial class WorkStepConfigurationViewModel
             return;
         }
 
-        _drawerOperation.OperationObject = EditingOperationObject.Trim();
-        _drawerOperation.ProtocolName = IsSystemOperationSelected ? string.Empty : EditingProtocolName.Trim();
-        _drawerOperation.CommandName = IsSystemOperationSelected ? string.Empty : EditingCommandName.Trim();
+        _drawerOperation.OperationType = IsLuaOperationSelected
+            ? LuaOperationObjectName
+            : IsSystemOperationSelected
+                ? "系统"
+                : "设备";
+        _drawerOperation.OperationObject = IsLuaOperationSelected ? LuaOperationObjectName : EditingOperationObject.Trim();
+        _drawerOperation.ProtocolName = IsProtocolCommandSelectionVisible ? EditingProtocolName.Trim() : string.Empty;
+        _drawerOperation.CommandName = IsProtocolCommandSelectionVisible ? EditingCommandName.Trim() : string.Empty;
         _drawerOperation.InvokeMethod = invokeMethod.Trim();
-        _drawerOperation.ReturnValue = EditingReturnValue.Trim();
+        _drawerOperation.ReturnValue = IsLuaOperationSelected ? string.Empty : EditingReturnValue.Trim();
+        _drawerOperation.LuaScript = IsLuaOperationSelected ? EditingLuaScript : string.Empty;
         _drawerOperation.DelayMilliseconds = delayMilliseconds;
         _drawerOperation.Remark = EditingRemark.Trim();
-        NormalizeInvokeParameterSequences();
-        SortInvokeParametersBySequence();
-        _drawerOperation.Parameters = new ObservableCollection<WorkStepOperationParameter>(
-            EditingInvokeParameters
-                .OrderBy(parameter => parameter.Sequence)
-                .Select(parameter => parameter.Clone()));
+        if (IsLuaOperationSelected)
+        {
+            _drawerOperation.Parameters = new ObservableCollection<WorkStepOperationParameter>();
+        }
+        else
+        {
+            NormalizeInvokeParameterSequences();
+            SortInvokeParametersBySequence();
+            _drawerOperation.Parameters = new ObservableCollection<WorkStepOperationParameter>(
+                EditingInvokeParameters
+                    .OrderBy(parameter => parameter.Sequence)
+                    .Select(parameter => parameter.Clone()));
+        }
 
         if (_isNewOperationInDrawer)
         {
@@ -319,6 +342,7 @@ public sealed partial class WorkStepConfigurationViewModel
         _drawerOperation = null;
         _isNewOperationInDrawer = false;
         EditingInvokeParameters.Clear();
+        EditingInvokeMethodRemark = string.Empty;
         SelectedEditingInvokeParameter = null;
         OnPropertyChanged(nameof(OperationDrawerTitle));
     }
@@ -351,31 +375,59 @@ public sealed partial class WorkStepConfigurationViewModel
     {
         _drawerOperation = operation;
         _isNewOperationInDrawer = isNewOperation;
-        string operationObject = ResolveOperationObjectForEditing(operation);
-        EnsureOperationObjectOption(operationObject);
-        EditingOperationObject = operationObject;
-        EditingProtocolName = operation.ProtocolName;
-        EnsureProtocolOption(EditingProtocolName);
-        EditingCommandName = string.IsNullOrWhiteSpace(operation.CommandName)
-            ? operation.InvokeMethod
-            : operation.CommandName;
-        EnsureCommandOption(EditingCommandName);
-        EditingInvokeMethod = IsSystemOperationSelected ? operation.InvokeMethod : EditingCommandName;
-        RefreshProtocolOptions(updateStatus: false);
-        RefreshInvokeMethodOptions(updateStatus: false);
-        EditingReturnValue = operation.ReturnValue;
-        EditingDelayMillisecondsText = operation.DelayMilliseconds.ToString();
-        EditingRemark = operation.Remark;
-        EditingInvokeParameters.Clear();
-        foreach (WorkStepOperationParameter parameter in operation.Parameters.Select(parameter => parameter.Clone()))
+        _isInitializingOperationDrawer = true;
+        try
         {
-            EditingInvokeParameters.Add(parameter);
+            string operationObject = ResolveOperationObjectForEditing(operation);
+            EnsureOperationObjectOption(operationObject);
+            EditingOperationObject = operationObject;
+            EditingProtocolName = operation.ProtocolName;
+            EnsureProtocolOption(EditingProtocolName);
+            EditingCommandName = string.IsNullOrWhiteSpace(operation.CommandName)
+                ? operation.InvokeMethod
+                : operation.CommandName;
+            EnsureCommandOption(EditingCommandName);
+            EditingInvokeMethod = IsSystemOperationSelected ? operation.InvokeMethod : EditingCommandName;
+            RefreshProtocolOptions(updateStatus: false);
+            RefreshInvokeMethodOptions(updateStatus: false);
+            EditingReturnValue = operation.ReturnValue;
+            EditingLuaScript = operation.LuaScript;
+            EditingDelayMillisecondsText = operation.DelayMilliseconds.ToString();
+            EditingRemark = operation.Remark;
+            EditingInvokeParameters.Clear();
+            foreach (WorkStepOperationParameter parameter in IsLuaOperationSelected
+                         ? Enumerable.Empty<WorkStepOperationParameter>()
+                         : operation.Parameters.Select(parameter => parameter.Clone()))
+            {
+                EditingInvokeParameters.Add(parameter);
+            }
+        }
+        finally
+        {
+            _isInitializingOperationDrawer = false;
         }
 
         NormalizeInvokeParameterSequences();
         SortInvokeParametersBySequence();
 
-        if (!IsSystemOperationSelected && EditingInvokeParameters.Count == 0)
+        if (IsLuaOperationSelected)
+        {
+            EditingProtocolName = string.Empty;
+            EditingCommandName = string.Empty;
+            EditingInvokeMethod = LuaOperationObjectName;
+            EditingInvokeMethodRemark = string.Empty;
+            EditingReturnValue = string.Empty;
+            EditingInvokeParameters.Clear();
+        }
+        else if (IsSystemOperationSelected)
+        {
+            SyncSystemInvokeMethodRemarkFromMethod();
+            if (EditingInvokeParameters.Count == 0)
+            {
+                RefreshInvokeParametersFromSelectedSystemMethod(clearWhenNoMetadata: false);
+            }
+        }
+        else if (EditingInvokeParameters.Count == 0)
         {
             RefreshInvokeParametersFromSelectedCommand();
         }
@@ -628,7 +680,8 @@ public sealed partial class WorkStepConfigurationViewModel
         WorkStepProfile workStep = new()
         {
             ProductName = productName,
-            StepName = stepName
+            StepName = stepName,
+            LastModifiedAt = DateTime.Now
         };
 
         workStep.Steps.Add(new WorkStepOperation
@@ -650,15 +703,18 @@ public sealed partial class WorkStepConfigurationViewModel
             Id = Guid.NewGuid().ToString("N"),
             ProductName = source.ProductName,
             StepName = GenerateCopyStepName(source.ProductName, source.StepName),
+            LastModifiedAt = DateTime.Now,
             Steps = new ObservableCollection<WorkStepOperation>(
                 source.Steps.Select(operation => new WorkStepOperation
                 {
                     Id = Guid.NewGuid().ToString("N"),
+                    OperationType = operation.OperationType,
                     OperationObject = operation.OperationObject,
                     ProtocolName = operation.ProtocolName,
                     CommandName = operation.CommandName,
                     InvokeMethod = operation.InvokeMethod,
                     ReturnValue = operation.ReturnValue,
+                    LuaScript = operation.LuaScript,
                     DelayMilliseconds = operation.DelayMilliseconds,
                     Remark = operation.Remark,
                     Parameters = new ObservableCollection<WorkStepOperationParameter>(
@@ -814,7 +870,8 @@ public sealed partial class WorkStepConfigurationViewModel
         string keyword = SearchText.Trim();
         return Contains(workStep.ProductName, keyword) ||
                Contains(workStep.StepName, keyword) ||
-               Contains(workStep.OperationSummary, keyword);
+               Contains(workStep.OperationSummary, keyword) ||
+               Contains(workStep.LastModifiedText, keyword);
     }
 
     private static bool Contains(string? source, string keyword)
@@ -860,13 +917,15 @@ public sealed partial class WorkStepConfigurationViewModel
                     return false;
                 }
 
-                if (string.IsNullOrWhiteSpace(operation.InvokeMethod))
+                if (!IsLuaOperationObject(operation.OperationObject) &&
+                    string.IsNullOrWhiteSpace(operation.InvokeMethod))
                 {
                     message = $"工步“{workStep.StepName}”的调用方法不能为空。";
                     return false;
                 }
 
                 if (!IsSystemOperationObject(operation.OperationObject) &&
+                    !IsLuaOperationObject(operation.OperationObject) &&
                     (string.IsNullOrWhiteSpace(operation.ProtocolName) ||
                      string.IsNullOrWhiteSpace(operation.CommandName)))
                 {
@@ -934,10 +993,12 @@ public sealed partial class WorkStepConfigurationViewModel
         OperationObjectOptions.Clear();
 
         OperationObjectOptions.Add(SystemOperationObjectName);
+        OperationObjectOptions.Add(LuaOperationObjectName);
         foreach (string option in LoadDeviceOperationObjectOptions()
                      .Where(option => !string.IsNullOrWhiteSpace(option))
                      .Select(option => option.Trim())
                      .Where(option => !IsSystemOperationObject(option))
+                     .Where(option => !IsLuaOperationObject(option))
                      .Distinct(StringComparer.OrdinalIgnoreCase)
                      .OrderBy(option => option, StringComparer.OrdinalIgnoreCase))
         {
@@ -968,7 +1029,7 @@ public sealed partial class WorkStepConfigurationViewModel
         string previousSelection = EditingProtocolName;
         ProtocolOptions.Clear();
 
-        if (IsSystemOperationSelected)
+        if (IsSystemOperationSelected || IsLuaOperationSelected)
         {
             EditingProtocolName = string.Empty;
             RefreshCommandOptions(updateStatus: false);
@@ -1003,7 +1064,7 @@ public sealed partial class WorkStepConfigurationViewModel
         string previousSelection = EditingCommandName;
         CommandOptions.Clear();
 
-        if (IsSystemOperationSelected || string.IsNullOrWhiteSpace(EditingProtocolName))
+        if (IsSystemOperationSelected || IsLuaOperationSelected || string.IsNullOrWhiteSpace(EditingProtocolName))
         {
             EditingCommandName = string.Empty;
             return;
@@ -1035,7 +1096,7 @@ public sealed partial class WorkStepConfigurationViewModel
 
     private void RefreshInvokeParametersFromSelectedCommand()
     {
-        if (IsSystemOperationSelected)
+        if (IsSystemOperationSelected || IsLuaOperationSelected)
         {
             return;
         }
@@ -1098,37 +1159,162 @@ public sealed partial class WorkStepConfigurationViewModel
             ?? EditingInvokeParameters.FirstOrDefault();
     }
 
-    private void RefreshInvokeMethodOptions(bool updateStatus)
+    private void RefreshInvokeParametersFromSelectedSystemMethod(bool clearWhenNoMetadata)
     {
         if (!IsSystemOperationSelected)
         {
+            return;
+        }
+
+        SystemMethodSelectionItem? method = FindSystemMethodByName(EditingInvokeMethod);
+        if (method is null)
+        {
+            if (clearWhenNoMetadata)
+            {
+                EditingInvokeParameters.Clear();
+                SelectedEditingInvokeParameter = null;
+            }
+
+            return;
+        }
+
+        EditingInvokeParameters.Clear();
+        int sequence = 1;
+        foreach (SystemMethodParameterSelectionItem parameterMetadata in method.Parameters)
+        {
+            EditingInvokeParameters.Add(new WorkStepOperationParameter
+            {
+                Sequence = sequence,
+                Name = ParameterTypeOptions.FirstOrDefault() ?? "设置值",
+                Value = parameterMetadata.Type,
+                Remark = parameterMetadata.Description
+            });
+            sequence++;
+        }
+
+        NormalizeInvokeParameterSequences();
+        SortInvokeParametersBySequence();
+        SelectedEditingInvokeParameter = EditingInvokeParameters.FirstOrDefault();
+    }
+
+    private void SyncSystemInvokeMethodRemarkFromMethod()
+    {
+        SystemMethodSelectionItem? method = FindSystemMethodByName(EditingInvokeMethod);
+        string remark = method?.Summary ?? string.Empty;
+        if (!string.IsNullOrWhiteSpace(remark) &&
+            !InvokeMethodRemarkOptions.Any(option => string.Equals(option, remark, StringComparison.OrdinalIgnoreCase)))
+        {
+            InvokeMethodRemarkOptions.Add(remark);
+        }
+
+        _isSyncingSystemInvokeMethodSelection = true;
+        try
+        {
+            EditingInvokeMethodRemark = remark;
+        }
+        finally
+        {
+            _isSyncingSystemInvokeMethodSelection = false;
+        }
+    }
+
+    private void SyncSystemInvokeMethodFromRemark()
+    {
+        if (string.IsNullOrWhiteSpace(EditingInvokeMethodRemark))
+        {
+            return;
+        }
+
+        SystemMethodSelectionItem? method = LoadSystemMethodSelectionItems()
+            .FirstOrDefault(item => TextEquals(item.Summary, EditingInvokeMethodRemark));
+        if (method is null)
+        {
+            return;
+        }
+
+        if (!InvokeMethodOptions.Any(option => string.Equals(option, method.Name, StringComparison.OrdinalIgnoreCase)))
+        {
+            InvokeMethodOptions.Add(method.Name);
+        }
+
+        _isSyncingSystemInvokeMethodSelection = true;
+        try
+        {
+            EditingInvokeMethod = method.Name;
+        }
+        finally
+        {
+            _isSyncingSystemInvokeMethodSelection = false;
+        }
+    }
+
+    private void RefreshInvokeMethodOptions(bool updateStatus)
+    {
+        if (IsLuaOperationSelected)
+        {
             InvokeMethodOptions.Clear();
+            InvokeMethodRemarkOptions.Clear();
+            EditingInvokeMethodRemark = string.Empty;
+            EditingInvokeMethod = LuaOperationObjectName;
+            EditingInvokeParameters.Clear();
+            SelectedEditingInvokeParameter = null;
+            return;
+        }
+
+        if (!IsSystemOperationSelected)
+        {
+            InvokeMethodOptions.Clear();
+            InvokeMethodRemarkOptions.Clear();
+            _isSyncingSystemInvokeMethodSelection = true;
+            try
+            {
+                EditingInvokeMethodRemark = string.Empty;
+            }
+            finally
+            {
+                _isSyncingSystemInvokeMethodSelection = false;
+            }
+
             EditingInvokeMethod = EditingCommandName;
             return;
         }
 
         string previousSelection = EditingInvokeMethod;
         InvokeMethodOptions.Clear();
+        InvokeMethodRemarkOptions.Clear();
+        IReadOnlyList<SystemMethodSelectionItem> systemMethods = LoadSystemMethodSelectionItems();
 
-        foreach (string option in GetSystemInvokeMethodOptions()
+        foreach (string option in systemMethods
+                     .Select(method => method.Name)
+                     .DefaultIfEmpty()
+                     .Concat(systemMethods.Count == 0 ? GetSystemInvokeMethodOptions() : Enumerable.Empty<string>())
                      .Where(option => !string.IsNullOrWhiteSpace(option))
-                     .Select(option => option.Trim())
+                     .Select(option => option!.Trim())
                      .Distinct(StringComparer.OrdinalIgnoreCase))
         {
             InvokeMethodOptions.Add(option);
+        }
+
+        foreach (string option in systemMethods
+                     .Select(method => method.Summary)
+                     .Where(option => !string.IsNullOrWhiteSpace(option))
+                     .Select(option => option!.Trim())
+                     .Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            InvokeMethodRemarkOptions.Add(option);
         }
 
         bool hasPreviousSelection =
             !string.IsNullOrWhiteSpace(previousSelection) &&
             InvokeMethodOptions.Any(option => string.Equals(option, previousSelection, StringComparison.OrdinalIgnoreCase));
 
-        if (!hasPreviousSelection &&
-            !IsPlaceholderInvokeMethod(previousSelection) &&
-            !string.IsNullOrWhiteSpace(previousSelection))
-        {
-            InvokeMethodOptions.Add(previousSelection.Trim());
-            hasPreviousSelection = true;
-        }
+        //if (!hasPreviousSelection &&
+        //    !IsPlaceholderInvokeMethod(previousSelection) &&
+        //    !string.IsNullOrWhiteSpace(previousSelection))
+        //{
+        //    InvokeMethodOptions.Add(previousSelection.Trim());
+        //    hasPreviousSelection = true;
+        //}
 
         if (InvokeMethodOptions.Count == 0)
         {
@@ -1145,6 +1331,12 @@ public sealed partial class WorkStepConfigurationViewModel
             EditingInvokeMethod = InvokeMethodOptions.First();
         }
 
+        SyncSystemInvokeMethodRemarkFromMethod();
+        if (!_isInitializingOperationDrawer)
+        {
+            RefreshInvokeParametersFromSelectedSystemMethod(clearWhenNoMetadata: true);
+        }
+
         if (updateStatus)
         {
             SetPageStatus($"已按“{EditingOperationObject}”刷新调用方法。", SuccessBrush);
@@ -1154,6 +1346,300 @@ public sealed partial class WorkStepConfigurationViewModel
     private static IEnumerable<string> GetSystemInvokeMethodOptions()
     {
         return new[] { "等待", "跳转", "写入日志", "读取系统值", "设置系统值", "开始", "停止" };
+    }
+
+    private static SystemMethodSelectionItem? FindSystemMethodByName(string methodName)
+    {
+        if (string.IsNullOrWhiteSpace(methodName))
+        {
+            return null;
+        }
+
+        return LoadSystemMethodSelectionItems()
+            .FirstOrDefault(method => TextEquals(method.Name, methodName));
+    }
+
+    private static IReadOnlyList<SystemMethodSelectionItem> LoadSystemMethodSelectionItems()
+    {
+        string? filePath = GetSystemMethodSourceFileCandidates().FirstOrDefault(File.Exists);
+        if (filePath is null)
+        {
+            return Array.Empty<SystemMethodSelectionItem>();
+        }
+
+        try
+        {
+            return ParseSystemMethodSelectionItems(File.ReadAllText(filePath, Encoding.UTF8));
+        }
+        catch
+        {
+            return Array.Empty<SystemMethodSelectionItem>();
+        }
+    }
+
+    private static IEnumerable<string> GetSystemMethodSourceFileCandidates()
+    {
+        HashSet<string> seenPaths = new(StringComparer.OrdinalIgnoreCase);
+        foreach (string root in new[] { AppContext.BaseDirectory, Directory.GetCurrentDirectory() }
+                     .Where(root => !string.IsNullOrWhiteSpace(root)))
+        {
+            DirectoryInfo? directory = new(root);
+            while (directory is not null)
+            {
+                foreach (string relativePath in new[]
+                         {
+                             Path.Combine("Business", "System.cs"),
+                             Path.Combine("Business", "System"),
+                             Path.Combine("Module.Business", "Business", "System.cs"),
+                             Path.Combine("Module.Business", "Business", "System")
+                         })
+                {
+                    string candidate = Path.Combine(directory.FullName, relativePath);
+                    if (seenPaths.Add(candidate))
+                    {
+                        yield return candidate;
+                    }
+                }
+
+                directory = directory.Parent;
+            }
+        }
+    }
+
+    private static IReadOnlyList<SystemMethodSelectionItem> ParseSystemMethodSelectionItems(string sourceText)
+    {
+        List<SystemMethodSelectionItem> methods = new();
+        List<string> documentationLines = new();
+        string[] lines = (sourceText ?? string.Empty)
+            .Split(new[] { "\r\n", "\n", "\r" }, StringSplitOptions.None);
+
+        for (int index = 0; index < lines.Length; index++)
+        {
+            string line = lines[index];
+            string trimmedLine = line.TrimStart();
+            if (trimmedLine.StartsWith("///", StringComparison.Ordinal))
+            {
+                documentationLines.Add(line);
+                continue;
+            }
+
+            if (string.IsNullOrWhiteSpace(trimmedLine) ||
+                trimmedLine.StartsWith("[", StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            if (!TryReadSystemMethodSignature(lines, ref index, out Match match))
+            {
+                documentationLines.Clear();
+                continue;
+            }
+
+            string methodName = match.Groups["name"].Value.Trim();
+            if (string.IsNullOrWhiteSpace(methodName) || methodName.Contains('<', StringComparison.Ordinal))
+            {
+                documentationLines.Clear();
+                continue;
+            }
+
+            (string summary, Dictionary<string, string> parameterDescriptions) =
+                ParseSystemMethodDocumentation(string.Join(Environment.NewLine, documentationLines));
+            IReadOnlyList<SystemMethodParameterSelectionItem> parameters =
+                ParseSystemMethodParameters(match.Groups["parameters"].Value, parameterDescriptions);
+
+            methods.Add(new SystemMethodSelectionItem(methodName, summary, parameters));
+            documentationLines.Clear();
+        }
+
+        return methods;
+    }
+
+    private static bool TryReadSystemMethodSignature(string[] lines, ref int index, out Match match)
+    {
+        StringBuilder signatureBuilder = new(lines[index].Trim());
+        int parenthesisDepth = CountParenthesisDepth(signatureBuilder.ToString());
+        while (parenthesisDepth > 0 && index + 1 < lines.Length)
+        {
+            index++;
+            string nextLine = lines[index].Trim();
+            signatureBuilder.Append(' ').Append(nextLine);
+            parenthesisDepth += CountParenthesisDepth(nextLine);
+        }
+
+        string signature = signatureBuilder.ToString();
+        int closeParenthesisIndex = signature.IndexOf(')');
+        if (closeParenthesisIndex >= 0)
+        {
+            signature = signature[..(closeParenthesisIndex + 1)];
+        }
+
+        match = SystemMethodSignatureRegex.Match(signature);
+        return match.Success;
+    }
+
+    private static int CountParenthesisDepth(string text)
+    {
+        int depth = 0;
+        foreach (char value in text)
+        {
+            if (value == '(')
+            {
+                depth++;
+            }
+            else if (value == ')')
+            {
+                depth--;
+            }
+        }
+
+        return depth;
+    }
+
+    private static (string Summary, Dictionary<string, string> ParameterDescriptions) ParseSystemMethodDocumentation(string documentationText)
+    {
+        string xmlText = string.Join(
+            Environment.NewLine,
+            (documentationText ?? string.Empty)
+                .Split(new[] { "\r\n", "\n", "\r" }, StringSplitOptions.None)
+                .Select(line => Regex.Replace(line, @"^\s*///\s?", string.Empty)));
+
+        try
+        {
+            XElement document = XElement.Parse($"<doc>{xmlText}</doc>");
+            string summary = NormalizeDocumentationText(document.Element("summary")?.Value);
+            Dictionary<string, string> parameterDescriptions = document
+                .Elements("param")
+                .Where(element => element.Attribute("name") is not null)
+                .GroupBy(
+                    element => element.Attribute("name")!.Value.Trim(),
+                    StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(
+                    group => group.Key,
+                    group => NormalizeDocumentationText(group.First().Value),
+                    StringComparer.OrdinalIgnoreCase);
+
+            return (summary, parameterDescriptions);
+        }
+        catch
+        {
+            return ParseSystemMethodDocumentationFallback(xmlText);
+        }
+    }
+
+    private static (string Summary, Dictionary<string, string> ParameterDescriptions) ParseSystemMethodDocumentationFallback(string xmlText)
+    {
+        string summary = NormalizeDocumentationText(
+            Regex.Match(xmlText ?? string.Empty, @"<summary>(?<value>.*?)</summary>", RegexOptions.Singleline)
+                .Groups["value"]
+                .Value);
+
+        Dictionary<string, string> parameterDescriptions = new(StringComparer.OrdinalIgnoreCase);
+        foreach (Match match in Regex.Matches(
+                     xmlText ?? string.Empty,
+                     @"<param\s+name=""(?<name>[^""]+)"">(?<value>.*?)</param>",
+                     RegexOptions.Singleline))
+        {
+            string name = match.Groups["name"].Value.Trim();
+            if (!string.IsNullOrWhiteSpace(name))
+            {
+                parameterDescriptions[name] = NormalizeDocumentationText(match.Groups["value"].Value);
+            }
+        }
+
+        return (summary, parameterDescriptions);
+    }
+
+    private static IReadOnlyList<SystemMethodParameterSelectionItem> ParseSystemMethodParameters(
+        string parameterText,
+        IReadOnlyDictionary<string, string> parameterDescriptions)
+    {
+        List<SystemMethodParameterSelectionItem> parameters = new();
+        foreach (string rawParameter in SplitSystemMethodParameters(parameterText))
+        {
+            string parameter = rawParameter.Trim();
+            if (string.IsNullOrWhiteSpace(parameter))
+            {
+                continue;
+            }
+
+            int defaultValueIndex = parameter.IndexOf('=');
+            if (defaultValueIndex >= 0)
+            {
+                parameter = parameter[..defaultValueIndex].Trim();
+            }
+
+            string[] parts = Regex.Replace(parameter, @"\s+", " ")
+                .Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            if (parts.Length < 2)
+            {
+                continue;
+            }
+
+            string name = parts[^1].Trim().TrimStart('@');
+            string type = string.Join(
+                " ",
+                parts
+                    .Take(parts.Length - 1)
+                    .Where(part => !IsParameterModifier(part)));
+            if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(type))
+            {
+                continue;
+            }
+
+            string description = parameterDescriptions.TryGetValue(name, out string? parameterDescription) &&
+                                 !string.IsNullOrWhiteSpace(parameterDescription)
+                ? parameterDescription
+                : name;
+            parameters.Add(new SystemMethodParameterSelectionItem(name, type, description));
+        }
+
+        return parameters;
+    }
+
+    private static IEnumerable<string> SplitSystemMethodParameters(string parameterText)
+    {
+        if (string.IsNullOrWhiteSpace(parameterText))
+        {
+            yield break;
+        }
+
+        int genericDepth = 0;
+        int startIndex = 0;
+        for (int index = 0; index < parameterText.Length; index++)
+        {
+            char current = parameterText[index];
+            if (current == '<')
+            {
+                genericDepth++;
+            }
+            else if (current == '>')
+            {
+                genericDepth = Math.Max(0, genericDepth - 1);
+            }
+            else if (current == ',' && genericDepth == 0)
+            {
+                yield return parameterText[startIndex..index];
+                startIndex = index + 1;
+            }
+        }
+
+        yield return parameterText[startIndex..];
+    }
+
+    private static bool IsParameterModifier(string value)
+    {
+        return value is "ref" or "out" or "in" or "params" or "this";
+    }
+
+    private static string NormalizeDocumentationText(string? value)
+    {
+        string text = Regex.Replace(value ?? string.Empty, "<.*?>", string.Empty);
+        return Regex.Replace(text, @"\s+", " ").Trim();
+    }
+
+    private static bool TextEquals(string? left, string? right)
+    {
+        return string.Equals(left?.Trim(), right?.Trim(), StringComparison.OrdinalIgnoreCase);
     }
 
     private static IEnumerable<string> LoadDeviceOperationObjectOptions()
@@ -1415,6 +1901,12 @@ public sealed partial class WorkStepConfigurationViewModel
 
     private static string ResolveOperationObjectForEditing(WorkStepOperation operation)
     {
+        if (IsLuaOperationObject(operation.OperationType) ||
+            IsLuaOperationObject(operation.OperationObject))
+        {
+            return LuaOperationObjectName;
+        }
+
         if (IsLegacySystemOperationType(operation.OperationType) ||
             IsSystemOperationObject(operation.OperationObject))
         {
@@ -1433,16 +1925,58 @@ public sealed partial class WorkStepConfigurationViewModel
 
     private const string SystemOperationObjectName = "System";
 
+    private const string LuaOperationObjectName = "Lua";
+
     private static bool IsSystemOperationObject(string? operationObject)
     {
         return string.Equals(operationObject?.Trim(), SystemOperationObjectName, StringComparison.OrdinalIgnoreCase) ||
                string.Equals(operationObject?.Trim(), "系统", StringComparison.OrdinalIgnoreCase);
     }
 
+    private static bool IsLuaOperationObject(string? operationObject)
+    {
+        return string.Equals(operationObject?.Trim(), LuaOperationObjectName, StringComparison.OrdinalIgnoreCase);
+    }
+
     private static bool IsPlaceholderInvokeMethod(string? invokeMethod)
     {
         return string.IsNullOrWhiteSpace(invokeMethod) ||
                string.Equals(invokeMethod.Trim(), "调用方法", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private sealed class SystemMethodSelectionItem
+    {
+        public SystemMethodSelectionItem(
+            string name,
+            string summary,
+            IEnumerable<SystemMethodParameterSelectionItem> parameters)
+        {
+            Name = name;
+            Summary = summary;
+            Parameters = parameters.ToList();
+        }
+
+        public string Name { get; }
+
+        public string Summary { get; }
+
+        public List<SystemMethodParameterSelectionItem> Parameters { get; }
+    }
+
+    private sealed class SystemMethodParameterSelectionItem
+    {
+        public SystemMethodParameterSelectionItem(string name, string type, string description)
+        {
+            Name = name;
+            Type = type;
+            Description = description;
+        }
+
+        public string Name { get; }
+
+        public string Type { get; }
+
+        public string Description { get; }
     }
 
     private sealed class ProtocolSelectionItem

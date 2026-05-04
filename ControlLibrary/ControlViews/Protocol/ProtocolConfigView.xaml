@@ -253,7 +253,7 @@ CornerRadius="999">
                                             </StackPanel>
 
                                             <StackPanel Grid.Column="2">
-                                                <TextBlock Style="{StaticResource SectionTitleStyle}" Text="鎵ц琛屼负" />
+                                                <TextBlock Style="{StaticResource SectionTitleStyle}" Text="执行行为" />
 
                                                 <TextBlock Style="{StaticResource FieldLabelStyle}" Text="强制等待拼接时长(ms)" />
                                                 <TextBox Style="{StaticResource InputTextBoxStyle}"
@@ -272,7 +272,7 @@ CornerRadius="999">
                                                            Text="{Binding WaitForResponseHelpText}"
                                                            TextWrapping="Wrap" />
 
-                                                <TextBlock Style="{StaticResource FieldLabelStyle}" Text="CRC 鏍￠獙绫诲瀷" />
+                                                <TextBlock Style="{StaticResource FieldLabelStyle}" Text="CRC校验" />
                                                 <ComboBox Style="{StaticResource InputComboBoxStyle}"
                                                           ItemContainerStyle="{StaticResource InputComboBoxItemStyle}"
                                                           ItemTemplate="{StaticResource ProtocolOptionItemTemplate}"
