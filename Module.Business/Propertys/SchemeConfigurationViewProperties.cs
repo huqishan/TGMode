@@ -38,6 +38,7 @@ public sealed partial class SchemeConfigurationViewModel
     private string _pageStatusText = "等待编辑";
     private Brush _pageStatusBrush = NeutralBrush;
     private DateTime _lastCreateOrCopyCommandAt = DateTime.MinValue;
+    private bool _isSynchronizingSchemeStepSnapshots;
 
     #endregion
 
@@ -53,6 +54,11 @@ public sealed partial class SchemeConfigurationViewModel
 
     public ObservableCollection<string> ProductOptions { get; } = new();
 
+    public ObservableCollection<string> SchemeStepParameterTypeOptions { get; } = new()
+    {
+        "设置值",
+        "判断值"
+    };
     #endregion
 
     #region 搜索与当前编辑属性
@@ -97,6 +103,7 @@ public sealed partial class SchemeConfigurationViewModel
             OnPropertyChanged();
             RefreshProductOptions();
             RefreshAvailableWorkSteps();
+            SynchronizeSelectedSchemeWorkStepSnapshots();
             RaisePageSummaryChanged();
             RaiseCommandStatesChanged();
         }
@@ -107,10 +114,27 @@ public sealed partial class SchemeConfigurationViewModel
         get => _selectedSchemeStep;
         set
         {
-            if (SetField(ref _selectedSchemeStep, value))
+            if (ReferenceEquals(_selectedSchemeStep, value))
             {
-                RaiseCommandStatesChanged();
+                return;
             }
+
+            if (_selectedSchemeStep is not null)
+            {
+                _selectedSchemeStep.PropertyChanged -= SelectedSchemeStep_PropertyChanged;
+            }
+
+            _selectedSchemeStep = value;
+
+            if (_selectedSchemeStep is not null)
+            {
+                _selectedSchemeStep.PropertyChanged += SelectedSchemeStep_PropertyChanged;
+            }
+
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(DisplayedSchemeStepParameters));
+            OnPropertyChanged(nameof(SchemeStepParameterCountText));
+            RaiseCommandStatesChanged();
         }
     }
 
@@ -152,6 +176,15 @@ public sealed partial class SchemeConfigurationViewModel
         ? "未选择方案"
         : $"{SelectedScheme.StepCount} 个方案工步";
 
+    public string SchemeStepParameterCountText => SelectedSchemeStep is null
+        ? "未选择工步"
+        : $"{DisplayedSchemeStepParameters.Count} 个工步参数";
+
+    public ObservableCollection<SchemeWorkStepParameter> DisplayedSchemeStepParameters =>
+        FindCurrentWorkStep(SelectedSchemeStep) is null
+            ? EmptySchemeStepParameters
+            : SelectedSchemeStep?.Parameters ?? EmptySchemeStepParameters;
+
     #endregion
 
     #region 命令属性
@@ -184,9 +217,15 @@ public sealed partial class SchemeConfigurationViewModel
 
     private void SelectedScheme_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
+        if (e.PropertyName == nameof(SchemeProfile.Steps))
+        {
+            SynchronizeSelectedSchemeWorkStepSnapshots();
+        }
+
         if (e.PropertyName == nameof(SchemeProfile.ProductName))
         {
             RefreshAvailableWorkSteps();
+            SynchronizeSelectedSchemeWorkStepSnapshots();
         }
 
         if (e.PropertyName is nameof(SchemeProfile.StepCount)
@@ -194,7 +233,32 @@ public sealed partial class SchemeConfigurationViewModel
             or nameof(SchemeProfile.SchemeName))
         {
             RaisePageSummaryChanged();
+        }
+
+        if (e.PropertyName is nameof(SchemeProfile.StepCount)
+            or nameof(SchemeProfile.ProductName)
+            or nameof(SchemeProfile.SchemeName)
+            or nameof(SchemeProfile.Steps))
+        {
             SchemesView.Refresh();
+        }
+
+        if (e.PropertyName is nameof(SchemeProfile.ProductName)
+            or nameof(SchemeProfile.Steps))
+        {
+            OnPropertyChanged(nameof(DisplayedSchemeStepParameters));
+            OnPropertyChanged(nameof(SchemeStepParameterCountText));
+        }
+    }
+
+    private void SelectedSchemeStep_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is nameof(SchemeWorkStepItem.WorkStepId)
+            or nameof(SchemeWorkStepItem.Parameters)
+            or nameof(SchemeWorkStepItem.SchemeStepName))
+        {
+            OnPropertyChanged(nameof(DisplayedSchemeStepParameters));
+            OnPropertyChanged(nameof(SchemeStepParameterCountText));
         }
     }
 
@@ -203,7 +267,107 @@ public sealed partial class SchemeConfigurationViewModel
         OnPropertyChanged(nameof(SchemeCountText));
         OnPropertyChanged(nameof(AvailableWorkStepCountText));
         OnPropertyChanged(nameof(SchemeStepCountText));
+        OnPropertyChanged(nameof(SchemeStepParameterCountText));
     }
+
+    private void SynchronizeSelectedSchemeWorkStepSnapshots()
+    {
+        if (_isSynchronizingSchemeStepSnapshots || SelectedScheme is null)
+        {
+            return;
+        }
+
+        try
+        {
+            _isSynchronizingSchemeStepSnapshots = true;
+
+            foreach (SchemeWorkStepItem schemeStep in SelectedScheme.Steps)
+            {
+                WorkStepProfile? workStep = FindCurrentWorkStep(schemeStep);
+                if (workStep is null)
+                {
+                    continue;
+                }
+
+                ObservableCollection<SchemeWorkStepParameter> synchronizedParameters =
+                    SchemeWorkStepItem.CreateParametersFromWorkStep(workStep, schemeStep.Parameters);
+                bool needsSync =
+                    !string.Equals(schemeStep.ProductName, workStep.ProductName, StringComparison.OrdinalIgnoreCase) ||
+                    !string.Equals(schemeStep.StepName, workStep.StepName, StringComparison.OrdinalIgnoreCase) ||
+                    !string.Equals(schemeStep.OperationSummary, workStep.OperationSummary, StringComparison.OrdinalIgnoreCase) ||
+                    schemeStep.LastModifiedAt != workStep.LastModifiedAt ||
+                    !HasSameSchemeStepParameters(schemeStep.Parameters, synchronizedParameters);
+
+                if (!needsSync)
+                {
+                    continue;
+                }
+
+                schemeStep.ProductName = workStep.ProductName;
+                schemeStep.StepName = workStep.StepName;
+                schemeStep.OperationSummary = workStep.OperationSummary;
+                schemeStep.LastModifiedAt = workStep.LastModifiedAt;
+                schemeStep.Parameters = synchronizedParameters;
+            }
+        }
+        finally
+        {
+            _isSynchronizingSchemeStepSnapshots = false;
+        }
+    }
+
+    private WorkStepProfile? FindCurrentWorkStep(SchemeWorkStepItem? schemeStep)
+    {
+        if (SelectedScheme is null || schemeStep is null || string.IsNullOrWhiteSpace(schemeStep.WorkStepId))
+        {
+            return null;
+        }
+
+        WorkStepProfile? workStep = WorkSteps.FirstOrDefault(step =>
+            string.Equals(step.Id, schemeStep.WorkStepId, StringComparison.Ordinal));
+        if (workStep is null)
+        {
+            return null;
+        }
+
+        return string.Equals(workStep.ProductName, SelectedScheme.ProductName, StringComparison.OrdinalIgnoreCase)
+            ? workStep
+            : null;
+    }
+
+    private static bool HasSameSchemeStepParameters(
+        ObservableCollection<SchemeWorkStepParameter> left,
+        ObservableCollection<SchemeWorkStepParameter> right)
+    {
+        if (ReferenceEquals(left, right))
+        {
+            return true;
+        }
+
+        if (left.Count != right.Count)
+        {
+            return false;
+        }
+
+        for (int index = 0; index < left.Count; index++)
+        {
+            SchemeWorkStepParameter leftParameter = left[index];
+            SchemeWorkStepParameter rightParameter = right[index];
+            if (!string.Equals(leftParameter.SourceOperationId, rightParameter.SourceOperationId, StringComparison.Ordinal) ||
+                !string.Equals(leftParameter.SourceParameterId, rightParameter.SourceParameterId, StringComparison.Ordinal) ||
+                !string.Equals(leftParameter.ParameterName, rightParameter.ParameterName, StringComparison.OrdinalIgnoreCase) ||
+                !string.Equals(leftParameter.ParameterType, rightParameter.ParameterType, StringComparison.OrdinalIgnoreCase) ||
+                !string.Equals(leftParameter.JudgeType, rightParameter.JudgeType, StringComparison.OrdinalIgnoreCase) ||
+                !string.Equals(leftParameter.JudgeCondition, rightParameter.JudgeCondition, StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private static readonly ObservableCollection<SchemeWorkStepParameter> EmptySchemeStepParameters = new();
 
     #endregion
 }

@@ -52,7 +52,7 @@ public sealed partial class SchemeConfigurationViewModel
         ImportSchemeCommand = new RelayCommand(_ => ImportScheme());
         ExportSchemeCommand = new RelayCommand(_ => ExportSelectedScheme(), _ => SelectedScheme is not null);
         RefreshWorkStepsCommand = new RelayCommand(_ => RefreshProductAndAvailableWorkSteps());
-        AddWorkStepToSchemeCommand = new RelayCommand(_ => AddWorkStepToScheme(), _ => SelectedScheme is not null && SelectedAvailableWorkStep is not null);
+        AddWorkStepToSchemeCommand = new RelayCommand(_ => AddWorkStepToScheme(), _ => SelectedScheme is not null);
         RemoveWorkStepFromSchemeCommand = new RelayCommand(_ => RemoveSelectedSchemeStep(), _ => SelectedScheme is not null && SelectedSchemeStep is not null);
         MoveSchemeStepUpCommand = new RelayCommand(_ => MoveSelectedSchemeStep(-1), _ => CanMoveSelectedSchemeStep(-1));
         MoveSchemeStepDownCommand = new RelayCommand(_ => MoveSelectedSchemeStep(1), _ => CanMoveSelectedSchemeStep(1));
@@ -212,6 +212,8 @@ public sealed partial class SchemeConfigurationViewModel
     /// </summary>
     private void RefreshProductAndAvailableWorkSteps()
     {
+        List<SchemeStepRefreshSelectionSnapshot> stepSelections = CaptureSchemeStepRefreshSelections();
+        string? selectedSchemeStepId = SelectedSchemeStep?.Id;
         BusinessConfigurationCatalog latestCatalog = BusinessConfigurationStore.LoadCatalog();
         _catalog.Products = latestCatalog.Products;
         _catalog.WorkSteps = latestCatalog.WorkSteps;
@@ -219,7 +221,13 @@ public sealed partial class SchemeConfigurationViewModel
         OnPropertyChanged(nameof(WorkSteps));
         RefreshProductOptions();
         RefreshAvailableWorkSteps();
-        SetPageStatus("已刷新产品名称和可添加工步列表。", SuccessBrush);
+        RestoreSchemeStepRefreshSelections(stepSelections);
+        SynchronizeSelectedSchemeWorkStepSnapshots();
+        SelectedSchemeStep = SelectedScheme?.Steps.FirstOrDefault(step =>
+                               string.Equals(step.Id, selectedSchemeStepId, StringComparison.Ordinal)) ??
+                           SelectedSchemeStep;
+        OnPropertyChanged(nameof(DisplayedSchemeStepParameters));
+        SetPageStatus("已刷新产品名称、工步列表和工步参数。", SuccessBrush);
     }
 
     #endregion
@@ -231,15 +239,27 @@ public sealed partial class SchemeConfigurationViewModel
     /// </summary>
     private void AddWorkStepToScheme()
     {
-        if (SelectedScheme is null || SelectedAvailableWorkStep is null)
+        if (SelectedScheme is null)
         {
             return;
         }
 
-        SchemeWorkStepItem schemeStep = SchemeWorkStepItem.FromWorkStep(SelectedAvailableWorkStep);
-        SelectedScheme.Steps.Add(schemeStep);
+        WorkStepProfile? preferredWorkStep = ResolvePreferredAvailableWorkStep();
+        SchemeWorkStepItem schemeStep = preferredWorkStep is null
+            ? CreateEmptySchemeStep(SelectedScheme.ProductName)
+            : SchemeWorkStepItem.FromWorkStep(preferredWorkStep);
+
+        int insertIndex = SelectedSchemeStep is null
+            ? SelectedScheme.Steps.Count
+            : Math.Clamp(SelectedScheme.Steps.IndexOf(SelectedSchemeStep) + 1, 0, SelectedScheme.Steps.Count);
+
+        SelectedScheme.Steps.Insert(insertIndex, schemeStep);
         SelectedSchemeStep = schemeStep;
-        SetPageStatus($"已添加工步：{schemeStep.StepName}", SuccessBrush);
+        SetPageStatus(
+            preferredWorkStep is null
+                ? "已添加工步，请在“内置工步”列选择对应工步。"
+                : $"已添加工步：{schemeStep.SchemeStepName}",
+            SuccessBrush);
     }
 
     /// <summary>
@@ -274,6 +294,42 @@ public sealed partial class SchemeConfigurationViewModel
         int oldIndex = SelectedScheme.Steps.IndexOf(SelectedSchemeStep);
         int newIndex = oldIndex + offset;
         SelectedScheme.Steps.Move(oldIndex, newIndex);
+        SetPageStatus("已调整方案工步顺序。", SuccessBrush);
+        RaiseCommandStatesChanged();
+    }
+
+    /// <summary>
+    /// 将拖拽的方案工步移动到目标工步前后。
+    /// </summary>
+    public void MoveSchemeStep(SchemeWorkStepItem draggedSchemeStep, SchemeWorkStepItem targetSchemeStep, bool insertAfter)
+    {
+        if (SelectedScheme is null)
+        {
+            return;
+        }
+
+        ObservableCollection<SchemeWorkStepItem> steps = SelectedScheme.Steps;
+        int oldIndex = steps.IndexOf(draggedSchemeStep);
+        int targetIndex = steps.IndexOf(targetSchemeStep);
+        if (oldIndex < 0 || targetIndex < 0 || oldIndex == targetIndex)
+        {
+            return;
+        }
+
+        int newIndex = targetIndex + (insertAfter ? 1 : 0);
+        if (oldIndex < newIndex)
+        {
+            newIndex--;
+        }
+
+        newIndex = Math.Clamp(newIndex, 0, steps.Count - 1);
+        if (oldIndex == newIndex)
+        {
+            return;
+        }
+
+        steps.Move(oldIndex, newIndex);
+        SelectedSchemeStep = draggedSchemeStep;
         SetPageStatus("已调整方案工步顺序。", SuccessBrush);
         RaiseCommandStatesChanged();
     }
@@ -315,6 +371,7 @@ public sealed partial class SchemeConfigurationViewModel
 
     private void RefreshAvailableWorkSteps()
     {
+        string? preferredWorkStepId = SelectedSchemeStep?.WorkStepId ?? SelectedAvailableWorkStep?.Id;
         AvailableWorkSteps.Clear();
         SelectedAvailableWorkStep = null;
 
@@ -331,8 +388,64 @@ public sealed partial class SchemeConfigurationViewModel
             AvailableWorkSteps.Add(workStep);
         }
 
-        SelectedAvailableWorkStep = AvailableWorkSteps.FirstOrDefault();
+        SelectedAvailableWorkStep = AvailableWorkSteps.FirstOrDefault(workStep =>
+                                     string.Equals(workStep.Id, preferredWorkStepId, StringComparison.Ordinal)) ??
+                                 AvailableWorkSteps.FirstOrDefault();
         RaisePageSummaryChanged();
+    }
+
+    private List<SchemeStepRefreshSelectionSnapshot> CaptureSchemeStepRefreshSelections()
+    {
+        if (SelectedScheme is null)
+        {
+            return new List<SchemeStepRefreshSelectionSnapshot>();
+        }
+
+        return SelectedScheme.Steps
+            .Select(step => new SchemeStepRefreshSelectionSnapshot(step, step.WorkStepId))
+            .ToList();
+    }
+
+    private void RestoreSchemeStepRefreshSelections(IEnumerable<SchemeStepRefreshSelectionSnapshot> stepSelections)
+    {
+        if (SelectedScheme is null)
+        {
+            return;
+        }
+
+        Dictionary<string, WorkStepProfile> availableWorkStepsById = WorkSteps
+            .Where(step => string.Equals(step.ProductName, SelectedScheme.ProductName, StringComparison.OrdinalIgnoreCase))
+            .GroupBy(step => step.Id, StringComparer.Ordinal)
+            .ToDictionary(group => group.Key, group => group.First(), StringComparer.Ordinal);
+
+        foreach (SchemeStepRefreshSelectionSnapshot selection in stepSelections)
+        {
+            if (!SelectedScheme.Steps.Contains(selection.SchemeStep))
+            {
+                continue;
+            }
+
+            if (!string.IsNullOrWhiteSpace(selection.WorkStepId) &&
+                availableWorkStepsById.TryGetValue(selection.WorkStepId, out WorkStepProfile? workStep))
+            {
+                selection.SchemeStep.WorkStepId = workStep.Id;
+                selection.SchemeStep.ProductName = workStep.ProductName;
+                selection.SchemeStep.StepName = workStep.StepName;
+                selection.SchemeStep.OperationSummary = workStep.OperationSummary;
+                selection.SchemeStep.LastModifiedAt = workStep.LastModifiedAt;
+                continue;
+            }
+
+            selection.SchemeStep.WorkStepId = string.Empty;
+            selection.SchemeStep.Parameters = new ObservableCollection<SchemeWorkStepParameter>();
+        }
+
+        string? preferredWorkStepId = SelectedSchemeStep?.WorkStepId ?? stepSelections
+            .FirstOrDefault(selection => selection.SchemeStep == SelectedSchemeStep)
+            ?.WorkStepId;
+        SelectedAvailableWorkStep = AvailableWorkSteps.FirstOrDefault(workStep =>
+                                     string.Equals(workStep.Id, preferredWorkStepId, StringComparison.Ordinal)) ??
+                                 AvailableWorkSteps.FirstOrDefault();
     }
 
     private bool ValidateSchemes(out string message)
@@ -443,12 +556,19 @@ public sealed partial class SchemeConfigurationViewModel
         string importedSchemeName = GenerateUniqueImportedSchemeName(sourceScheme.SchemeName);
         string productName = ResolveImportedProductName(package, importedSchemeName, out bool createdProduct);
         SchemeProfile scheme = CreateScheme(productName, importedSchemeName);
+        List<ImportedSourceWorkStepGroup> groupedSourceWorkSteps = GroupImportedSourceWorkSteps(sourceWorkSteps);
+        Dictionary<SchemeWorkStepItem, WorkStepProfile> resolvedWorkStepsBySchemeStep = new();
 
         int reusedWorkStepCount = 0;
         int createdWorkStepCount = 0;
-        foreach ((SchemeWorkStepItem sourceSchemeStep, WorkStepProfile sourceWorkStep) in sourceWorkSteps)
+        foreach (ImportedSourceWorkStepGroup groupedSourceWorkStep in groupedSourceWorkSteps)
         {
-            WorkStepProfile workStep = ResolveImportedWorkStep(sourceWorkStep, sourceSchemeStep.StepName, productName, importedSchemeName, out bool createdWorkStep);
+            WorkStepProfile workStep = ResolveImportedWorkStep(
+                groupedSourceWorkStep.SourceWorkStep,
+                groupedSourceWorkStep.SourceStepName,
+                productName,
+                importedSchemeName,
+                out bool createdWorkStep);
             if (createdWorkStep)
             {
                 createdWorkStepCount++;
@@ -457,8 +577,17 @@ public sealed partial class SchemeConfigurationViewModel
             {
                 reusedWorkStepCount++;
             }
+            
+            foreach (SchemeWorkStepItem schemeStepItem in groupedSourceWorkStep.SchemeSteps)
+            {
+                resolvedWorkStepsBySchemeStep[schemeStepItem] = workStep;
+            }
+        }
 
-            scheme.Steps.Add(SchemeWorkStepItem.FromWorkStep(workStep));
+        foreach ((SchemeWorkStepItem sourceSchemeStep, _) in sourceWorkSteps)
+        {
+            WorkStepProfile workStep = resolvedWorkStepsBySchemeStep[sourceSchemeStep];
+            scheme.Steps.Add(CreateImportedSchemeStep(workStep, sourceSchemeStep));
         }
 
         Schemes.Add(scheme);
@@ -467,6 +596,30 @@ public sealed partial class SchemeConfigurationViewModel
         RefreshAvailableWorkSteps();
         string productStatus = createdProduct ? "新建产品" : "复用产品";
         SetPageStatus($"已导入方案，{productStatus}，复用 {reusedWorkStepCount} 个工步，新建 {createdWorkStepCount} 个工步，点击保存后生效。", SuccessBrush);
+    }
+
+    private static List<ImportedSourceWorkStepGroup> GroupImportedSourceWorkSteps(
+        IEnumerable<(SchemeWorkStepItem SchemeStep, WorkStepProfile WorkStep)> sourceWorkSteps)
+    {
+        List<ImportedSourceWorkStepGroup> groups = new();
+
+        foreach ((SchemeWorkStepItem schemeStep, WorkStepProfile workStep) in sourceWorkSteps)
+        {
+            string sourceStepName = ResolveImportedSourceStepName(workStep, schemeStep.StepName);
+            ImportedSourceWorkStepGroup? existingGroup = groups.FirstOrDefault(group =>
+                TextEquals(group.SourceStepName, sourceStepName) &&
+                HasSameOperationContent(group.SourceWorkStep, workStep));
+
+            if (existingGroup is null)
+            {
+                existingGroup = new ImportedSourceWorkStepGroup(sourceStepName, workStep);
+                groups.Add(existingGroup);
+            }
+
+            existingGroup.SchemeSteps.Add(schemeStep);
+        }
+
+        return groups;
     }
 
     private void RefreshProductsAndWorkStepsFromLocalFiles()
@@ -525,9 +678,7 @@ public sealed partial class SchemeConfigurationViewModel
 
     private WorkStepProfile ResolveImportedWorkStep(WorkStepProfile source, string sourceStepName, string productName, string schemeName, out bool createdWorkStep)
     {
-        string normalizedSourceStepName = string.IsNullOrWhiteSpace(sourceStepName)
-            ? source.StepName
-            : sourceStepName;
+        string normalizedSourceStepName = ResolveImportedSourceStepName(source, sourceStepName);
         WorkStepProfile? existingWorkStep = WorkSteps
             .FirstOrDefault(workStep =>
                 TextEquals(workStep.ProductName, productName) &&
@@ -544,6 +695,13 @@ public sealed partial class SchemeConfigurationViewModel
         WorkSteps.Add(created);
         createdWorkStep = true;
         return created;
+    }
+
+    private static string ResolveImportedSourceStepName(WorkStepProfile source, string? sourceStepName)
+    {
+        return string.IsNullOrWhiteSpace(sourceStepName)
+            ? NormalizeText(source.StepName)
+            : sourceStepName.Trim();
     }
 
     private WorkStepProfile CreateImportedWorkStep(WorkStepProfile source, string sourceStepName, string productName, string schemeName)
@@ -567,6 +725,10 @@ public sealed partial class SchemeConfigurationViewModel
                     CommandName = operation.CommandName,
                     InvokeMethod = operation.InvokeMethod,
                     ReturnValue = operation.ReturnValue,
+                    ShowDataToView = operation.ShowDataToView,
+                    ViewDataName = operation.ViewDataName,
+                    ViewJudgeType = operation.ViewJudgeType,
+                    ViewJudgeCondition = operation.ViewJudgeCondition,
                     LuaScript = operation.LuaScript,
                     DelayMilliseconds = operation.DelayMilliseconds,
                     Remark = operation.Remark,
@@ -694,6 +856,11 @@ public sealed partial class SchemeConfigurationViewModel
                 !TextEquals(leftOperation.ProtocolName, rightOperation.ProtocolName) ||
                 !TextEquals(GetComparableCommandName(leftOperation), GetComparableCommandName(rightOperation)) ||
                 !TextEquals(leftOperation.InvokeMethod, rightOperation.InvokeMethod) ||
+                !TextEquals(leftOperation.ReturnValue, rightOperation.ReturnValue) ||
+                leftOperation.ShowDataToView != rightOperation.ShowDataToView ||
+                !TextEquals(leftOperation.ViewDataName, rightOperation.ViewDataName) ||
+                !TextEquals(leftOperation.ViewJudgeType, rightOperation.ViewJudgeType) ||
+                !TextEquals(leftOperation.ViewJudgeCondition, rightOperation.ViewJudgeCondition) ||
                 !TextEquals(leftOperation.LuaScript, rightOperation.LuaScript))
             {
                 return false;
@@ -762,6 +929,15 @@ public sealed partial class SchemeConfigurationViewModel
         };
     }
 
+    private SchemeWorkStepItem CreateEmptySchemeStep(string productName)
+    {
+        return new SchemeWorkStepItem
+        {
+            ProductName = productName,
+            LastModifiedAt = DateTime.Now
+        };
+    }
+
     private SchemeProfile CreateCopyScheme(SchemeProfile source)
     {
         return new SchemeProfile
@@ -770,15 +946,24 @@ public sealed partial class SchemeConfigurationViewModel
             ProductName = source.ProductName,
             SchemeName = GenerateCopySchemeName(source.SchemeName),
             Steps = new ObservableCollection<SchemeWorkStepItem>(
-                source.Steps.Select(step => new SchemeWorkStepItem
+                source.Steps.Select(step =>
                 {
-                    Id = Guid.NewGuid().ToString("N"),
-                    WorkStepId = step.WorkStepId,
-                    ProductName = step.ProductName,
-                    StepName = step.StepName,
-                    OperationSummary = step.OperationSummary
+                    SchemeWorkStepItem clone = step.Clone();
+                    clone.Id = Guid.NewGuid().ToString("N");
+                    return clone;
                 }))
         };
+    }
+
+    private static SchemeWorkStepItem CreateImportedSchemeStep(WorkStepProfile workStep, SchemeWorkStepItem sourceSchemeStep)
+    {
+        SchemeWorkStepItem schemeStep = sourceSchemeStep.Clone();
+        schemeStep.Id = Guid.NewGuid().ToString("N");
+        schemeStep.WorkStepId = workStep.Id;
+        schemeStep.ProductName = workStep.ProductName;
+        schemeStep.StepName = workStep.StepName;
+        schemeStep.OperationSummary = workStep.OperationSummary;
+        return schemeStep;
     }
 
     private void SelectCreatedScheme(SchemeProfile scheme)
@@ -787,6 +972,15 @@ public sealed partial class SchemeConfigurationViewModel
         SchemesView.Refresh();
         SelectedScheme = scheme;
         SchemesView.MoveCurrentTo(scheme);
+    }
+
+    private WorkStepProfile? ResolvePreferredAvailableWorkStep()
+    {
+        string? preferredWorkStepId = SelectedSchemeStep?.WorkStepId ?? SelectedAvailableWorkStep?.Id;
+        return AvailableWorkSteps.FirstOrDefault(workStep =>
+                   string.Equals(workStep.Id, preferredWorkStepId, StringComparison.Ordinal)) ??
+               SelectedAvailableWorkStep ??
+               AvailableWorkSteps.FirstOrDefault();
     }
 
     private bool CanRunCreateOrCopyCommand()
@@ -867,12 +1061,43 @@ public sealed partial class SchemeConfigurationViewModel
         string keyword = SearchText.Trim();
         return Contains(scheme.SchemeName, keyword) ||
                Contains(scheme.ProductName, keyword) ||
-               scheme.Steps.Any(step => Contains(step.StepName, keyword) || Contains(step.OperationSummary, keyword));
+               scheme.Steps.Any(step =>
+                   Contains(step.SchemeStepName, keyword) ||
+                   Contains(step.StepName, keyword) ||
+                   Contains(step.OperationSummary, keyword));
     }
 
     private static bool Contains(string? source, string keyword)
     {
         return source?.IndexOf(keyword, StringComparison.OrdinalIgnoreCase) >= 0;
+    }
+
+    private sealed class SchemeStepRefreshSelectionSnapshot
+    {
+        public SchemeStepRefreshSelectionSnapshot(SchemeWorkStepItem schemeStep, string? workStepId)
+        {
+            SchemeStep = schemeStep;
+            WorkStepId = workStepId?.Trim() ?? string.Empty;
+        }
+
+        public SchemeWorkStepItem SchemeStep { get; }
+
+        public string WorkStepId { get; }
+    }
+
+    private sealed class ImportedSourceWorkStepGroup
+    {
+        public ImportedSourceWorkStepGroup(string sourceStepName, WorkStepProfile sourceWorkStep)
+        {
+            SourceStepName = sourceStepName;
+            SourceWorkStep = sourceWorkStep;
+        }
+
+        public string SourceStepName { get; }
+
+        public WorkStepProfile SourceWorkStep { get; }
+
+        public List<SchemeWorkStepItem> SchemeSteps { get; } = new();
     }
 
     private bool CanMoveSelectedSchemeStep(int offset)

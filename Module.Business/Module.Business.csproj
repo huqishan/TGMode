@@ -11,6 +11,7 @@
     <Folder Include="ViewModels\" />
     <Folder Include="Commands\" />
     <Folder Include="Propertys\" />
+    <Folder Include="Views\Controls\Views\" />
   </ItemGroup>
 
   <ItemGroup>

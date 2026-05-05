@@ -7,7 +7,11 @@ using System.Threading.Tasks;
 
 namespace TestProject.Models.EventModels
 {
-    public class MyMessage : PubSubEvent<string>
+    public sealed class MyMessage : PubSubEvent<MyMessage>
     {
+        public string Name { get; set; }
+        public string Type { get; set; }
+        public string Value { get; set; }
+        public string Judge { get; set; }
     }
 }

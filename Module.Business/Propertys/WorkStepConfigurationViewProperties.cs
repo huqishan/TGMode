@@ -45,6 +45,10 @@ public sealed partial class WorkStepConfigurationViewModel
     private string _editingInvokeMethod = string.Empty;
     private string _editingInvokeMethodRemark = string.Empty;
     private string _editingReturnValue = string.Empty;
+    private bool _editingShowDataToView;
+    private string _editingViewDataName = string.Empty;
+    private string _editingViewJudgeType = string.Empty;
+    private string _editingViewJudgeCondition = string.Empty;
     private string _editingLuaScript = string.Empty;
     private string _editingDelayMillisecondsText = "0";
     private string _editingRemark = string.Empty;
@@ -56,6 +60,7 @@ public sealed partial class WorkStepConfigurationViewModel
     private bool _isInitializingOperationDrawer;
     private bool _isSyncingSystemInvokeMethodSelection;
     private readonly HashSet<WorkStepOperationParameter> _trackedEditingInvokeParameters = new();
+    private readonly List<WorkStepOperation> _copiedOperations = new();
 
     #endregion
 
@@ -149,6 +154,7 @@ public sealed partial class WorkStepConfigurationViewModel
             SelectedOperation = _selectedWorkStep?.Steps.FirstOrDefault();
             OnPropertyChanged();
             OnPropertyChanged(nameof(OperationCountText));
+            OnPropertyChanged(nameof(AreAllOperationsChecked));
             RefreshParameterValueOptions();
             RaiseCommandStatesChanged();
         }
@@ -289,6 +295,30 @@ public sealed partial class WorkStepConfigurationViewModel
         }
     }
 
+    public bool EditingShowDataToView
+    {
+        get => _editingShowDataToView;
+        set => SetField(ref _editingShowDataToView, value);
+    }
+
+    public string EditingViewDataName
+    {
+        get => _editingViewDataName;
+        set => SetField(ref _editingViewDataName, value ?? string.Empty);
+    }
+
+    public string EditingViewJudgeType
+    {
+        get => _editingViewJudgeType;
+        set => SetField(ref _editingViewJudgeType, value ?? string.Empty);
+    }
+
+    public string EditingViewJudgeCondition
+    {
+        get => _editingViewJudgeCondition;
+        set => SetField(ref _editingViewJudgeCondition, value ?? string.Empty);
+    }
+
     public string EditingLuaScript
     {
         get => _editingLuaScript;
@@ -345,6 +375,30 @@ public sealed partial class WorkStepConfigurationViewModel
 
     #region 命令属性
 
+    public bool AreAllOperationsChecked
+    {
+        get => SelectedWorkStep is not null &&
+               SelectedWorkStep.Steps.Count > 0 &&
+               SelectedWorkStep.Steps.All(operation => operation.IsChecked);
+        set
+        {
+            if (SelectedWorkStep is null)
+            {
+                return;
+            }
+
+            foreach (WorkStepOperation operation in SelectedWorkStep.Steps
+                         .Where(operation => operation.IsChecked != value)
+                         .ToList())
+            {
+                operation.IsChecked = value;
+            }
+
+            OnPropertyChanged();
+            RaiseCommandStatesChanged();
+        }
+    }
+
     public ICommand NewWorkStepCommand { get; private set; } = null!;
 
     public ICommand DuplicateWorkStepCommand { get; private set; } = null!;
@@ -356,6 +410,10 @@ public sealed partial class WorkStepConfigurationViewModel
     public ICommand RefreshProductsCommand { get; private set; } = null!;
 
     public ICommand AddOperationCommand { get; private set; } = null!;
+
+    public ICommand CopyOperationCommand { get; private set; } = null!;
+
+    public ICommand PasteOperationCommand { get; private set; } = null!;
 
     public ICommand DeleteOperationCommand { get; private set; } = null!;
 
@@ -388,11 +446,14 @@ public sealed partial class WorkStepConfigurationViewModel
             or nameof(WorkStepProfile.ProductName)
             or nameof(WorkStepProfile.StepName)
             or nameof(WorkStepProfile.LastModifiedAt)
-            or nameof(WorkStepProfile.LastModifiedText))
+            or nameof(WorkStepProfile.LastModifiedText)
+            or nameof(WorkStepProfile.Steps))
         {
             OnPropertyChanged(nameof(OperationCountText));
             OnPropertyChanged(nameof(WorkStepCountText));
+            OnPropertyChanged(nameof(AreAllOperationsChecked));
             WorkStepsView.Refresh();
+            RaiseCommandStatesChanged();
         }
     }
 

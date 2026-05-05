@@ -125,12 +125,15 @@
     </Style>
 
     <Style x:Key="InputComboBoxItemStyle" TargetType="ComboBoxItem">
+        <Setter Property="OverridesDefaultStyle" Value="True" />
+        <Setter Property="SnapsToDevicePixels" Value="True" />
         <Setter Property="Foreground" Value="{DynamicResource AppContentTextBrush}" />
         <Setter Property="Background" Value="{DynamicResource TabCardBackgroundBrush}" />
         <Setter Property="FontSize" Value="14" />
         <Setter Property="FontWeight" Value="SemiBold" />
         <Setter Property="Padding" Value="10,7" />
         <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ComboBoxItem">

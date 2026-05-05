@@ -324,6 +324,10 @@ public static class BusinessConfigurationStore
             CommandName = commandName,
             InvokeMethod = invokeMethod,
             ReturnValue = isLuaOperation ? string.Empty : operation.ReturnValue?.Trim() ?? string.Empty,
+            ShowDataToView = !isLuaOperation && operation.ShowDataToView,
+            ViewDataName = isLuaOperation ? string.Empty : operation.ViewDataName?.Trim() ?? string.Empty,
+            ViewJudgeType = isLuaOperation ? string.Empty : operation.ViewJudgeType?.Trim() ?? string.Empty,
+            ViewJudgeCondition = isLuaOperation ? string.Empty : operation.ViewJudgeCondition?.Trim() ?? string.Empty,
             LuaScript = isLuaOperation ? operation.LuaScript ?? string.Empty : string.Empty,
             DelayMilliseconds = Math.Max(0, operation.DelayMilliseconds),
             Remark = operation.Remark?.Trim() ?? string.Empty,
@@ -357,6 +361,9 @@ public static class BusinessConfigurationStore
             Id = string.IsNullOrWhiteSpace(parameter.Id) ? Guid.NewGuid().ToString("N") : parameter.Id.Trim(),
             Sequence = parameter.Sequence <= 0 ? index + 1 : parameter.Sequence,
             Name = string.IsNullOrWhiteSpace(parameter.Name) ? "设置值" : parameter.Name.Trim(),
+            ParameterName = string.IsNullOrWhiteSpace(parameter.ParameterName)
+                ? parameter.Description?.Trim() ?? string.Empty
+                : parameter.ParameterName.Trim(),
             Value = parameter.Value?.Trim() ?? string.Empty,
             Remark = parameter.Remark?.Trim() ?? string.Empty
         };
@@ -413,8 +420,13 @@ public static class BusinessConfigurationStore
                     continue;
                 }
 
-                SchemeWorkStepItem normalizedStep = SchemeWorkStepItem.FromWorkStep(workStep);
+                SchemeWorkStepItem normalizedStep = step.Clone();
                 normalizedStep.Id = string.IsNullOrWhiteSpace(step.Id) ? Guid.NewGuid().ToString("N") : step.Id.Trim();
+                normalizedStep.WorkStepId = workStep.Id;
+                normalizedStep.ProductName = workStep.ProductName;
+                normalizedStep.StepName = workStep.StepName;
+                normalizedStep.OperationSummary = workStep.OperationSummary;
+                normalizedStep.Parameters = SchemeWorkStepItem.CreateParametersFromWorkStep(workStep, step.Parameters);
                 normalizedSteps.Add(normalizedStep);
             }
 

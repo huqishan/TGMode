@@ -19,7 +19,7 @@
     <UserControl.Resources>
         <converts:ComparisonToVisibilityConvert x:Key="comp2Vis"/>
         <converts:InvertVisibilityConvert x:Key="invertVis"/>
-        
+        <BooleanToVisibilityConverter x:Key="b2V"/>
     </UserControl.Resources>
 
     <Grid HorizontalAlignment="Stretch"
@@ -125,7 +125,7 @@
                                                    Text="{Binding OperationCount}" />
                                     </Border>
                                 </DockPanel>
-                                <TextBlock Margin="0,8,0,0" x:Name="remarks"
+                                <TextBlock Margin="0,8,0,0"
                                            Foreground="{DynamicResource AppMutedTextBrush}"
                                            Text="{Binding LastModifiedText}"
                                            TextWrapping="Wrap" />
@@ -199,7 +199,16 @@
                             <Button Content="新建步骤"
                                     Command="{Binding AddOperationCommand}"
                                     Style="{StaticResource PrimaryActionButtonStyle}" />
-                            <Button Content="删除步骤"
+                            <Button Margin="12,0,0,0"
+                                    Content="复制步骤"
+                                    Command="{Binding CopyOperationCommand}"
+                                    Style="{StaticResource ActionButtonStyle}" />
+                            <Button Margin="12,0,0,0"
+                                    Content="粘贴步骤"
+                                    Command="{Binding PasteOperationCommand}"
+                                    Style="{StaticResource ActionButtonStyle}" />
+                            <Button Margin="12,0,0,0"
+                                    Content="删除步骤"
                                     Command="{Binding DeleteOperationCommand}"
                                     Style="{StaticResource ActionButtonStyle}" />
                         </StackPanel>
@@ -224,6 +233,28 @@
                                   MouseDoubleClick="OperationsDataGrid_MouseDoubleClick"
                                   Style="{StaticResource ColumnsDataGridStyle}">
                             <DataGrid.Columns>
+                                <DataGridTemplateColumn Width="56"
+                                                        Header="选择">
+                                    <DataGridTemplateColumn.HeaderTemplate>
+                                        <DataTemplate>
+                                            <CheckBox HorizontalAlignment="Center"
+                                                      VerticalAlignment="Center"
+                                                      IsChecked="{Binding DataContext.AreAllOperationsChecked, RelativeSource={RelativeSource AncestorType={x:Type DataGrid}}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.HeaderTemplate>
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <CheckBox HorizontalAlignment="Center"
+                                                      VerticalAlignment="Center"
+                                                      IsChecked="{Binding IsChecked, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                                <DataGridTextColumn Width="72"
+                                                    Header="序号"
+                                                    IsReadOnly="True"
+                                                    ElementStyle="{StaticResource CellTextBlockStyle}"
+                                                    Binding="{Binding DisplayOrder}" />
                                 <DataGridTextColumn Width="*"
                                                     Header="操作对象"
                                                     IsReadOnly="True"
@@ -280,7 +311,7 @@
             <Border Background="#3A000000"
                     MouseLeftButtonDown="OperationDrawerBackdrop_MouseLeftButtonDown" />
 
-            <Border x:Name="OperationDrawerSheet"
+            <Border
                     Width="800"
                     HorizontalAlignment="Right"
                     Style="{StaticResource DrawerBorderStyle}">
@@ -318,20 +349,40 @@
                     <ScrollViewer Grid.Row="1"
                                   Margin="0,18,0,18"
                                   VerticalScrollBarVisibility="Auto">
-                        <StackPanel Margin="0,0,16,0">
-                            <TextBlock Style="{StaticResource FieldLabelStyle}" Text="操作对象" />
-                            <DockPanel LastChildFill="True">
-                                <Button DockPanel.Dock="Right"
-                                        Margin="12,0,0,0"
-                                        Content="刷新"
-                                        Command="{Binding RefreshOperationObjectsCommand}"
-                                        Style="{StaticResource ActionButtonStyle}" />
-                                <ComboBox Style="{StaticResource InputComboBoxStyle}" x:Name="operationObj"
-                                          ItemContainerStyle="{StaticResource InputComboBoxItemStyle}"
-                                          ItemsSource="{Binding OperationObjectOptions}"
-                                          SelectedItem="{Binding EditingOperationObject, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                            </DockPanel>
 
+                        <StackPanel Margin="0,0,16,0">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel>
+                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="描述" />
+                                    <TextBox Style="{StaticResource InputTextBoxStyle}" AcceptsReturn="True" TextWrapping="Wrap" Text="{Binding EditingRemark, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="1" Width="100" Margin="16,0,0,0" HorizontalAlignment="Right">
+                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="延时(ms)" />
+                                    <TextBox Style="{StaticResource InputTextBoxStyle}"
+Text="{Binding EditingDelayMillisecondsText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                </StackPanel>
+                            </Grid>
+                            
+
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource FieldLabelStyle}" Text="操作对象" />
+                                <DockPanel LastChildFill="True">
+                                    <Button DockPanel.Dock="Right"
+            Margin="12,0,0,0"
+            Content="刷新"
+            Command="{Binding RefreshOperationObjectsCommand}"
+            Style="{StaticResource ActionButtonStyle}" />
+                                    <ComboBox Style="{StaticResource InputComboBoxStyle}" x:Name="operationObj"
+              ItemContainerStyle="{StaticResource InputComboBoxItemStyle}"
+              ItemsSource="{Binding OperationObjectOptions}"
+              SelectedItem="{Binding EditingOperationObject, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                </DockPanel>
+                            </StackPanel>
+                            
                             <Grid>
                                 <Grid.Style>
                                     <Style TargetType="{x:Type Grid}">
@@ -367,17 +418,6 @@
                             </Grid>
 
                             <StackPanel Visibility="{Binding ElementName=operationObj, Path=SelectedItem, Converter={StaticResource comp2Vis},ConverterParameter='System'}">
-                                <!--<StackPanel.Style>
-                                    <Style TargetType="{x:Type StackPanel}">
-                                        <Setter Property="Visibility" Value="Collapsed" />
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding IsSystemOperationSelected}" Value="True">
-                                                <Setter Property="Visibility" Value="Visible" />
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </StackPanel.Style>-->
-
                                 <Grid>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*" />
@@ -483,23 +523,59 @@
                                 </DataGrid.Columns>
                             </DataGrid>
                             <StackPanel Visibility="{Binding ElementName=luaEditorGrid,Path=Visibility, Converter={StaticResource invertVis}}">
-                                <TextBlock Style="{StaticResource FieldLabelStyle}" Text="返回值"/>
-                                <TextBox Style="{StaticResource InputTextBoxStyle}"
-         Text="{Binding EditingReturnValue, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="300" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <StackPanel Grid.Column="0">
+                                        <TextBlock Style="{StaticResource FieldLabelStyle}" Text="返回值"/>
+                                        <TextBox Style="{StaticResource InputTextBoxStyle}"
+                                                 Text="{Binding EditingReturnValue, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                    </StackPanel>
+
+                                    <CheckBox Grid.Column="1" x:Name="showView"
+                                              Margin="16,35,0,0"
+                                              VerticalAlignment="Center"
+                                              Content="显示到界面"
+                                              IsChecked="{Binding EditingShowDataToView, Mode=TwoWay}" />
+                                </Grid>
+
+                                <Grid Margin="0,12,0,0" Visibility="{Binding ElementName=showView, Path=IsChecked, Converter={StaticResource b2V}}">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="16" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="16" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <StackPanel Grid.Column="0">
+                                        <TextBlock Style="{StaticResource FieldLabelStyle}" Text="数据名称" />
+                                        <TextBox Style="{StaticResource InputTextBoxStyle}"
+                                                 Text="{Binding EditingViewDataName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                    </StackPanel>
+
+                                    <StackPanel Grid.Column="2">
+                                        <TextBlock Style="{StaticResource FieldLabelStyle}" Text="判断类型" />
+                                        <TextBox Style="{StaticResource InputTextBoxStyle}"
+                                                 Text="{Binding EditingViewJudgeType, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                    </StackPanel>
+
+                                    <StackPanel Grid.Column="4">
+                                        <TextBlock Style="{StaticResource FieldLabelStyle}" Text="判断条件" />
+                                        <TextBox Style="{StaticResource InputTextBoxStyle}"
+                                                 Text="{Binding EditingViewJudgeCondition, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                    </StackPanel>
+                                </Grid>
                             </StackPanel>
+
                             
 
-                            <TextBlock Style="{StaticResource FieldLabelStyle}" Text="延时(ms)" />
-                            <TextBox Style="{StaticResource InputTextBoxStyle}"
-                                     Text="{Binding EditingDelayMillisecondsText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            
 
-                            <TextBlock Style="{StaticResource FieldLabelStyle}" Text="描述" />
-                            <TextBox Height="50"
-                                     Style="{StaticResource InputTextBoxStyle}"
-                                     AcceptsReturn="True"
-                                     TextWrapping="Wrap"
-                                     VerticalContentAlignment="Top"
-                                     Text="{Binding EditingRemark, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            
                         </StackPanel>
                     </ScrollViewer>
 

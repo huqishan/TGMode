@@ -19,6 +19,7 @@
                 <ResourceDictionary Source="Resources/BorderStyle.xaml" />
                 <ResourceDictionary Source="Resources/LabelStyle.xaml" />
                 <ResourceDictionary Source="Resources/ListBoxStyle.xaml" />
+                <ResourceDictionary Source="Resources/ContextMenuStyle.xaml" />
             </ResourceDictionary.MergedDictionaries>
             <!--如果存在，您的其他资源在这里-->
 

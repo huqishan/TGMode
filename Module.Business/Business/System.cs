@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Shared.Infrastructure.Events;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -8,6 +9,7 @@ namespace Module.Business.Business
 {
     public static class System
     {
+        static IEventAggregator _EventAggregator = new EventAggregator();
         /// <summary>
         /// 十六进制字符串转换为普通字符串
         /// </summary>
@@ -59,5 +61,30 @@ namespace Module.Business.Business
         {
             return Environment.UserName;
         }
+        /// <summary>
+        /// 发送数据到视图层
+        /// </summary>
+        /// <param name="name">数据名称</param>
+        /// <param name="type">判断类型</param>
+        /// <param name="value">数据值</param>
+        /// <param name="judge">判断条件</param>
+        public static void SendDataToView(string name, string type, string value, string judge)
+        {
+            _EventAggregator.GetEvent<MessageShowView>().Publish(new MessageShowView
+            {
+                Name = name,
+                Type = type,
+                Value = value,
+                Judge = judge
+            });
+        }
+        public sealed class MessageShowView : PubSubEvent<MessageShowView>
+        {
+            public string Name { get; set; }
+            public string Type { get; set; }
+            public string Value { get; set; }
+            public string Judge { get; set; }
+        }
     }
+
 }

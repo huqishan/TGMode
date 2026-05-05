@@ -34,6 +34,13 @@
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="Foreground" Value="{DynamicResource AppContentTextBrush}" />
         </Style>
+
+        <Style x:Key="SchemeStepComboBoxStyle"
+               TargetType="{x:Type ComboBox}"
+               BasedOn="{StaticResource InputComboBoxStyle}">
+            <Setter Property="MinHeight" Value="30" />
+            <Setter Property="Padding" Value="8,4" />
+        </Style>
     </UserControl.Resources>
 
     <Grid HorizontalAlignment="Stretch"
@@ -203,112 +210,251 @@ SelectedItem="{Binding SelectedScheme.ProductName, Mode=TwoWay, UpdateSourceTrig
 
             <Border Grid.Row="2" Style="{StaticResource CardBorderStyle}">
                 <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="*" />
-                    </Grid.RowDefinitions>
-
-                    <DockPanel Grid.Row="0" LastChildFill="False">
-                        <TextBlock Style="{StaticResource SectionTitleStyle}" Text="方案工步" />
-                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-                            <Border Margin="0,0,12,0"
-                                    Padding="10,5"
-                                    Background="{DynamicResource TabCardBackgroundBrush}"
-                                    BorderBrush="{DynamicResource TabItemBorderBrush}"
-                                    BorderThickness="1"
-                                    CornerRadius="999">
-                                <TextBlock FontWeight="SemiBold" Text="{Binding SchemeStepCountText}" VerticalAlignment="Center"/>
-                            </Border>
-                            <Button Content="上移"
-                                    Command="{Binding MoveSchemeStepUpCommand}"
-                                    Style="{StaticResource ActionButtonStyle}" />
-                            <Button Content="下移"
-                                    Command="{Binding MoveSchemeStepDownCommand}"
-                                    Style="{StaticResource ActionButtonStyle}" />
-                            <Button Content="移除"
-                                    Command="{Binding RemoveWorkStepFromSchemeCommand}"
-                                    Style="{StaticResource ActionButtonStyle}" />
-                        </StackPanel>
-                    </DockPanel>
-
-                    <TextBlock Grid.Row="1"
-                               Margin="0,8,0,10"
-                               Foreground="{DynamicResource AppMutedTextBrush}"
-                               Text="左侧为当前方案工步列表，右侧只显示当前产品名称下可添加的工步。"
-                               TextWrapping="Wrap" />
-
-                    <Grid Grid.Row="2">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="1.35*" />
-                            <ColumnDefinition Width="16" />
-                            <ColumnDefinition Width="0.9*" />
-                        </Grid.ColumnDefinitions>
-
-                        <DataGrid Grid.Column="0"
-                                  ItemsSource="{Binding SelectedScheme.Steps}"
-                                  SelectedItem="{Binding SelectedSchemeStep, Mode=TwoWay}"
-                                  IsReadOnly="True"
-                                  Style="{StaticResource ColumnsDataGridStyle}">
-                            <DataGrid.Columns>
-                                <DataGridTextColumn Width="1.1*"
-                                                    Header="工步名称"
-                                                    Binding="{Binding StepName}" ElementStyle="{StaticResource CellTextBlockStyle}" EditingElementStyle="{StaticResource CellTextBoxStyle}"/>
-                                <DataGridTextColumn Width="1.8*"
-                                                    Header="步骤摘要"
-                                                    Binding="{Binding OperationSummary}" ElementStyle="{StaticResource CellTextBlockStyle}" EditingElementStyle="{StaticResource CellTextBoxStyle}"/>
-                            </DataGrid.Columns>
-                        </DataGrid>
-
-                        <Grid Grid.Column="2">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="16" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Border
+Padding="16"
+Background="{DynamicResource TabItemBackgroundBrush}"
+BorderBrush="{DynamicResource TabItemBorderBrush}"
+BorderThickness="1"
+CornerRadius="12">
+                        <Grid>
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto" />
-                                <RowDefinition Height="12" />
-                                <RowDefinition Height="*" />
-                                <RowDefinition Height="12" />
                                 <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
                             </Grid.RowDefinitions>
-
-                            <DockPanel LastChildFill="False">
-                                <TextBlock Style="{StaticResource SectionTitleStyle}" Text="可添加工步" />
-                                <Border DockPanel.Dock="Right"
-                                        Margin="12,0,0,0"
-                                        Padding="10,5"
-                                        Background="{DynamicResource TabCardBackgroundBrush}"
-                                        BorderBrush="{DynamicResource TabItemBorderBrush}"
-                                        BorderThickness="1"
-                                        CornerRadius="999">
-                                    <TextBlock FontWeight="SemiBold" Text="{Binding AvailableWorkStepCountText}" />
-                                </Border>
+                            <DockPanel Grid.Row="0" LastChildFill="False">
+                                <TextBlock Style="{StaticResource SectionTitleStyle}" Text="方案工步" />
+                                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                                    <Border Margin="0,0,12,0"
+        Padding="10,5"
+        Background="{DynamicResource TabCardBackgroundBrush}"
+        BorderBrush="{DynamicResource TabItemBorderBrush}"
+        BorderThickness="1"
+        CornerRadius="999">
+                                        <TextBlock FontWeight="SemiBold" Text="{Binding SchemeStepCountText}" VerticalAlignment="Center"/>
+                                    </Border>
+                                    <!--<Button Content="添加工步"
+        Command="{Binding AddWorkStepToSchemeCommand}"
+        Style="{StaticResource PrimaryActionButtonStyle}" />
+<Button Content="上移"
+        Command="{Binding MoveSchemeStepUpCommand}"
+        Style="{StaticResource ActionButtonStyle}" />
+<Button Content="下移"
+        Command="{Binding MoveSchemeStepDownCommand}"
+        Style="{StaticResource ActionButtonStyle}" />
+<Button Content="移除"
+        Command="{Binding RemoveWorkStepFromSchemeCommand}"
+        Style="{StaticResource ActionButtonStyle}" />-->
+                                </StackPanel>
                             </DockPanel>
 
-                            <ListBox Grid.Row="2"
-                                     ItemsSource="{Binding AvailableWorkSteps}"
-                                     SelectedItem="{Binding SelectedAvailableWorkStep, Mode=TwoWay}"
-                                     BorderThickness="0"
-                                     Background="Transparent"
-                                     ItemContainerStyle="{StaticResource ListBoxItemStyle}">
-                                <ListBox.ItemTemplate>
-                                    <DataTemplate>
-                                        <StackPanel>
-                                            <TextBlock FontSize="15"
-                                                       FontWeight="SemiBold"
-                                                       Foreground="{DynamicResource AppContentTextBrush}"
-                                                       Text="{Binding StepName}" />
-                                            <TextBlock Margin="0,8,0,0"
-                                                       Foreground="{DynamicResource AppMutedTextBrush}"
-                                                       Text="{Binding OperationSummary}"
-                                                       TextWrapping="Wrap" />
-                                        </StackPanel>
-                                    </DataTemplate>
-                                </ListBox.ItemTemplate>
-                            </ListBox>
+                            <TextBlock Grid.Row="1"
+   Margin="0,8,0,10"
+   Foreground="{DynamicResource AppMutedTextBrush}"
+   Text="左侧维护当前方案的工步顺序，选中工步后可在右侧维护该内置工步的方案参数。右键菜单 增加/删除/刷新 工步"
+   TextWrapping="Wrap" />
 
-                            <Button Grid.Row="4"
-                                    Content="添加到方案"
-                                    Command="{Binding AddWorkStepToSchemeCommand}"
-                                    Style="{StaticResource PrimaryActionButtonStyle}" />
+                            <Grid Grid.Row="2">
+                                <DataGrid x:Name="SchemeStepsDataGrid" HorizontalScrollBarVisibility="Disabled"
+     ItemsSource="{Binding SelectedScheme.Steps}"
+     SelectedItem="{Binding SelectedSchemeStep, Mode=TwoWay}"
+     IsReadOnly="False"
+     AllowDrop="True"
+     PreviewMouseLeftButtonDown="SchemeStepsDataGrid_PreviewMouseLeftButtonDown"
+     PreviewMouseMove="SchemeStepsDataGrid_PreviewMouseMove"
+     PreviewMouseRightButtonDown="SchemeStepsDataGrid_PreviewMouseRightButtonDown"
+     DragOver="SchemeStepsDataGrid_DragOver"
+     DragLeave="SchemeStepsDataGrid_DragLeave"
+     Drop="SchemeStepsDataGrid_Drop"
+     Style="{StaticResource ColumnsDataGridStyle}">
+                                    <DataGrid.ContextMenu>
+                                        <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}"
+                                                     Style="{StaticResource StructureContextMenuStyle}">
+                                            <MenuItem Header="添加工步"
+                                                      Command="{Binding AddWorkStepToSchemeCommand}"
+                                                      Style="{StaticResource StructureContextMenuItemStyle}">
+                                                <MenuItem.Icon>
+                                                    <Viewbox Width="32" Height="32">
+                                                        <Canvas Width="16" Height="16">
+                                                            <Path Style="{StaticResource ContextMenuIconPathStyle}"
+                                                                  Data="M4,8 L12,8 M8,4 L8,12" />
+                                                        </Canvas>
+                                                    </Viewbox>
+                                                </MenuItem.Icon>
+                                            </MenuItem>
+                                            <MenuItem Header="移除工步"
+                                                      Command="{Binding RemoveWorkStepFromSchemeCommand}"
+                                                      Style="{StaticResource StructureContextMenuItemStyle}">
+                                                <MenuItem.Icon>
+                                                    <Viewbox Width="32" Height="32">
+                                                        <Canvas Width="16" Height="16">
+                                                            <Path Style="{StaticResource ContextMenuIconPathStyle}"
+                                                                  Data="M5,5 L11,5 M7,5 L7,4 L9,4 L9,5 M6,7 L6.4,13 L9.6,13 L10,7 M7.5,8 L7.5,12 M8.5,8 L8.5,12" />
+                                                        </Canvas>
+                                                    </Viewbox>
+                                                </MenuItem.Icon>
+                                            </MenuItem>
+                                            <Separator />
+                                            <MenuItem Header="刷新"
+                                                      Command="{Binding RefreshWorkStepsCommand}"
+                                                      Style="{StaticResource StructureContextMenuItemStyle}">
+                                                <MenuItem.Icon>
+                                                    <Viewbox Width="32" Height="32">
+                                                        <Canvas Width="16" Height="16">
+                                                            <Path Style="{StaticResource ContextMenuIconPathStyle}"
+                                                                  Data="M12.5,7.5 C12.1,5.6 10.4,4.2 8.4,4.2 C6.3,4.2 4.5,5.7 4.2,7.8 M3.8,6.1 L4.2,7.8 L5.9,7.4 M3.5,8.5 C3.9,10.4 5.6,11.8 7.6,11.8 C9.7,11.8 11.5,10.3 11.8,8.2 M10.1,8.6 L11.8,8.2 L12.2,9.9" />
+                                                        </Canvas>
+                                                    </Viewbox>
+                                                </MenuItem.Icon>
+                                            </MenuItem>
+                                        </ContextMenu>
+                                    </DataGrid.ContextMenu>
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Width="72"
+                       Header="序号"
+                       Binding="{Binding DisplayOrder}"
+                       IsReadOnly="True"
+                       ElementStyle="{StaticResource CellTextBlockStyle}"
+                       EditingElementStyle="{StaticResource CellTextBoxStyle}" />
+                                        <DataGridTextColumn Width="1.4*"
+                       Header="工步名称"
+                       Binding="{Binding SchemeStepName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                       ElementStyle="{StaticResource CellTextBlockStyle}"
+                       EditingElementStyle="{StaticResource CellTextBoxStyle}"/>
+                                        <DataGridTemplateColumn Width="1.6*"
+                           Header="内置工步">
+                                            <DataGridTemplateColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <ComboBox Style="{StaticResource SchemeStepComboBoxStyle}"
+                         ItemContainerStyle="{StaticResource InputComboBoxItemStyle}"
+                         Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type DataGridCell}}}"
+                         TextElement.Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type DataGridCell}}}"
+                         ItemsSource="{Binding DataContext.AvailableWorkSteps, RelativeSource={RelativeSource AncestorType={x:Type UserControl}}}"
+                         DisplayMemberPath="StepName"
+                         SelectedValuePath="Id"
+                         SelectedValue="{Binding WorkStepId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                                </DataTemplate>
+                                            </DataGridTemplateColumn.CellTemplate>
+                                        </DataGridTemplateColumn>
+                                        <!--<DataGridTextColumn Width="1.3*"
+                       Header="最后修改"
+                       Binding="{Binding LastModifiedText}"
+                       MinWidth="180"
+                       IsReadOnly="True"
+                       ElementStyle="{StaticResource CellTextBlockStyle}"
+                       EditingElementStyle="{StaticResource CellTextBoxStyle}"/>-->
+                                    </DataGrid.Columns>
+                                </DataGrid>
+
+                                <Canvas x:Name="SchemeStepDropIndicatorCanvas"
+   HorizontalAlignment="Stretch"
+   VerticalAlignment="Stretch"
+   IsHitTestVisible="False">
+                                    <Border x:Name="SchemeStepDropIndicator"
+       Height="3"
+       CornerRadius="2"
+       Visibility="Collapsed"
+       Background="{DynamicResource PrimaryButtonBrush}" />
+                                </Canvas>
+                            </Grid>
                         </Grid>
+                    </Border>
+                    
+                   
+                    <Grid Grid.Column="2">
+                        <Border
+        Padding="16"
+        Background="{DynamicResource TabItemBackgroundBrush}"
+        BorderBrush="{DynamicResource TabItemBorderBrush}"
+        BorderThickness="1"
+        CornerRadius="12">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="12" />
+                                    <RowDefinition Height="*" />
+                                </Grid.RowDefinitions>
+
+                                <DockPanel LastChildFill="False">
+                                    <TextBlock Style="{StaticResource SectionTitleStyle}" Text="工步参数" />
+                                    <Border DockPanel.Dock="Right"
+                    Margin="12,0,0,0"
+                    Padding="10,5"
+                    Background="{DynamicResource TabCardBackgroundBrush}"
+                    BorderBrush="{DynamicResource TabItemBorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="999">
+                                        <TextBlock FontWeight="SemiBold" Text="{Binding SchemeStepParameterCountText}" />
+                                    </Border>
+                                </DockPanel>
+
+                                <TextBlock Grid.Row="1"
+                   Margin="0,8,0,0"
+                   Foreground="{DynamicResource AppMutedTextBrush}"
+                   Text="这里显示当前内置工步中调用方法参数里类型为“工步值”的参数，以及勾选“显示到界面”的返回数据。显示到界面的数据会按工步里配置的判断类型生成，参数名称取判断类型，判断类型下拉也来自当前工步的显示配置。"
+                   TextWrapping="Wrap" />
+
+                                <DataGrid Grid.Row="3"
+                  MinHeight="220"
+                  ItemsSource="{Binding DisplayedSchemeStepParameters}"
+                  Style="{StaticResource ColumnsDataGridStyle}">
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Width="1.3*"
+                                    Header="参数名称"
+                                    Binding="{Binding ParameterName}"
+                                    IsReadOnly="True"
+                                    ElementStyle="{StaticResource CellTextBlockStyle}"
+                                    EditingElementStyle="{StaticResource CellTextBoxStyle}" />
+                                        <DataGridTemplateColumn Width="1.1*"
+                                        Header="参数类型">
+                                            <DataGridTemplateColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <TextBlock Style="{StaticResource CellTextBlockStyle}"
+                                       Text="{Binding ParameterType}" />
+                                                </DataTemplate>
+                                            </DataGridTemplateColumn.CellTemplate>
+                                            <!--<DataGridTemplateColumn.CellEditingTemplate>
+                                                <DataTemplate>
+                                                    <ComboBox Style="{StaticResource InputComboBoxStyle}"
+                                      ItemContainerStyle="{StaticResource InputComboBoxItemStyle}"
+                                      ItemsSource="{Binding DataContext.SchemeStepParameterTypeOptions, RelativeSource={RelativeSource AncestorType={x:Type DataGrid}}}"
+                                      SelectedItem="{Binding ParameterType, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                                </DataTemplate>
+                                            </DataGridTemplateColumn.CellEditingTemplate>-->
+                                        </DataGridTemplateColumn>
+                                        <DataGridTemplateColumn Width="1.1*"
+                                        Header="判断类型">
+                                            <DataGridTemplateColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <TextBlock Style="{StaticResource CellTextBlockStyle}"
+                                       Text="{Binding JudgeType}" />
+                                                </DataTemplate>
+                                            </DataGridTemplateColumn.CellTemplate>
+                                            <DataGridTemplateColumn.CellEditingTemplate>
+                                                <DataTemplate>
+                                                    <ComboBox Style="{StaticResource InputComboBoxStyle}"
+                                      ItemContainerStyle="{StaticResource InputComboBoxItemStyle}"
+                                      ItemsSource="{Binding JudgeTypeOptions}"
+                                      SelectedItem="{Binding JudgeType, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                      IsEnabled="{Binding UsesJudgeType}" />
+                                                </DataTemplate>
+                                            </DataGridTemplateColumn.CellEditingTemplate>
+                                        </DataGridTemplateColumn>
+                                        <DataGridTextColumn Width="1.5*"
+                                    Header="条件"
+                                    Binding="{Binding JudgeCondition, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                    ElementStyle="{StaticResource CellTextBlockStyle}"
+                                    EditingElementStyle="{StaticResource CellTextBoxStyle}" />
+                                    </DataGrid.Columns>
+                                </DataGrid>
+                            </Grid>
+                        </Border>
                     </Grid>
                 </Grid>
             </Border>

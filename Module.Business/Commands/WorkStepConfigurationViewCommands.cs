@@ -58,7 +58,9 @@ public sealed partial class WorkStepConfigurationViewModel
         SaveWorkStepsCommand = new RelayCommand(_ => SaveWorkSteps());
         RefreshProductsCommand = new RelayCommand(_ => RefreshProducts());
         AddOperationCommand = new RelayCommand(_ => OpenOperationDrawerForNew(), _ => SelectedWorkStep is not null);
-        DeleteOperationCommand = new RelayCommand(_ => DeleteSelectedOperation(), _ => SelectedWorkStep is not null && SelectedOperation is not null);
+        CopyOperationCommand = new RelayCommand(_ => CopySelectedOperations(), _ => CanCopyOperations());
+        PasteOperationCommand = new RelayCommand(_ => PasteCopiedOperations(), _ => CanPasteOperations());
+        DeleteOperationCommand = new RelayCommand(_ => DeleteSelectedOperation(), _ => CanDeleteOperations());
         SaveOperationDrawerCommand = new RelayCommand(_ => SaveOperationDrawer(), _ => IsOperationDrawerOpen);
         CloseOperationDrawerCommand = new RelayCommand(_ => CloseOperationDrawer());
         RefreshOperationObjectsCommand = new RelayCommand(_ => RefreshOperationObjectOptions(updateStatus: true), _ => IsOperationDrawerOpen);
@@ -191,6 +193,10 @@ public sealed partial class WorkStepConfigurationViewModel
             OperationObject = SystemOperationObjectName,
             InvokeMethod = string.Empty,
             ReturnValue = string.Empty,
+            ShowDataToView = false,
+            ViewDataName = string.Empty,
+            ViewJudgeType = string.Empty,
+            ViewJudgeCondition = string.Empty,
             DelayMilliseconds = 0,
             Remark = string.Empty
         };
@@ -289,6 +295,14 @@ public sealed partial class WorkStepConfigurationViewModel
             return;
         }
 
+        if (!IsLuaOperationSelected &&
+            EditingShowDataToView &&
+            string.IsNullOrWhiteSpace(EditingViewDataName))
+        {
+            SetPageStatus("勾选显示到界面时，数据名称不能为空。", WarningBrush);
+            return;
+        }
+
         if (!int.TryParse(EditingDelayMillisecondsText, out int delayMilliseconds) || delayMilliseconds < 0)
         {
             SetPageStatus("延时(ms)必须是大于等于 0 的整数。", WarningBrush);
@@ -305,6 +319,10 @@ public sealed partial class WorkStepConfigurationViewModel
         _drawerOperation.CommandName = IsProtocolCommandSelectionVisible ? EditingCommandName.Trim() : string.Empty;
         _drawerOperation.InvokeMethod = invokeMethod.Trim();
         _drawerOperation.ReturnValue = IsLuaOperationSelected ? string.Empty : EditingReturnValue.Trim();
+        _drawerOperation.ShowDataToView = !IsLuaOperationSelected && EditingShowDataToView;
+        _drawerOperation.ViewDataName = IsLuaOperationSelected ? string.Empty : EditingViewDataName.Trim();
+        _drawerOperation.ViewJudgeType = IsLuaOperationSelected ? string.Empty : EditingViewJudgeType.Trim();
+        _drawerOperation.ViewJudgeCondition = IsLuaOperationSelected ? string.Empty : EditingViewJudgeCondition.Trim();
         _drawerOperation.LuaScript = IsLuaOperationSelected ? EditingLuaScript : string.Empty;
         _drawerOperation.DelayMilliseconds = delayMilliseconds;
         _drawerOperation.Remark = EditingRemark.Trim();
@@ -343,6 +361,10 @@ public sealed partial class WorkStepConfigurationViewModel
         _isNewOperationInDrawer = false;
         EditingInvokeParameters.Clear();
         EditingInvokeMethodRemark = string.Empty;
+        EditingShowDataToView = false;
+        EditingViewDataName = string.Empty;
+        EditingViewJudgeType = string.Empty;
+        EditingViewJudgeCondition = string.Empty;
         SelectedEditingInvokeParameter = null;
         OnPropertyChanged(nameof(OperationDrawerTitle));
     }
@@ -352,23 +374,197 @@ public sealed partial class WorkStepConfigurationViewModel
     /// </summary>
     private void DeleteSelectedOperation()
     {
-        if (SelectedWorkStep is null || SelectedOperation is null)
+        if (SelectedWorkStep is null)
         {
             return;
         }
 
-        int index = SelectedWorkStep.Steps.IndexOf(SelectedOperation);
-        if (ReferenceEquals(_drawerOperation, SelectedOperation))
+        ObservableCollection<WorkStepOperation> steps = SelectedWorkStep.Steps;
+        List<WorkStepOperation> operationsToDelete = GetCheckedOperations(steps);
+        if (operationsToDelete.Count == 0 && SelectedOperation is not null)
+        {
+            operationsToDelete.Add(SelectedOperation);
+        }
+
+        if (operationsToDelete.Count == 0)
+        {
+            return;
+        }
+
+        int targetIndex = operationsToDelete
+            .Select(steps.IndexOf)
+            .Where(index => index >= 0)
+            .DefaultIfEmpty(-1)
+            .Min();
+
+        WorkStepOperation? operationToKeepSelected =
+            SelectedOperation is not null && !operationsToDelete.Contains(SelectedOperation)
+                ? SelectedOperation
+                : null;
+
+        if (_drawerOperation is not null &&
+            operationsToDelete.Any(operation => ReferenceEquals(operation, _drawerOperation)))
         {
             CloseOperationDrawer();
         }
 
-        SelectedWorkStep.Steps.Remove(SelectedOperation);
-        SelectedOperation = SelectedWorkStep.Steps.Count == 0
-            ? null
-            : SelectedWorkStep.Steps[Math.Clamp(index, 0, SelectedWorkStep.Steps.Count - 1)];
+        foreach (WorkStepOperation operation in operationsToDelete
+                     .Where(operation => steps.Contains(operation))
+                     .OrderByDescending(operation => steps.IndexOf(operation))
+                     .ToList())
+        {
+            steps.Remove(operation);
+        }
 
-        SetPageStatus("已删除步骤。", WarningBrush);
+        if (operationToKeepSelected is not null && steps.Contains(operationToKeepSelected))
+        {
+            SelectedOperation = operationToKeepSelected;
+        }
+        else
+        {
+            SelectedOperation = steps.Count == 0 || targetIndex < 0
+                ? null
+                : steps[Math.Clamp(targetIndex, 0, steps.Count - 1)];
+        }
+
+        SetPageStatus(operationsToDelete.Count == 1
+            ? "已删除步骤。"
+            : $"已删除 {operationsToDelete.Count} 个步骤。", WarningBrush);
+    }
+
+    private bool CanCopyOperations()
+    {
+        return SelectedWorkStep is not null && GetOperationsForClipboard().Count > 0;
+    }
+
+    private bool CanPasteOperations()
+    {
+        return SelectedWorkStep is not null && _copiedOperations.Count > 0;
+    }
+
+    private bool CanDeleteOperations()
+    {
+        return SelectedWorkStep is not null &&
+               (SelectedOperation is not null || SelectedWorkStep.Steps.Any(operation => operation.IsChecked));
+    }
+
+    private void CopySelectedOperations()
+    {
+        List<WorkStepOperation> operationsToCopy = GetOperationsForClipboard();
+        if (operationsToCopy.Count == 0)
+        {
+            return;
+        }
+
+        _copiedOperations.Clear();
+        _copiedOperations.AddRange(operationsToCopy.Select(CreateClipboardOperation));
+        RaiseCommandStatesChanged();
+
+        SetPageStatus(operationsToCopy.Count == 1
+            ? "已复制 1 个步骤。"
+            : $"已复制 {operationsToCopy.Count} 个步骤。", SuccessBrush);
+    }
+
+    private void PasteCopiedOperations()
+    {
+        if (SelectedWorkStep is null || _copiedOperations.Count == 0)
+        {
+            return;
+        }
+
+        ObservableCollection<WorkStepOperation> steps = SelectedWorkStep.Steps;
+        int insertIndex = ResolvePasteInsertIndex(steps);
+        ClearCheckedOperations(steps);
+
+        List<WorkStepOperation> operationsToPaste = _copiedOperations
+            .Select(CreateClipboardOperation)
+            .ToList();
+
+        foreach (WorkStepOperation operation in operationsToPaste)
+        {
+            steps.Insert(insertIndex, operation);
+            insertIndex++;
+        }
+
+        SelectedOperation = operationsToPaste.FirstOrDefault();
+        SetPageStatus(operationsToPaste.Count == 1
+            ? "已粘贴 1 个步骤。"
+            : $"已粘贴 {operationsToPaste.Count} 个步骤。", SuccessBrush);
+    }
+
+    private List<WorkStepOperation> GetCheckedOperations(ObservableCollection<WorkStepOperation> steps)
+    {
+        return steps
+            .Where(operation => operation.IsChecked)
+            .ToList();
+    }
+
+    private List<WorkStepOperation> GetOperationsForClipboard()
+    {
+        if (SelectedWorkStep is null)
+        {
+            return new List<WorkStepOperation>();
+        }
+
+        List<WorkStepOperation> checkedOperations = GetCheckedOperations(SelectedWorkStep.Steps);
+        if (checkedOperations.Count > 0)
+        {
+            return checkedOperations;
+        }
+
+        return SelectedOperation is null
+            ? new List<WorkStepOperation>()
+            : new List<WorkStepOperation> { SelectedOperation };
+    }
+
+    private int ResolvePasteInsertIndex(ObservableCollection<WorkStepOperation> steps)
+    {
+        List<WorkStepOperation> checkedOperations = GetCheckedOperations(steps);
+        if (checkedOperations.Count > 0)
+        {
+            int lastCheckedIndex = checkedOperations
+                .Select(steps.IndexOf)
+                .DefaultIfEmpty(-1)
+                .Max();
+            if (lastCheckedIndex >= 0)
+            {
+                return Math.Min(lastCheckedIndex + 1, steps.Count);
+            }
+        }
+
+        if (SelectedOperation is not null)
+        {
+            int selectedIndex = steps.IndexOf(SelectedOperation);
+            if (selectedIndex >= 0)
+            {
+                return Math.Min(selectedIndex + 1, steps.Count);
+            }
+        }
+
+        return steps.Count;
+    }
+
+    private void ClearCheckedOperations(ObservableCollection<WorkStepOperation> steps)
+    {
+        foreach (WorkStepOperation operation in steps.Where(item => item.IsChecked).ToList())
+        {
+            operation.IsChecked = false;
+        }
+    }
+
+    private WorkStepOperation CreateClipboardOperation(WorkStepOperation source)
+    {
+        WorkStepOperation operation = source.Clone();
+        operation.Id = Guid.NewGuid().ToString("N");
+        operation.IsChecked = false;
+        operation.Parameters = new ObservableCollection<WorkStepOperationParameter>(
+            operation.Parameters.Select(parameter =>
+            {
+                parameter.Id = Guid.NewGuid().ToString("N");
+                return parameter;
+            }));
+
+        return operation;
     }
 
     private void BeginOperationDrawer(WorkStepOperation operation, bool isNewOperation)
@@ -391,6 +587,10 @@ public sealed partial class WorkStepConfigurationViewModel
             RefreshProtocolOptions(updateStatus: false);
             RefreshInvokeMethodOptions(updateStatus: false);
             EditingReturnValue = operation.ReturnValue;
+            EditingShowDataToView = operation.ShowDataToView;
+            EditingViewDataName = operation.ViewDataName;
+            EditingViewJudgeType = operation.ViewJudgeType;
+            EditingViewJudgeCondition = operation.ViewJudgeCondition;
             EditingLuaScript = operation.LuaScript;
             EditingDelayMillisecondsText = operation.DelayMilliseconds.ToString();
             EditingRemark = operation.Remark;
@@ -417,6 +617,10 @@ public sealed partial class WorkStepConfigurationViewModel
             EditingInvokeMethod = LuaOperationObjectName;
             EditingInvokeMethodRemark = string.Empty;
             EditingReturnValue = string.Empty;
+            EditingShowDataToView = false;
+            EditingViewDataName = string.Empty;
+            EditingViewJudgeType = string.Empty;
+            EditingViewJudgeCondition = string.Empty;
             EditingInvokeParameters.Clear();
         }
         else if (IsSystemOperationSelected)
@@ -689,6 +893,10 @@ public sealed partial class WorkStepConfigurationViewModel
             OperationObject = SystemOperationObjectName,
             InvokeMethod = "等待",
             ReturnValue = string.Empty,
+            ShowDataToView = false,
+            ViewDataName = string.Empty,
+            ViewJudgeType = string.Empty,
+            ViewJudgeCondition = string.Empty,
             DelayMilliseconds = 0,
             Remark = string.Empty
         });
@@ -714,6 +922,10 @@ public sealed partial class WorkStepConfigurationViewModel
                     CommandName = operation.CommandName,
                     InvokeMethod = operation.InvokeMethod,
                     ReturnValue = operation.ReturnValue,
+                    ShowDataToView = operation.ShowDataToView,
+                    ViewDataName = operation.ViewDataName,
+                    ViewJudgeType = operation.ViewJudgeType,
+                    ViewJudgeCondition = operation.ViewJudgeCondition,
                     LuaScript = operation.LuaScript,
                     DelayMilliseconds = operation.DelayMilliseconds,
                     Remark = operation.Remark,
@@ -723,6 +935,7 @@ public sealed partial class WorkStepConfigurationViewModel
                             Id = Guid.NewGuid().ToString("N"),
                             Sequence = parameter.Sequence,
                             Name = parameter.Name,
+                            ParameterName = parameter.ParameterName,
                             Value = parameter.Value,
                             Remark = parameter.Remark
                         }))
@@ -1131,6 +1344,7 @@ public sealed partial class WorkStepConfigurationViewModel
             if (existingByPlaceholder.TryGetValue(placeholder.Name, out WorkStepOperationParameter? existing))
             {
                 parameter = existing.Clone();
+                parameter.ParameterName = placeholder.Name;
                 parameter.Description = placeholder.Name;
                 if (parameter.Sequence <= 0)
                 {
@@ -1143,6 +1357,7 @@ public sealed partial class WorkStepConfigurationViewModel
                 {
                     Sequence = sequence,
                     Name = ParameterTypeOptions.FirstOrDefault() ?? "设置值",
+                    ParameterName = placeholder.Name,
                     Value = placeholder.Value,
                     Remark = placeholder.Name
                 };
@@ -1186,6 +1401,7 @@ public sealed partial class WorkStepConfigurationViewModel
             {
                 Sequence = sequence,
                 Name = ParameterTypeOptions.FirstOrDefault() ?? "设置值",
+                ParameterName = parameterMetadata.Name,
                 Value = parameterMetadata.Type,
                 Remark = parameterMetadata.Description
             });
@@ -2023,6 +2239,8 @@ public sealed partial class WorkStepConfigurationViewModel
         RaiseCommandState(DuplicateWorkStepCommand);
         RaiseCommandState(DeleteWorkStepCommand);
         RaiseCommandState(AddOperationCommand);
+        RaiseCommandState(CopyOperationCommand);
+        RaiseCommandState(PasteOperationCommand);
         RaiseCommandState(DeleteOperationCommand);
         RaiseCommandState(SaveOperationDrawerCommand);
         RaiseCommandState(CloseOperationDrawerCommand);

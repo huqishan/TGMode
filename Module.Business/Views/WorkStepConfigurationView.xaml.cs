@@ -60,6 +60,11 @@ namespace Module.Business.Views
 
         private void OperationsDataGrid_MouseDoubleClick(object sender, MouseButtonEventArgs e)
         {
+            if (IsOperationSelectionCheckBox(e.OriginalSource as DependencyObject))
+            {
+                return;
+            }
+
             if (IsInlineEditableOperationCell(e.OriginalSource as DependencyObject))
             {
                 return;
@@ -77,6 +82,12 @@ namespace Module.Business.Views
 
         private void OperationsDataGrid_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
+            if (IsOperationSelectionCheckBox(e.OriginalSource as DependencyObject))
+            {
+                _pendingDraggedOperation = null;
+                return;
+            }
+
             if (IsInlineEditableOperationCell(e.OriginalSource as DependencyObject))
             {
                 _pendingDraggedOperation = null;
@@ -184,6 +195,11 @@ namespace Module.Business.Views
 
             return string.Equals(header, "延时(ms)", StringComparison.Ordinal) ||
                    string.Equals(header, "描述", StringComparison.Ordinal);
+        }
+
+        private static bool IsOperationSelectionCheckBox(DependencyObject? source)
+        {
+            return FindAncestor<CheckBox>(source) is not null;
         }
 
         private void ShowOperationDropIndicator(DataGridRow? targetRow, bool insertAfter)
