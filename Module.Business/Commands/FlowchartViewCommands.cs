@@ -246,7 +246,9 @@ public sealed partial class FlowchartViewModel
     {
         if (parameter is not FlowchartEditorControl editor)
         {
-            SetExecutionStatus("状态：流程图编辑器未初始化", WarningBrush);
+            FlowchartExecutionServiceResult invalidResult =
+                await FlowchartExecutionControlService.RunAsync(null).ConfigureAwait(true);
+            SetExecutionStatus($"状态：{invalidResult.Message}", WarningBrush);
             return;
         }
 
@@ -256,17 +258,16 @@ public sealed partial class FlowchartViewModel
         ExecutionLogs.Clear();
         SetExecutionStatus("状态：开始执行流程图", NeutralBrush);
 
-        void OnExecutionStepChanged(object? sender, FlowchartExecutionStepEventArgs e)
-        {
-            ExecutionLogs.Add(e.Message);
-            SetExecutionStatus($"状态：{e.Message}", NeutralBrush);
-        }
-
-        editor.ExecutionStepChanged += OnExecutionStepChanged;
-
         try
         {
-            FlowchartExecutionResult result = await editor.ExecuteFlowAsync();
+            FlowchartExecutionServiceResult result = await FlowchartExecutionControlService.RunAsync(
+                editor,
+                e =>
+                {
+                    ExecutionLogs.Add(e.Message);
+                    SetExecutionStatus($"状态：{e.Message}", NeutralBrush);
+                }).ConfigureAwait(true);
+
             if (!ExecutionLogs.Any())
             {
                 foreach (string step in result.Steps)
@@ -277,13 +278,8 @@ public sealed partial class FlowchartViewModel
 
             SetExecutionStatus($"状态：{result.Message}", result.IsSuccess ? SuccessBrush : WarningBrush);
         }
-        catch (Exception ex)
-        {
-            SetExecutionStatus($"状态：执行流程图失败：{ex.Message}", WarningBrush);
-        }
         finally
         {
-            editor.ExecutionStepChanged -= OnExecutionStepChanged;
             IsPaused = false;
             IsExecuting = false;
         }
@@ -294,26 +290,33 @@ public sealed partial class FlowchartViewModel
     /// </summary>
     private void TogglePauseFlowchart(object? parameter)
     {
-        if (parameter is not FlowchartEditorControl editor)
-        {
-            return;
-        }
-
         if (IsPaused)
         {
-            if (editor.ResumeExecution())
+            FlowchartExecutionControlActionResult continueResult =
+                FlowchartExecutionControlService.Continue(parameter as FlowchartEditorControl);
+            if (continueResult.IsSuccess)
             {
                 IsPaused = false;
-                SetExecutionStatus("状态：继续执行流程图", NeutralBrush);
+                SetExecutionStatus($"状态：{continueResult.Message}", NeutralBrush);
+            }
+            else
+            {
+                SetExecutionStatus($"状态：{continueResult.Message}", WarningBrush);
             }
 
             return;
         }
 
-        if (editor.PauseExecution())
+        FlowchartExecutionControlActionResult pauseResult =
+            FlowchartExecutionControlService.Pause(parameter as FlowchartEditorControl);
+        if (pauseResult.IsSuccess)
         {
             IsPaused = true;
-            SetExecutionStatus("状态：流程图已暂停", NeutralBrush);
+            SetExecutionStatus($"状态：{pauseResult.Message}", NeutralBrush);
+        }
+        else
+        {
+            SetExecutionStatus($"状态：{pauseResult.Message}", WarningBrush);
         }
     }
 
@@ -322,10 +325,16 @@ public sealed partial class FlowchartViewModel
     /// </summary>
     private void StopFlowchart(object? parameter)
     {
-        if (parameter is FlowchartEditorControl editor && editor.StopExecution())
+        FlowchartExecutionControlActionResult stopResult =
+            FlowchartExecutionControlService.Stop(parameter as FlowchartEditorControl);
+        if (stopResult.IsSuccess)
         {
             IsPaused = false;
-            SetExecutionStatus("状态：正在结束执行", WarningBrush);
+            SetExecutionStatus($"状态：{stopResult.Message}", WarningBrush);
+        }
+        else
+        {
+            SetExecutionStatus($"状态：{stopResult.Message}", WarningBrush);
         }
     }
 

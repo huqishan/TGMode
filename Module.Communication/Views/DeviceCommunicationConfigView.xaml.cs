@@ -1,4 +1,4 @@
-using ControlLibrary.ControlViews.Communication.Models;
+using Module.Communication.Models;
 using Shared.Abstractions;
 using Shared.Abstractions.Enum;
 using Shared.Infrastructure.Communication;
@@ -21,7 +21,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 
-namespace ControlLibrary.ControlViews.Communication
+namespace Module.Communication.Views
 {
     /// <summary>
     /// 设备通信配置页面，负责配置持久化和临时连接测试。

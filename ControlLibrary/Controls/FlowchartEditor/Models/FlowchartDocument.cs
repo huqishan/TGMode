@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 
 namespace ControlLibrary.Controls.FlowchartEditor.Models
@@ -23,6 +23,8 @@ namespace ControlLibrary.Controls.FlowchartEditor.Models
         public Guid Id { get; set; }
 
         public string Text { get; set; } = string.Empty;
+
+        public string MetadataJson { get; set; } = string.Empty;
 
         public FlowchartNodeKind Kind { get; set; }
 
@@ -51,3 +53,4 @@ namespace ControlLibrary.Controls.FlowchartEditor.Models
         public FlowchartAnchor TargetAnchor { get; set; }
     }
 }
+

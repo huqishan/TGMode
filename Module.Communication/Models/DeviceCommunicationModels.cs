@@ -5,7 +5,7 @@ using System.ComponentModel;
 using System.Net;
 using System.Runtime.CompilerServices;
 
-namespace ControlLibrary.ControlViews.Communication.Models
+namespace Module.Communication.Models
 {
     /// <summary>
     /// Communication type option shown in the editor selector.

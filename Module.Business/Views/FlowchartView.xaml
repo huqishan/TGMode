@@ -1,8 +1,9 @@
-<UserControl x:Class="Module.Business.Views.FlowchartView"
+﻿<UserControl x:Class="Module.Business.Views.FlowchartView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:businessViews="clr-namespace:Module.Business.Views.Controls.Views"
              xmlns:controls="clr-namespace:ControlLibrary.Controls.FlowchartEditor.Control;assembly=ControlLibrary"
              xmlns:searchBox="clr-namespace:ControlLibrary.Controls.SearchBox.Control;assembly=ControlLibrary"
              xmlns:vm="clr-namespace:Module.Business.ViewModels"
@@ -72,7 +73,8 @@
 
                 <StackPanel>
                     <DockPanel LastChildFill="False">
-                        <TextBlock Style="{StaticResource SectionTitleStyle}" Text="流程图配置" />
+                        <TextBlock Style="{StaticResource SectionTitleStyle}"
+                                   Text="流程图配置" />
                         <Border DockPanel.Dock="Right"
                                 Margin="16,0,0,0"
                                 Padding="10,5"
@@ -87,17 +89,17 @@
                     </DockPanel>
                     <TextBlock Margin="0,8,0,0"
                                Foreground="{DynamicResource AppMutedTextBrush}"
-                               Text="支持多个流程图配置，选择左侧流程图后在右侧编辑节点与连线。"
+                               Text="管理多个流程图，并在右侧编辑节点与连线。"
                                TextWrapping="Wrap" />
                 </StackPanel>
 
                 <searchBox:SearchBox Grid.Row="1"
                                      Margin="0,16,0,0"
-                                     PlaceholderText="搜索流程图配置..."
+                                     PlaceholderText="搜索流程图..."
                                      Text="{Binding SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
 
                 <UniformGrid Grid.Row="2" Columns="4" Margin="0,16,0,16">
-                    <Button Content="新增"
+                    <Button Content="新建"
                             Command="{Binding NewFlowchartCommand}"
                             CommandParameter="{Binding ElementName=Editor}"
                             Style="{StaticResource PrimaryActionButtonStyle}" />
@@ -140,7 +142,7 @@
                                                    FontWeight="SemiBold"
                                                    HorizontalAlignment="Center"
                                                    Foreground="{DynamicResource SecondaryButtonForegroundBrush}"
-                                                   Text="{Binding NodeCount, StringFormat={}{0} 节点}" />
+                                                   Text="{Binding NodeCountText}" />
                                     </Border>
                                 </DockPanel>
                                 <TextBlock Margin="0,8,0,0"
@@ -170,7 +172,8 @@
                     Style="{StaticResource CardBorderStyle}">
                 <StackPanel>
                     <DockPanel LastChildFill="False">
-                        <TextBlock Style="{StaticResource SectionTitleStyle}" Text="当前流程图" />
+                        <TextBlock Style="{StaticResource SectionTitleStyle}"
+                                   Text="当前流程图" />
                         <Border DockPanel.Dock="Right"
                                 Margin="16,0,0,0"
                                 Padding="12,6"
@@ -193,7 +196,8 @@
                         </Grid.ColumnDefinitions>
 
                         <StackPanel>
-                            <TextBlock Style="{StaticResource FieldLabelStyle}" Text="流程图名称" />
+                            <TextBlock Style="{StaticResource FieldLabelStyle}"
+                                       Text="流程图名称" />
                             <TextBox Style="{StaticResource InputTextBoxStyle}"
                                      Text="{Binding SelectedFlowchart.Name, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                         </StackPanel>
@@ -213,7 +217,7 @@
                                             Command="{Binding ExportFlowchartCommand}"
                                             CommandParameter="{Binding ElementName=Editor}"
                                             Style="{StaticResource ActionButtonStyle}" />
-                                    <Button Content="执行"
+                                    <Button Content="运行"
                                             Command="{Binding ExecuteFlowchartCommand}"
                                             CommandParameter="{Binding ElementName=Editor}"
                                             Style="{StaticResource PrimaryActionButtonStyle}" />
@@ -230,7 +234,7 @@
                                             </Style>
                                         </Button.Style>
                                     </Button>
-                                    <Button Content="结束"
+                                    <Button Content="停止"
                                             Command="{Binding StopFlowchartCommand}"
                                             CommandParameter="{Binding ElementName=Editor}"
                                             Style="{StaticResource ActionButtonStyle}" />
@@ -258,10 +262,11 @@
                                   HorizontalScrollBarVisibility="Disabled"
                                   VerticalScrollBarVisibility="Auto">
                         <StackPanel>
-                            <TextBlock Style="{StaticResource SectionTitleStyle}" Text="节点组件" />
+                            <TextBlock Style="{StaticResource SectionTitleStyle}"
+                                       Text="节点面板" />
                             <TextBlock Margin="0,8,0,14"
                                        Foreground="{DynamicResource AppMutedTextBrush}"
-                                       Text="拖动组件到画布创建节点。"
+                                       Text="拖动组件到画布以创建节点。"
                                        TextWrapping="Wrap" />
 
                             <ItemsControl ItemsSource="{Binding NodeTemplates}">
@@ -292,25 +297,83 @@
 
                             <Separator Margin="0,10,0,12" />
 
-                            <TextBlock Foreground="{DynamicResource AppMutedTextBrush}"
-                                       FontWeight="SemiBold"
+                            <TextBlock FontWeight="SemiBold"
+                                       Foreground="{DynamicResource AppMutedTextBrush}"
                                        Text="操作说明" />
                             <TextBlock Margin="0,8,0,0"
                                        Foreground="{DynamicResource AppMutedTextBrush}"
-                                       Text="拖节点四边连接点创建箭头线。"
+                                       Text="拖动节点边缘的锚点以创建连线。"
                                        TextWrapping="Wrap" />
                             <TextBlock Margin="0,6,0,0"
                                        Foreground="{DynamicResource AppMutedTextBrush}"
-                                       Text="拖空白区域平移，滚轮缩放，Delete 删除选中项。"
+                                       Text="拖动画布空白区域可平移，滚动鼠标滚轮可缩放，按删除键可删除选中项。"
+                                       TextWrapping="Wrap" />
+                            <TextBlock Margin="0,6,0,0"
+                                       Foreground="{DynamicResource AppMutedTextBrush}"
+                                       Text="双击处理块或判断块可打开同一个编辑步骤弹框。"
                                        TextWrapping="Wrap" />
                         </StackPanel>
                     </ScrollViewer>
 
                     <controls:FlowchartEditorControl x:Name="Editor"
                                                      Grid.Column="2"
-                                                     Document="{Binding SelectedFlowchart.Document, Mode=TwoWay}" />
+                                                     Document="{Binding SelectedFlowchart.Document, Mode=TwoWay}"
+                                                     NodeDoubleClick="Editor_NodeDoubleClick" />
+                </Grid>
+            </Border>
+        </Grid>
+
+        <Grid x:Name="NodeOperationEditorHost"
+              Grid.ColumnSpan="3"
+              Panel.ZIndex="60"
+              Visibility="Collapsed">
+            <Border Background="#59000000"
+                    MouseLeftButtonDown="NodeOperationEditorBackdrop_MouseLeftButtonDown" />
+
+            <Border Width="980"
+                    MaxWidth="1180"
+                    MaxHeight="760"
+                    Padding="24"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Style="{StaticResource CardBorderStyle}">
+                <Grid DataContext="{Binding ElementName=NodeOperationEditorHost, Path=Tag}">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <DockPanel LastChildFill="False">
+                        <StackPanel DockPanel.Dock="Left">
+                            <TextBlock Style="{StaticResource SectionTitleStyle}"
+                                       Text="编辑步骤" />
+                            <TextBlock Margin="0,8,0,0"
+                                       Foreground="{DynamicResource AppMutedTextBrush}"
+                                       Text="{Binding SelectedWorkStep.StepName}" />
+                        </StackPanel>
+                        <TextBlock DockPanel.Dock="Right"
+                                   VerticalAlignment="Center"
+                                   Foreground="{Binding PageStatusBrush}"
+                                   Text="{Binding PageStatusText}" />
+                    </DockPanel>
+
+                    <businessViews:OperationEditorView Grid.Row="1" />
+
+                    <StackPanel Grid.Row="2"
+                                Margin="0,18,0,0"
+                                HorizontalAlignment="Right"
+                                Orientation="Horizontal">
+                        <Button Content="取消"
+                                Click="NodeOperationEditorCancelButton_Click"
+                                Style="{StaticResource ActionButtonStyle}" />
+                        <Button Content="保存"
+                                Click="NodeOperationEditorSaveButton_Click"
+                                Style="{StaticResource PrimaryActionButtonStyle}" />
+                    </StackPanel>
                 </Grid>
             </Border>
         </Grid>
     </Grid>
 </UserControl>
+

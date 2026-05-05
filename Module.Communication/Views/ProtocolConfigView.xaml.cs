@@ -1,4 +1,4 @@
-using ControlLibrary.ControlViews.Protocol.Models;
+using Module.Communication.Models;
 using Shared.Infrastructure.Extensions;
 using Shared.Infrastructure.PackMethod;
 using System;
@@ -17,7 +17,7 @@ using System.Windows.Data;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 
-namespace ControlLibrary.ControlViews.Protocol
+namespace Module.Communication.Views
 {
     /// <summary>
     /// 协议配置页面，负责协议模板维护、本地保存和预览生成。

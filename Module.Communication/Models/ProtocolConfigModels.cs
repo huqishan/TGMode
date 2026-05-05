@@ -10,7 +10,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 
-namespace ControlLibrary.ControlViews.Protocol.Models
+namespace Module.Communication.Models
 {
     public enum ProtocolPayloadFormat
     {

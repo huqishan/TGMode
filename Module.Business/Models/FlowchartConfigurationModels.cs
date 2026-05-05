@@ -1,4 +1,4 @@
-using ControlLibrary;
+﻿using ControlLibrary;
 using ControlLibrary.Controls.FlowchartEditor.Models;
 using System;
 using System.Collections.ObjectModel;
@@ -8,7 +8,7 @@ using System.Text.Json.Serialization;
 namespace Module.Business.Models;
 
 /// <summary>
-/// 流程图配置根对象，统一保存多个流程图。
+/// 流程图配置根对象，统一保存多个流程图配置。
 /// </summary>
 public sealed class FlowchartConfigurationCatalog
 {
@@ -23,13 +23,12 @@ public sealed class FlowchartProfile : ViewModelProperties
     #region 私有字段
 
     private string _id = Guid.NewGuid().ToString("N");
-    private string _name = "流程图 1";
+    private string _name = "\u6d41\u7a0b\u56fe1";
     private FlowchartDocument _document = new();
 
     #endregion
 
     #region 绑定属性
-
     public string Id
     {
         get => _id;
@@ -60,10 +59,13 @@ public sealed class FlowchartProfile : ViewModelProperties
     public int NodeCount => Document.Nodes?.Count ?? 0;
 
     [JsonIgnore]
+    public string NodeCountText => $"{NodeCount} \u4e2a\u8282\u70b9";
+
+    [JsonIgnore]
     public int ConnectionCount => Document.Connections?.Count ?? 0;
 
     [JsonIgnore]
-    public string Summary => $"{NodeCount} 个节点 / {ConnectionCount} 条连线";
+    public string Summary => $"{NodeCount} \u4e2a\u8282\u70b9 / {ConnectionCount} \u6761\u8fde\u7ebf";
 
     #endregion
 
@@ -108,6 +110,7 @@ public sealed class FlowchartProfile : ViewModelProperties
                 {
                     Id = node.Id,
                     Text = node.Text ?? string.Empty,
+                    MetadataJson = node.MetadataJson ?? string.Empty,
                     Kind = node.Kind,
                     X = node.X,
                     Y = node.Y,
@@ -131,9 +134,11 @@ public sealed class FlowchartProfile : ViewModelProperties
     private void RaiseDocumentSummaryChanged()
     {
         OnPropertyChanged(nameof(NodeCount));
+        OnPropertyChanged(nameof(NodeCountText));
         OnPropertyChanged(nameof(ConnectionCount));
         OnPropertyChanged(nameof(Summary));
     }
 
     #endregion
 }
+

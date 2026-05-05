@@ -23,8 +23,8 @@ public static class NavigationCatalog
             new("设备管理", IconFactory.Cpu, null,
                 new ObservableCollection<ControlInfoDataItem>
                 {
-                    new("设备通信配置", IconFactory.Router, "ControlLibrary.ControlViews.Communication.DeviceCommunicationConfigView, ControlLibrary", null),
-                    new("协议配置", IconFactory.FileCog, "ControlLibrary.ControlViews.Protocol.ProtocolConfigView, ControlLibrary", null)
+                    new("设备通信配置", IconFactory.Router, "Module.Communication.Views.DeviceCommunicationConfigView, Module.Communication", null),
+                    new("协议配置", IconFactory.FileCog, "Module.Communication.Views.ProtocolConfigView, Module.Communication", null)
                 },
                 description: "Devices"),
             new("业务管理", IconFactory.Cpu, null,

@@ -1,4 +1,4 @@
-using ControlLibrary.Controls.FlowchartEditor.Models;
+﻿using ControlLibrary.Controls.FlowchartEditor.Models;
 using Module.Business.Models;
 using System;
 using System.Collections.Generic;
@@ -12,7 +12,7 @@ using System.Text.Json.Serialization;
 namespace Module.Business.Services;
 
 /// <summary>
-/// 流程图配置存储服务，负责多个流程图的 JSON 读写。
+/// 流程图配置存储服务，负责多个流程图配置文件的读取与保存。
 /// </summary>
 public static class FlowchartConfigurationStore
 {
@@ -33,7 +33,7 @@ public static class FlowchartConfigurationStore
     #region 配置读写
 
     /// <summary>
-    /// 加载流程图配置，文件不存在或格式异常时返回空配置。
+    /// 加载流程图配置；当配置文件不存在或格式异常时返回空配置。
     /// </summary>
     public static FlowchartConfigurationCatalog LoadCatalog()
     {
@@ -58,7 +58,7 @@ public static class FlowchartConfigurationStore
             }
             catch
             {
-                // Ignore one broken config file so the rest of the flowcharts can still load.
+                // 忽略单个损坏的配置文件，保证其余流程图仍可继续加载。
             }
         }
 
@@ -69,7 +69,7 @@ public static class FlowchartConfigurationStore
     }
 
     /// <summary>
-    /// 保存流程图配置，保存前会清洗空值、重复名称和无效连线。
+    /// 保存流程图配置；保存前会清理空值、重复名称和无效连线。
     /// </summary>
     public static void SaveCatalog(FlowchartConfigurationCatalog catalog)
     {
@@ -91,7 +91,6 @@ public static class FlowchartConfigurationStore
     #endregion
 
     #region 规范化方法
-
     private static JsonSerializerOptions CreateJsonOptions()
     {
         JsonSerializerOptions options = new()
@@ -128,7 +127,7 @@ public static class FlowchartConfigurationStore
         {
             flowchart.Id = EnsureUniqueId(flowchart.Id, usedIds);
             flowchart.Name = BuildUniqueName(
-                string.IsNullOrWhiteSpace(flowchart.Name) ? $"流程图 {index}" : flowchart.Name.Trim(),
+                string.IsNullOrWhiteSpace(flowchart.Name) ? $"\u6d41\u7a0b\u56fe{index}" : flowchart.Name.Trim(),
                 usedNames);
             flowchart.Document = NormalizeDocument(flowchart.Document);
             index++;
@@ -159,7 +158,8 @@ public static class FlowchartConfigurationStore
             nodes.Add(new FlowchartNodeDocument
             {
                 Id = nodeId,
-                Text = string.IsNullOrWhiteSpace(node.Text) ? "处理" : node.Text.Trim(),
+                Text = string.IsNullOrWhiteSpace(node.Text) ? "\u5904\u7406" : node.Text.Trim(),
+                MetadataJson = node.MetadataJson ?? string.Empty,
                 Kind = Enum.IsDefined(typeof(FlowchartNodeKind), node.Kind) ? node.Kind : FlowchartNodeKind.Process,
                 X = NormalizeCoordinate(node.X),
                 Y = NormalizeCoordinate(node.Y),
@@ -227,7 +227,7 @@ public static class FlowchartConfigurationStore
 
     private static string BuildUniqueName(string name, HashSet<string> usedNames)
     {
-        string baseName = string.IsNullOrWhiteSpace(name) ? "流程图" : name.Trim();
+        string baseName = string.IsNullOrWhiteSpace(name) ? "\u6d41\u7a0b\u56fe" : name.Trim();
         string candidate = baseName;
         int index = 2;
 
@@ -281,3 +281,4 @@ public static class FlowchartConfigurationStore
 
     #endregion
 }
+

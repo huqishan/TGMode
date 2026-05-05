@@ -59,6 +59,7 @@ public sealed partial class WorkStepConfigurationViewModel
     private bool _isSortingInvokeParameters;
     private bool _isInitializingOperationDrawer;
     private bool _isSyncingSystemInvokeMethodSelection;
+    private bool _isDecisionOperationMode;
     private readonly HashSet<WorkStepOperationParameter> _trackedEditingInvokeParameters = new();
     private readonly List<WorkStepOperation> _copiedOperations = new();
 
@@ -195,6 +196,8 @@ public sealed partial class WorkStepConfigurationViewModel
             if (SetField(ref _editingOperationObject, value ?? string.Empty))
             {
                 OnPropertyChanged(nameof(IsSystemOperationSelected));
+                OnPropertyChanged(nameof(IsJudgeOperationSelected));
+                OnPropertyChanged(nameof(IsSystemOrJudgeOperationSelected));
                 OnPropertyChanged(nameof(IsLuaOperationSelected));
                 OnPropertyChanged(nameof(IsProtocolCommandSelectionVisible));
                 OnPropertyChanged(nameof(IsInvokeParameterEditorVisible));
@@ -208,9 +211,13 @@ public sealed partial class WorkStepConfigurationViewModel
 
     public bool IsSystemOperationSelected => IsSystemOperationObject(EditingOperationObject);
 
+    public bool IsJudgeOperationSelected => IsJudgeOperationObject(EditingOperationObject);
+
+    public bool IsSystemOrJudgeOperationSelected => IsSystemOperationSelected || IsJudgeOperationSelected;
+
     public bool IsLuaOperationSelected => IsLuaOperationObject(EditingOperationObject);
 
-    public bool IsProtocolCommandSelectionVisible => !IsSystemOperationSelected && !IsLuaOperationSelected;
+    public bool IsProtocolCommandSelectionVisible => !IsSystemOrJudgeOperationSelected && !IsLuaOperationSelected;
 
     public bool IsInvokeParameterEditorVisible => !IsLuaOperationSelected;
 
@@ -234,7 +241,7 @@ public sealed partial class WorkStepConfigurationViewModel
         set
         {
             if (SetField(ref _editingCommandName, value ?? string.Empty) &&
-                !IsSystemOperationSelected &&
+                !IsSystemOrJudgeOperationSelected &&
                 !IsLuaOperationSelected)
             {
                 EditingInvokeMethod = _editingCommandName;
@@ -260,6 +267,13 @@ public sealed partial class WorkStepConfigurationViewModel
                 SyncSystemInvokeMethodRemarkFromMethod();
                 RefreshInvokeParametersFromSelectedSystemMethod(clearWhenNoMetadata: true);
             }
+            else if (IsJudgeOperationSelected &&
+                     !_isInitializingOperationDrawer &&
+                     !_isSyncingSystemInvokeMethodSelection)
+            {
+                SyncJudgeInvokeMethodRemarkFromMethod();
+                RefreshInvokeParametersFromSelectedJudgeMethod(clearWhenNoMetadata: true);
+            }
         }
     }
 
@@ -279,6 +293,13 @@ public sealed partial class WorkStepConfigurationViewModel
             {
                 SyncSystemInvokeMethodFromRemark();
                 RefreshInvokeParametersFromSelectedSystemMethod(clearWhenNoMetadata: true);
+            }
+            else if (IsJudgeOperationSelected &&
+                     !_isInitializingOperationDrawer &&
+                     !_isSyncingSystemInvokeMethodSelection)
+            {
+                SyncJudgeInvokeMethodFromRemark();
+                RefreshInvokeParametersFromSelectedJudgeMethod(clearWhenNoMetadata: true);
             }
         }
     }

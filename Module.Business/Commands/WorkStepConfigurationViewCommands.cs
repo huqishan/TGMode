@@ -1,4 +1,4 @@
-using ControlLibrary;
+﻿using ControlLibrary;
 using Module.Business.Models;
 using Module.Business.Services;
 using System;
@@ -286,7 +286,7 @@ public sealed partial class WorkStepConfigurationViewModel
 
         string invokeMethod = IsLuaOperationSelected
             ? LuaOperationObjectName
-            : IsSystemOperationSelected
+            : IsSystemOrJudgeOperationSelected
                 ? EditingInvokeMethod
                 : EditingCommandName;
         if (string.IsNullOrWhiteSpace(invokeMethod))
@@ -311,9 +311,11 @@ public sealed partial class WorkStepConfigurationViewModel
 
         _drawerOperation.OperationType = IsLuaOperationSelected
             ? LuaOperationObjectName
-            : IsSystemOperationSelected
-                ? "系统"
-                : "设备";
+            : IsJudgeOperationSelected
+                ? JudgeOperationObjectName
+                : IsSystemOperationSelected
+                    ? "\u7CFB\u7EDF"
+                    : "\u8BBE\u5907";
         _drawerOperation.OperationObject = IsLuaOperationSelected ? LuaOperationObjectName : EditingOperationObject.Trim();
         _drawerOperation.ProtocolName = IsProtocolCommandSelectionVisible ? EditingProtocolName.Trim() : string.Empty;
         _drawerOperation.CommandName = IsProtocolCommandSelectionVisible ? EditingCommandName.Trim() : string.Empty;
@@ -575,6 +577,13 @@ public sealed partial class WorkStepConfigurationViewModel
         try
         {
             string operationObject = ResolveOperationObjectForEditing(operation);
+            if (_isDecisionOperationMode &&
+                !IsJudgeOperationObject(operationObject) &&
+                string.IsNullOrWhiteSpace(operation.OperationObject))
+            {
+                operationObject = JudgeOperationObjectName;
+            }
+
             EnsureOperationObjectOption(operationObject);
             EditingOperationObject = operationObject;
             EditingProtocolName = operation.ProtocolName;
@@ -583,7 +592,7 @@ public sealed partial class WorkStepConfigurationViewModel
                 ? operation.InvokeMethod
                 : operation.CommandName;
             EnsureCommandOption(EditingCommandName);
-            EditingInvokeMethod = IsSystemOperationSelected ? operation.InvokeMethod : EditingCommandName;
+            EditingInvokeMethod = IsSystemOrJudgeOperationSelected ? operation.InvokeMethod : EditingCommandName;
             RefreshProtocolOptions(updateStatus: false);
             RefreshInvokeMethodOptions(updateStatus: false);
             EditingReturnValue = operation.ReturnValue;
@@ -622,6 +631,16 @@ public sealed partial class WorkStepConfigurationViewModel
             EditingViewJudgeType = string.Empty;
             EditingViewJudgeCondition = string.Empty;
             EditingInvokeParameters.Clear();
+        }
+        else if (IsJudgeOperationSelected)
+        {
+            EditingProtocolName = string.Empty;
+            EditingCommandName = string.Empty;
+            SyncJudgeInvokeMethodRemarkFromMethod();
+            if (EditingInvokeParameters.Count == 0)
+            {
+                RefreshInvokeParametersFromSelectedJudgeMethod(clearWhenNoMetadata: false);
+            }
         }
         else if (IsSystemOperationSelected)
         {
@@ -1205,23 +1224,34 @@ public sealed partial class WorkStepConfigurationViewModel
         string previousSelection = EditingOperationObject;
         OperationObjectOptions.Clear();
 
-        OperationObjectOptions.Add(SystemOperationObjectName);
-        OperationObjectOptions.Add(LuaOperationObjectName);
-        foreach (string option in LoadDeviceOperationObjectOptions()
-                     .Where(option => !string.IsNullOrWhiteSpace(option))
-                     .Select(option => option.Trim())
-                     .Where(option => !IsSystemOperationObject(option))
-                     .Where(option => !IsLuaOperationObject(option))
-                     .Distinct(StringComparer.OrdinalIgnoreCase)
-                     .OrderBy(option => option, StringComparer.OrdinalIgnoreCase))
+        if (_isDecisionOperationMode)
         {
-            OperationObjectOptions.Add(option);
+            OperationObjectOptions.Add(JudgeOperationObjectName);
+        }
+        else
+        {
+            OperationObjectOptions.Add(SystemOperationObjectName);
+            OperationObjectOptions.Add(LuaOperationObjectName);
+            foreach (string option in LoadDeviceOperationObjectOptions()
+                         .Where(option => !string.IsNullOrWhiteSpace(option))
+                         .Select(option => option.Trim())
+                         .Where(option => !IsSystemOperationObject(option))
+                         .Where(option => !IsLuaOperationObject(option))
+                         .Distinct(StringComparer.OrdinalIgnoreCase)
+                         .OrderBy(option => option, StringComparer.OrdinalIgnoreCase))
+            {
+                OperationObjectOptions.Add(option);
+            }
         }
 
         if (!string.IsNullOrWhiteSpace(previousSelection) &&
             OperationObjectOptions.Any(option => string.Equals(option, previousSelection, StringComparison.OrdinalIgnoreCase)))
         {
             EditingOperationObject = previousSelection;
+        }
+        else if (_isDecisionOperationMode)
+        {
+            EditingOperationObject = JudgeOperationObjectName;
         }
         else
         {
@@ -1242,7 +1272,7 @@ public sealed partial class WorkStepConfigurationViewModel
         string previousSelection = EditingProtocolName;
         ProtocolOptions.Clear();
 
-        if (IsSystemOperationSelected || IsLuaOperationSelected)
+        if (IsSystemOrJudgeOperationSelected || IsLuaOperationSelected)
         {
             EditingProtocolName = string.Empty;
             RefreshCommandOptions(updateStatus: false);
@@ -1277,7 +1307,7 @@ public sealed partial class WorkStepConfigurationViewModel
         string previousSelection = EditingCommandName;
         CommandOptions.Clear();
 
-        if (IsSystemOperationSelected || IsLuaOperationSelected || string.IsNullOrWhiteSpace(EditingProtocolName))
+        if (IsSystemOrJudgeOperationSelected || IsLuaOperationSelected || string.IsNullOrWhiteSpace(EditingProtocolName))
         {
             EditingCommandName = string.Empty;
             return;
@@ -1309,7 +1339,7 @@ public sealed partial class WorkStepConfigurationViewModel
 
     private void RefreshInvokeParametersFromSelectedCommand()
     {
-        if (IsSystemOperationSelected || IsLuaOperationSelected)
+        if (IsSystemOrJudgeOperationSelected || IsLuaOperationSelected)
         {
             return;
         }
@@ -1413,9 +1443,69 @@ public sealed partial class WorkStepConfigurationViewModel
         SelectedEditingInvokeParameter = EditingInvokeParameters.FirstOrDefault();
     }
 
+    private void RefreshInvokeParametersFromSelectedJudgeMethod(bool clearWhenNoMetadata)
+    {
+        if (!IsJudgeOperationSelected)
+        {
+            return;
+        }
+
+        SystemMethodSelectionItem? method = FindJudgeMethodByName(EditingInvokeMethod);
+        if (method is null)
+        {
+            if (clearWhenNoMetadata)
+            {
+                EditingInvokeParameters.Clear();
+                SelectedEditingInvokeParameter = null;
+            }
+
+            return;
+        }
+
+        EditingInvokeParameters.Clear();
+        int sequence = 1;
+        foreach (SystemMethodParameterSelectionItem parameterMetadata in method.Parameters)
+        {
+            EditingInvokeParameters.Add(new WorkStepOperationParameter
+            {
+                Sequence = sequence,
+                Name = ParameterTypeOptions.FirstOrDefault() ?? "\u8BBE\u7F6E\u503C",
+                ParameterName = parameterMetadata.Name,
+                Value = string.Empty,
+                Remark = parameterMetadata.Description
+            });
+            sequence++;
+        }
+
+        NormalizeInvokeParameterSequences();
+        SortInvokeParametersBySequence();
+        SelectedEditingInvokeParameter = EditingInvokeParameters.FirstOrDefault();
+    }
+
     private void SyncSystemInvokeMethodRemarkFromMethod()
     {
         SystemMethodSelectionItem? method = FindSystemMethodByName(EditingInvokeMethod);
+        string remark = method?.Summary ?? string.Empty;
+        if (!string.IsNullOrWhiteSpace(remark) &&
+            !InvokeMethodRemarkOptions.Any(option => string.Equals(option, remark, StringComparison.OrdinalIgnoreCase)))
+        {
+            InvokeMethodRemarkOptions.Add(remark);
+        }
+
+        _isSyncingSystemInvokeMethodSelection = true;
+        try
+        {
+            EditingInvokeMethodRemark = remark;
+        }
+        finally
+        {
+            _isSyncingSystemInvokeMethodSelection = false;
+        }
+    }
+
+    private void SyncJudgeInvokeMethodRemarkFromMethod()
+    {
+        SystemMethodSelectionItem? method = FindJudgeMethodByName(EditingInvokeMethod);
         string remark = method?.Summary ?? string.Empty;
         if (!string.IsNullOrWhiteSpace(remark) &&
             !InvokeMethodRemarkOptions.Any(option => string.Equals(option, remark, StringComparison.OrdinalIgnoreCase)))
@@ -1464,8 +1554,96 @@ public sealed partial class WorkStepConfigurationViewModel
         }
     }
 
+    private void SyncJudgeInvokeMethodFromRemark()
+    {
+        if (string.IsNullOrWhiteSpace(EditingInvokeMethodRemark))
+        {
+            return;
+        }
+
+        SystemMethodSelectionItem? method = LoadJudgeMethodSelectionItems()
+            .FirstOrDefault(item => TextEquals(item.Summary, EditingInvokeMethodRemark));
+        if (method is null)
+        {
+            return;
+        }
+
+        if (!InvokeMethodOptions.Any(option => string.Equals(option, method.Name, StringComparison.OrdinalIgnoreCase)))
+        {
+            InvokeMethodOptions.Add(method.Name);
+        }
+
+        _isSyncingSystemInvokeMethodSelection = true;
+        try
+        {
+            EditingInvokeMethod = method.Name;
+        }
+        finally
+        {
+            _isSyncingSystemInvokeMethodSelection = false;
+        }
+    }
+
     private void RefreshInvokeMethodOptions(bool updateStatus)
     {
+        string previousSelection = null;
+        bool hasPreviousSelection = false;
+        if (IsJudgeOperationSelected)
+        {
+            previousSelection = EditingInvokeMethod;
+            InvokeMethodOptions.Clear();
+            InvokeMethodRemarkOptions.Clear();
+            IReadOnlyList<SystemMethodSelectionItem> judgeMethods = LoadJudgeMethodSelectionItems();
+
+            foreach (string option in judgeMethods
+                         .Select(method => method.Name)
+                         .Where(option => !string.IsNullOrWhiteSpace(option))
+                         .Select(option => option.Trim())
+                         .Distinct(StringComparer.OrdinalIgnoreCase))
+            {
+                InvokeMethodOptions.Add(option);
+            }
+
+            foreach (string option in judgeMethods
+                         .Select(method => method.Summary)
+                         .Where(option => !string.IsNullOrWhiteSpace(option))
+                         .Select(option => option.Trim())
+                         .Distinct(StringComparer.OrdinalIgnoreCase))
+            {
+                InvokeMethodRemarkOptions.Add(option);
+            }
+
+            hasPreviousSelection =
+                !string.IsNullOrWhiteSpace(previousSelection) &&
+                InvokeMethodOptions.Any(option => string.Equals(option, previousSelection, StringComparison.OrdinalIgnoreCase));
+
+            if (InvokeMethodOptions.Count == 0)
+            {
+                EditingInvokeMethod = string.Empty;
+            }
+            else if (hasPreviousSelection)
+            {
+                EditingInvokeMethod = previousSelection.Trim();
+            }
+            else
+            {
+                EditingInvokeMethod = InvokeMethodOptions.First();
+            }
+
+            SyncJudgeInvokeMethodRemarkFromMethod();
+            if (!_isInitializingOperationDrawer)
+            {
+                RefreshInvokeParametersFromSelectedJudgeMethod(clearWhenNoMetadata: true);
+            }
+
+            if (updateStatus)
+            {
+                SetPageStatus($"已按“{EditingOperationObject}”刷新调用方法。", SuccessBrush);
+            }
+
+            return;
+        }
+
         if (IsLuaOperationSelected)
         {
             InvokeMethodOptions.Clear();
@@ -1495,7 +1673,7 @@ public sealed partial class WorkStepConfigurationViewModel
             return;
         }
 
-        string previousSelection = EditingInvokeMethod;
+        previousSelection = EditingInvokeMethod;
         InvokeMethodOptions.Clear();
         InvokeMethodRemarkOptions.Clear();
         IReadOnlyList<SystemMethodSelectionItem> systemMethods = LoadSystemMethodSelectionItems();
@@ -1520,7 +1698,7 @@ public sealed partial class WorkStepConfigurationViewModel
             InvokeMethodRemarkOptions.Add(option);
         }
 
-        bool hasPreviousSelection =
+        hasPreviousSelection =
             !string.IsNullOrWhiteSpace(previousSelection) &&
             InvokeMethodOptions.Any(option => string.Equals(option, previousSelection, StringComparison.OrdinalIgnoreCase));
 
@@ -1573,6 +1751,86 @@ public sealed partial class WorkStepConfigurationViewModel
 
         return LoadSystemMethodSelectionItems()
             .FirstOrDefault(method => TextEquals(method.Name, methodName));
+    }
+
+    private static SystemMethodSelectionItem? FindJudgeMethodByName(string methodName)
+    {
+        if (string.IsNullOrWhiteSpace(methodName))
+        {
+            return null;
+        }
+
+        return LoadJudgeMethodSelectionItems()
+            .FirstOrDefault(method => TextEquals(method.Name, methodName));
+    }
+
+    private static IReadOnlyList<SystemMethodSelectionItem> LoadJudgeMethodSelectionItems()
+    {
+        return new[]
+        {
+            CreateJudgeMethod(
+                "\u7B49\u4E8E\u5224\u65AD",
+                "\u5224\u65AD\u4E24\u4E2A\u503C\u662F\u5426\u76F8\u7B49",
+                ("\u5DE6\u503C", "\u5DE6\u4FA7\u5F85\u6BD4\u8F83\u7684\u503C"),
+                ("\u53F3\u503C", "\u53F3\u4FA7\u5F85\u6BD4\u8F83\u7684\u503C")),
+            CreateJudgeMethod(
+                "\u4E0D\u7B49\u5224\u65AD",
+                "\u5224\u65AD\u4E24\u4E2A\u503C\u662F\u5426\u4E0D\u76F8\u7B49",
+                ("\u5DE6\u503C", "\u5DE6\u4FA7\u5F85\u6BD4\u8F83\u7684\u503C"),
+                ("\u53F3\u503C", "\u53F3\u4FA7\u5F85\u6BD4\u8F83\u7684\u503C")),
+            CreateJudgeMethod(
+                "\u5927\u4E8E\u5224\u65AD",
+                "\u5224\u65AD\u5DE6\u503C\u662F\u5426\u5927\u4E8E\u53F3\u503C",
+                ("\u5DE6\u503C", "\u5DE6\u4FA7\u5F85\u6BD4\u8F83\u7684\u503C"),
+                ("\u53F3\u503C", "\u53F3\u4FA7\u5F85\u6BD4\u8F83\u7684\u503C")),
+            CreateJudgeMethod(
+                "\u5927\u4E8E\u7B49\u4E8E\u5224\u65AD",
+                "\u5224\u65AD\u5DE6\u503C\u662F\u5426\u5927\u4E8E\u7B49\u4E8E\u53F3\u503C",
+                ("\u5DE6\u503C", "\u5DE6\u4FA7\u5F85\u6BD4\u8F83\u7684\u503C"),
+                ("\u53F3\u503C", "\u53F3\u4FA7\u5F85\u6BD4\u8F83\u7684\u503C")),
+            CreateJudgeMethod(
+                "\u5C0F\u4E8E\u5224\u65AD",
+                "\u5224\u65AD\u5DE6\u503C\u662F\u5426\u5C0F\u4E8E\u53F3\u503C",
+                ("\u5DE6\u503C", "\u5DE6\u4FA7\u5F85\u6BD4\u8F83\u7684\u503C"),
+                ("\u53F3\u503C", "\u53F3\u4FA7\u5F85\u6BD4\u8F83\u7684\u503C")),
+            CreateJudgeMethod(
+                "\u5C0F\u4E8E\u7B49\u4E8E\u5224\u65AD",
+                "\u5224\u65AD\u5DE6\u503C\u662F\u5426\u5C0F\u4E8E\u7B49\u4E8E\u53F3\u503C",
+                ("\u5DE6\u503C", "\u5DE6\u4FA7\u5F85\u6BD4\u8F83\u7684\u503C"),
+                ("\u53F3\u503C", "\u53F3\u4FA7\u5F85\u6BD4\u8F83\u7684\u503C")),
+            CreateJudgeMethod(
+                "\u5305\u542B\u5224\u65AD",
+                "\u5224\u65AD\u6587\u672C\u662F\u5426\u5305\u542B\u6307\u5B9A\u5173\u952E\u5B57",
+                ("\u5F85\u5224\u65AD\u503C", "\u5F85\u68C0\u67E5\u7684\u6587\u672C"),
+                ("\u5173\u952E\u5B57", "\u7528\u4E8E\u5339\u914D\u7684\u5173\u952E\u5B57")),
+            CreateJudgeMethod(
+                "\u4E0D\u5305\u542B\u5224\u65AD",
+                "\u5224\u65AD\u6587\u672C\u662F\u5426\u4E0D\u5305\u542B\u6307\u5B9A\u5173\u952E\u5B57",
+                ("\u5F85\u5224\u65AD\u503C", "\u5F85\u68C0\u67E5\u7684\u6587\u672C"),
+                ("\u5173\u952E\u5B57", "\u7528\u4E8E\u5339\u914D\u7684\u5173\u952E\u5B57")),
+            CreateJudgeMethod(
+                "\u4E3A\u7A7A\u5224\u65AD",
+                "\u5224\u65AD\u6307\u5B9A\u503C\u662F\u5426\u4E3A\u7A7A",
+                ("\u5F85\u5224\u65AD\u503C", "\u5F85\u68C0\u67E5\u7684\u503C")),
+            CreateJudgeMethod(
+                "\u4E0D\u4E3A\u7A7A\u5224\u65AD",
+                "\u5224\u65AD\u6307\u5B9A\u503C\u662F\u5426\u4E0D\u4E3A\u7A7A",
+                ("\u5F85\u5224\u65AD\u503C", "\u5F85\u68C0\u67E5\u7684\u503C"))
+        };
+    }
+
+    private static SystemMethodSelectionItem CreateJudgeMethod(
+        string name,
+        string summary,
+        params (string Name, string Description)[] parameters)
+    {
+        return new SystemMethodSelectionItem(
+            name,
+            summary,
+            parameters.Select(parameter => new SystemMethodParameterSelectionItem(
+                parameter.Name,
+                string.Empty,
+                parameter.Description)));
     }
 
     private static IReadOnlyList<SystemMethodSelectionItem> LoadSystemMethodSelectionItems()
@@ -2123,6 +2381,12 @@ public sealed partial class WorkStepConfigurationViewModel
             return LuaOperationObjectName;
         }
 
+        if (IsJudgeOperationObject(operation.OperationType) ||
+            IsJudgeOperationObject(operation.OperationObject))
+        {
+            return JudgeOperationObjectName;
+        }
+
         if (IsLegacySystemOperationType(operation.OperationType) ||
             IsSystemOperationObject(operation.OperationObject))
         {
@@ -2141,12 +2405,19 @@ public sealed partial class WorkStepConfigurationViewModel
 
     private const string SystemOperationObjectName = "System";
 
+    private const string JudgeOperationObjectName = "\u5224\u65AD";
+
     private const string LuaOperationObjectName = "Lua";
 
     private static bool IsSystemOperationObject(string? operationObject)
     {
         return string.Equals(operationObject?.Trim(), SystemOperationObjectName, StringComparison.OrdinalIgnoreCase) ||
                string.Equals(operationObject?.Trim(), "系统", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsJudgeOperationObject(string? operationObject)
+    {
+        return string.Equals(operationObject?.Trim(), JudgeOperationObjectName, StringComparison.OrdinalIgnoreCase);
     }
 
     private static bool IsLuaOperationObject(string? operationObject)
@@ -2259,3 +2530,5 @@ public sealed partial class WorkStepConfigurationViewModel
 
     #endregion
 }
+
+

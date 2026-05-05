@@ -1,6 +1,7 @@
 ﻿using ControlLibrary.Controls.FlowchartEditor.Models;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -33,7 +34,7 @@ namespace ControlLibrary.Controls.FlowchartEditor.Control
         private const double AnchorSize = 14;
         private const double MinZoom = 0.25;
         private const double MaxZoom = 3.0;
-        private const int ExecutionStepDelayMilliseconds = 700;
+        private const int ExecutionStepDelayMilliseconds = 100;
         private const int ExecutionPollingIntervalMilliseconds = 50;
         private const int MaxExecutionSteps = 500;
         // 连线避障时，节点矩形会向外扩这个距离，避免折线贴着节点边缘走。
@@ -93,6 +94,8 @@ namespace ControlLibrary.Controls.FlowchartEditor.Control
                     OnDocumentChanged));
 
         public event EventHandler<FlowchartExecutionStepEventArgs>? ExecutionStepChanged;
+
+        public event EventHandler<FlowchartNodeInteractionEventArgs>? NodeDoubleClick;
 
         public FlowchartDocument? Document
         {
@@ -206,8 +209,23 @@ namespace ControlLibrary.Controls.FlowchartEditor.Control
                         return new FlowchartExecutionResult(true, $"执行完成，共执行 {stepIndex} 个步骤。", steps);
                     }
 
-                    // 连线的选择规则统一封装，判断节点优先走右侧“是”，再走左侧“否”。
-                    FlowchartConnectionModel? nextConnection = GetNextExecutionConnection(currentNode);
+                    DecisionExecutionState decisionState = DecisionExecutionState.NotConfigured;
+                    if (currentNode.Kind == FlowchartNodeKind.Decision)
+                    {
+                        if (!TryEvaluateDecisionNode(currentNode, out decisionState, out string decisionMessage))
+                        {
+                            steps.Add(decisionMessage);
+                            return new FlowchartExecutionResult(false, decisionMessage, steps);
+                        }
+
+                        if (decisionState != DecisionExecutionState.NotConfigured)
+                        {
+                            steps.Add($"判断结果：{(decisionState == DecisionExecutionState.Success ? "是" : "否")}");
+                        }
+                    }
+
+                    // 连线的选择规则统一封装，判断节点在配置判断方法后按 bool 结果走“是/否”分支。
+                    FlowchartConnectionModel? nextConnection = GetNextExecutionConnection(currentNode, decisionState);
                     if (nextConnection is null)
                     {
                         return new FlowchartExecutionResult(true, $"执行停止：节点“{currentNode.Text}”没有后续连线。", steps);
@@ -378,6 +396,7 @@ namespace ControlLibrary.Controls.FlowchartEditor.Control
                     {
                         Id = node.Id,
                         Text = node.Text ?? string.Empty,
+                        MetadataJson = node.MetadataJson ?? string.Empty,
                         Kind = node.Kind,
                         X = node.X,
                         Y = node.Y,
@@ -407,6 +426,7 @@ namespace ControlLibrary.Controls.FlowchartEditor.Control
                 {
                     Id = node.Id,
                     Text = node.Text,
+                    MetadataJson = node.MetadataJson,
                     Kind = node.Kind,
                     X = node.X,
                     Y = node.Y,
@@ -446,6 +466,7 @@ namespace ControlLibrary.Controls.FlowchartEditor.Control
                 {
                     Id = nodeDocument.Id == Guid.Empty ? Guid.NewGuid() : nodeDocument.Id,
                     Text = nodeDocument.Text ?? string.Empty,
+                    MetadataJson = nodeDocument.MetadataJson ?? string.Empty,
                     Kind = Enum.IsDefined(typeof(FlowchartNodeKind), nodeDocument.Kind) ? nodeDocument.Kind : FlowchartNodeKind.Process,
                     Width = nodeDocument.Width > 0 ? nodeDocument.Width : DefaultNodeWidth,
                     Height = nodeDocument.Height > 0 ? nodeDocument.Height : DefaultNodeHeight
@@ -498,7 +519,9 @@ namespace ControlLibrary.Controls.FlowchartEditor.Control
                 .FirstOrDefault();
         }
 
-        private FlowchartConnectionModel? GetNextExecutionConnection(FlowchartNodeModel node)
+        private FlowchartConnectionModel? GetNextExecutionConnection(
+            FlowchartNodeModel node,
+            DecisionExecutionState decisionState = DecisionExecutionState.NotConfigured)
         {
             // 这里只看当前节点的出边，不会跨节点搜索，保证执行顺序和连线关系一致。
             List<FlowchartConnectionModel> outgoingConnections = _connections
@@ -512,6 +535,16 @@ namespace ControlLibrary.Controls.FlowchartEditor.Control
 
             if (node.Kind == FlowchartNodeKind.Decision)
             {
+                if (decisionState == DecisionExecutionState.Success)
+                {
+                    return outgoingConnections.FirstOrDefault(connection => connection.SourceAnchor == FlowchartAnchor.Right);
+                }
+
+                if (decisionState == DecisionExecutionState.Failure)
+                {
+                    return outgoingConnections.FirstOrDefault(connection => connection.SourceAnchor == FlowchartAnchor.Left);
+                }
+
                 return outgoingConnections.FirstOrDefault(connection => connection.SourceAnchor == FlowchartAnchor.Right) ??
                        outgoingConnections.FirstOrDefault(connection => connection.SourceAnchor == FlowchartAnchor.Left) ??
                        outgoingConnections.FirstOrDefault();
@@ -528,6 +561,294 @@ namespace ControlLibrary.Controls.FlowchartEditor.Control
             return outgoingConnections
                 .OrderBy(connection => Array.IndexOf(priorityOrder, connection.SourceAnchor))
                 .FirstOrDefault();
+        }
+
+        private static bool TryEvaluateDecisionNode(
+            FlowchartNodeModel node,
+            out DecisionExecutionState decisionState,
+            out string message)
+        {
+            decisionState = DecisionExecutionState.NotConfigured;
+            message = string.Empty;
+
+            if (string.IsNullOrWhiteSpace(node.MetadataJson))
+            {
+                return true;
+            }
+
+            try
+            {
+                using JsonDocument document = JsonDocument.Parse(node.MetadataJson);
+                JsonElement root = document.RootElement;
+
+                string operationObject = GetJsonString(root, "OperationObject");
+                string invokeMethod = GetJsonString(root, "InvokeMethod");
+                if (!IsJudgeOperationObject(operationObject) && !IsJudgeMethod(invokeMethod))
+                {
+                    return true;
+                }
+
+                if (string.IsNullOrWhiteSpace(invokeMethod))
+                {
+                    message = $"执行失败：判断节点“{ResolveExecutionNodeName(node)}”未配置判断方法。";
+                    return false;
+                }
+
+                IReadOnlyList<DecisionParameter> parameters = ReadDecisionParameters(root);
+                if (!TryEvaluateJudgeMethod(invokeMethod, parameters, out bool result, out string errorMessage))
+                {
+                    message = $"执行失败：判断节点“{ResolveExecutionNodeName(node)}”{errorMessage}";
+                    return false;
+                }
+
+                decisionState = result ? DecisionExecutionState.Success : DecisionExecutionState.Failure;
+                return true;
+            }
+            catch
+            {
+                return true;
+            }
+        }
+
+        private static IReadOnlyList<DecisionParameter> ReadDecisionParameters(JsonElement root)
+        {
+            if (!root.TryGetProperty("Parameters", out JsonElement parametersElement) ||
+                parametersElement.ValueKind != JsonValueKind.Array)
+            {
+                return Array.Empty<DecisionParameter>();
+            }
+
+            List<DecisionParameter> parameters = new List<DecisionParameter>();
+            foreach (JsonElement parameterElement in parametersElement.EnumerateArray())
+            {
+                parameters.Add(new DecisionParameter(
+                    GetJsonInt32(parameterElement, "Sequence"),
+                    GetFirstNonEmpty(
+                        GetJsonString(parameterElement, "ParameterName"),
+                        GetJsonString(parameterElement, "Remark"),
+                        GetJsonString(parameterElement, "Description"),
+                        GetJsonString(parameterElement, "Name")),
+                    GetJsonString(parameterElement, "Value")));
+            }
+
+            return parameters
+                .OrderBy(parameter => parameter.Sequence)
+                .ToList();
+        }
+
+        private static bool TryEvaluateJudgeMethod(
+            string invokeMethod,
+            IReadOnlyList<DecisionParameter> parameters,
+            out bool result,
+            out string message)
+        {
+            result = false;
+            message = string.Empty;
+
+            switch (invokeMethod.Trim())
+            {
+                case "等于判断":
+                    if (!TryGetBinaryJudgeValues(parameters, "左值", "右值", out string equalsLeft, out string equalsRight, out message))
+                    {
+                        return false;
+                    }
+
+                    result = TextEquals(equalsLeft, equalsRight);
+                    return true;
+                case "不等判断":
+                    if (!TryGetBinaryJudgeValues(parameters, "左值", "右值", out string notEqualsLeft, out string notEqualsRight, out message))
+                    {
+                        return false;
+                    }
+
+                    result = !TextEquals(notEqualsLeft, notEqualsRight);
+                    return true;
+                case "大于判断":
+                    if (!TryGetBinaryJudgeValues(parameters, "左值", "右值", out string greaterLeft, out string greaterRight, out message))
+                    {
+                        return false;
+                    }
+
+                    result = CompareDecisionValues(greaterLeft, greaterRight) > 0;
+                    return true;
+                case "大于等于判断":
+                    if (!TryGetBinaryJudgeValues(parameters, "左值", "右值", out string greaterThanOrEqualLeft, out string greaterThanOrEqualRight, out message))
+                    {
+                        return false;
+                    }
+
+                    result = CompareDecisionValues(greaterThanOrEqualLeft, greaterThanOrEqualRight) >= 0;
+                    return true;
+                case "小于判断":
+                    if (!TryGetBinaryJudgeValues(parameters, "左值", "右值", out string lessLeft, out string lessRight, out message))
+                    {
+                        return false;
+                    }
+
+                    result = CompareDecisionValues(lessLeft, lessRight) < 0;
+                    return true;
+                case "小于等于判断":
+                    if (!TryGetBinaryJudgeValues(parameters, "左值", "右值", out string lessThanOrEqualLeft, out string lessThanOrEqualRight, out message))
+                    {
+                        return false;
+                    }
+
+                    result = CompareDecisionValues(lessThanOrEqualLeft, lessThanOrEqualRight) <= 0;
+                    return true;
+                case "包含判断":
+                    if (!TryGetBinaryJudgeValues(parameters, "待判断值", "关键字", out string containsSource, out string containsKeyword, out message))
+                    {
+                        return false;
+                    }
+
+                    result = containsSource.Contains(containsKeyword, StringComparison.OrdinalIgnoreCase);
+                    return true;
+                case "不包含判断":
+                    if (!TryGetBinaryJudgeValues(parameters, "待判断值", "关键字", out string notContainsSource, out string notContainsKeyword, out message))
+                    {
+                        return false;
+                    }
+
+                    result = !notContainsSource.Contains(notContainsKeyword, StringComparison.OrdinalIgnoreCase);
+                    return true;
+                case "为空判断":
+                    if (!TryGetUnaryJudgeValue(parameters, "待判断值", out string isEmptyValue, out message))
+                    {
+                        return false;
+                    }
+
+                    result = string.IsNullOrWhiteSpace(isEmptyValue);
+                    return true;
+                case "不为空判断":
+                    if (!TryGetUnaryJudgeValue(parameters, "待判断值", out string isNotEmptyValue, out message))
+                    {
+                        return false;
+                    }
+
+                    result = !string.IsNullOrWhiteSpace(isNotEmptyValue);
+                    return true;
+                default:
+                    message = $"配置了未识别的判断方法“{invokeMethod}”。";
+                    return false;
+            }
+        }
+
+        private static bool TryGetUnaryJudgeValue(
+            IReadOnlyList<DecisionParameter> parameters,
+            string parameterName,
+            out string value,
+            out string message)
+        {
+            if (TryGetDecisionParameterValue(parameters, 0, out value, parameterName))
+            {
+                message = string.Empty;
+                return true;
+            }
+
+            message = $"缺少“{parameterName}”参数。";
+            return false;
+        }
+
+        private static bool TryGetBinaryJudgeValues(
+            IReadOnlyList<DecisionParameter> parameters,
+            string leftParameterName,
+            string rightParameterName,
+            out string leftValue,
+            out string rightValue,
+            out string message)
+        {
+            if (!TryGetDecisionParameterValue(parameters, 0, out leftValue, leftParameterName))
+            {
+                rightValue = string.Empty;
+                message = $"缺少“{leftParameterName}”参数。";
+                return false;
+            }
+
+            if (!TryGetDecisionParameterValue(parameters, 1, out rightValue, rightParameterName))
+            {
+                message = $"缺少“{rightParameterName}”参数。";
+                return false;
+            }
+
+            message = string.Empty;
+            return true;
+        }
+
+        private static bool TryGetDecisionParameterValue(
+            IReadOnlyList<DecisionParameter> parameters,
+            int fallbackIndex,
+            out string value,
+            params string[] candidateNames)
+        {
+            foreach (string candidateName in candidateNames.Where(name => !string.IsNullOrWhiteSpace(name)))
+            {
+                DecisionParameter? matchedParameter = parameters.FirstOrDefault(parameter => TextEquals(parameter.Name, candidateName));
+                if (matchedParameter is not null)
+                {
+                    value = matchedParameter.Value;
+                    return true;
+                }
+            }
+
+            if (fallbackIndex >= 0 && fallbackIndex < parameters.Count)
+            {
+                value = parameters[fallbackIndex].Value;
+                return true;
+            }
+
+            value = string.Empty;
+            return false;
+        }
+
+        private static int CompareDecisionValues(string leftValue, string rightValue)
+        {
+            if (TryParseDecimal(leftValue, out decimal leftNumber) &&
+                TryParseDecimal(rightValue, out decimal rightNumber))
+            {
+                return leftNumber.CompareTo(rightNumber);
+            }
+
+            return string.Compare(leftValue?.Trim(), rightValue?.Trim(), StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static bool TryParseDecimal(string value, out decimal number)
+        {
+            return decimal.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out number) ||
+                   decimal.TryParse(value, NumberStyles.Float, CultureInfo.CurrentCulture, out number);
+        }
+
+        private static bool IsJudgeMethod(string invokeMethod)
+        {
+            return invokeMethod.Trim() switch
+            {
+                "等于判断" => true,
+                "不等判断" => true,
+                "大于判断" => true,
+                "大于等于判断" => true,
+                "小于判断" => true,
+                "小于等于判断" => true,
+                "包含判断" => true,
+                "不包含判断" => true,
+                "为空判断" => true,
+                "不为空判断" => true,
+                _ => false
+            };
+        }
+
+        private static bool IsJudgeOperationObject(string operationObject)
+        {
+            return string.Equals(operationObject?.Trim(), "判断", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static string ResolveExecutionNodeName(FlowchartNodeModel node)
+        {
+            string[] lines = (node.Text ?? string.Empty)
+                .Split(new[] { "\r\n", "\n", "\r" }, StringSplitOptions.None);
+
+            return lines
+                .Select(line => line?.Trim() ?? string.Empty)
+                .FirstOrDefault(line => !string.IsNullOrWhiteSpace(line))
+                ?? GetDefaultNodeTitle(node.Kind);
         }
 
         private void SetExecutionHighlight(Guid? nodeId, Guid? connectionId)
@@ -653,16 +974,6 @@ namespace ControlLibrary.Controls.FlowchartEditor.Control
                 ? CreateDecisionOutline(node)
                 : CreateRectangleOutline();
 
-            TextBlock textBlock = new TextBlock
-            {
-                Text = node.Text,
-                FontSize = 15,
-                FontWeight = FontWeights.SemiBold,
-                HorizontalAlignment = HorizontalAlignment.Center,
-                VerticalAlignment = VerticalAlignment.Center
-            };
-            textBlock.SetResourceReference(TextBlock.ForegroundProperty, "FlowchartNodeTextBrush");
-
             nodeRoot.Children.Add(nodeOutline);
             if (node.Kind == FlowchartNodeKind.Decision)
             {
@@ -670,7 +981,7 @@ namespace ControlLibrary.Controls.FlowchartEditor.Control
                 nodeRoot.Children.Add(CreateDecisionBranchLabel("\u662f", HorizontalAlignment.Right));
             }
 
-            nodeRoot.Children.Add(textBlock);
+            nodeRoot.Children.Add(CreateNodeContent(node));
             foreach (FlowchartAnchor anchor in GetAvailableAnchors(node))
             {
                 nodeRoot.Children.Add(CreateAnchorHandle(node, anchor));
@@ -688,6 +999,207 @@ namespace ControlLibrary.Controls.FlowchartEditor.Control
             _nodeVisuals[node.Id] = nodeRoot;
             _nodeOutlines[node.Id] = nodeOutline;
             UpdateNodeSelectionVisuals();
+        }
+
+        private static FrameworkElement CreateNodeContent(FlowchartNodeModel node)
+        {
+            (string title, string summary) = ResolveNodeDisplay(node);
+
+            if (node.Kind == FlowchartNodeKind.Decision)
+            {
+                string decisionText = string.IsNullOrWhiteSpace(summary) ? title : summary;
+                return CreateDecisionNodeContent(decisionText);
+            }
+
+            return node.Kind == FlowchartNodeKind.Process
+                ? CreateProcessNodeContent(title, summary)
+                : CreateDefaultNodeContent(string.IsNullOrWhiteSpace(summary) ? title : $"{title} {summary}");
+        }
+
+        private static TextBlock CreateDefaultNodeContent(string text)
+        {
+            TextBlock textBlock = new TextBlock
+            {
+                Text = text,
+                FontSize = 15,
+                FontWeight = FontWeights.SemiBold,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(10, 8, 10, 8),
+                TextWrapping = TextWrapping.Wrap,
+                TextAlignment = TextAlignment.Center
+            };
+            textBlock.SetResourceReference(TextBlock.ForegroundProperty, "FlowchartNodeTextBrush");
+            return textBlock;
+        }
+
+        private static FrameworkElement CreateProcessNodeContent(string operationObject, string summary)
+        {
+            StackPanel panel = new StackPanel
+            {
+                Margin = new Thickness(12, 8, 12, 8),
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+
+            TextBlock titleBlock = new TextBlock
+            {
+                Text = operationObject,
+                Foreground = Brushes.Black,
+                TextWrapping = TextWrapping.Wrap,
+                TextAlignment = TextAlignment.Left,
+                HorizontalAlignment = HorizontalAlignment.Left
+            };
+            titleBlock.SetResourceReference(FrameworkElement.StyleProperty, "SectionTitleStyle");
+            panel.Children.Add(titleBlock);
+
+            if (!string.IsNullOrWhiteSpace(summary))
+            {
+                TextBlock summaryBlock = new TextBlock
+                {
+                    Margin = new Thickness(0, 4, 0, 0),
+                    Text = summary,
+                    FontSize = 13,
+                    HorizontalAlignment = HorizontalAlignment.Left,
+                    TextAlignment = TextAlignment.Left,
+                    TextWrapping = TextWrapping.NoWrap,
+                    TextTrimming = TextTrimming.CharacterEllipsis
+                };
+                summaryBlock.SetResourceReference(TextBlock.ForegroundProperty, "FlowchartNodeTextBrush");
+                panel.Children.Add(summaryBlock);
+            }
+
+            return panel;
+        }
+
+        private static FrameworkElement CreateDecisionNodeContent(string text)
+        {
+            TextBlock textBlock = new TextBlock
+            {
+                Text = text,
+                Margin = new Thickness(12, 8, 12, 8),
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center,
+                TextAlignment = TextAlignment.Center,
+                TextWrapping = TextWrapping.NoWrap,
+                TextTrimming = TextTrimming.CharacterEllipsis
+            };
+            textBlock.SetResourceReference(FrameworkElement.StyleProperty, "SectionTitleStyle");
+            textBlock.SetResourceReference(TextBlock.ForegroundProperty, "FlowchartNodeTextBrush");
+            return textBlock;
+        }
+
+        private static (string Title, string Summary) ResolveNodeDisplay(FlowchartNodeModel node)
+        {
+            if (TryReadOperationDisplay(node.MetadataJson, out string operationObject, out string summary))
+            {
+                return (
+                    string.IsNullOrWhiteSpace(operationObject) ? GetDefaultNodeTitle(node.Kind) : operationObject.Trim(),
+                    summary);
+            }
+
+            string[] lines = (node.Text ?? string.Empty)
+                .Split(new[] { "\r\n", "\n", "\r" }, StringSplitOptions.None)
+                .Select(line => line?.Trim() ?? string.Empty)
+                .Where(line => !string.IsNullOrWhiteSpace(line))
+                .ToArray();
+
+            return (
+                lines.FirstOrDefault() ?? GetDefaultNodeTitle(node.Kind),
+                NormalizeInlineText(lines.Skip(1)));
+        }
+
+        private static bool TryReadOperationDisplay(string metadataJson, out string operationObject, out string summary)
+        {
+            operationObject = string.Empty;
+            summary = string.Empty;
+
+            if (string.IsNullOrWhiteSpace(metadataJson))
+            {
+                return false;
+            }
+
+            try
+            {
+                using JsonDocument document = JsonDocument.Parse(metadataJson);
+                JsonElement root = document.RootElement;
+
+                operationObject = GetJsonString(root, "OperationObject");
+                summary = NormalizeInlineText(GetJsonString(root, "Remark"));
+
+                return !string.IsNullOrWhiteSpace(operationObject) || !string.IsNullOrWhiteSpace(summary);
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private static string GetJsonString(JsonElement root, string propertyName)
+        {
+            if (!root.TryGetProperty(propertyName, out JsonElement property) ||
+                property.ValueKind == JsonValueKind.Null ||
+                property.ValueKind == JsonValueKind.Undefined)
+            {
+                return string.Empty;
+            }
+
+            return property.ToString() ?? string.Empty;
+        }
+
+        private static int GetJsonInt32(JsonElement root, string propertyName)
+        {
+            if (!root.TryGetProperty(propertyName, out JsonElement property) ||
+                property.ValueKind == JsonValueKind.Null ||
+                property.ValueKind == JsonValueKind.Undefined)
+            {
+                return 0;
+            }
+
+            if (property.ValueKind == JsonValueKind.Number && property.TryGetInt32(out int number))
+            {
+                return number;
+            }
+
+            return int.TryParse(property.ToString(), out int parsedNumber) ? parsedNumber : 0;
+        }
+
+        private static string GetFirstNonEmpty(params string[] values)
+        {
+            return values
+                .Select(value => value?.Trim() ?? string.Empty)
+                .FirstOrDefault(value => !string.IsNullOrWhiteSpace(value))
+                ?? string.Empty;
+        }
+
+        private static string GetDefaultNodeTitle(FlowchartNodeKind nodeKind)
+        {
+            return nodeKind switch
+            {
+                FlowchartNodeKind.Decision => "判断",
+                FlowchartNodeKind.Start => "开始",
+                FlowchartNodeKind.End => "结束",
+                _ => "处理"
+            };
+        }
+
+        private static string NormalizeInlineText(string? text)
+        {
+            return NormalizeInlineText((text ?? string.Empty)
+                .Split(new[] { "\r\n", "\n", "\r" }, StringSplitOptions.None));
+        }
+
+        private static string NormalizeInlineText(IEnumerable<string> values)
+        {
+            return string.Join(
+                " ",
+                values.Select(value => value?.Trim() ?? string.Empty)
+                    .Where(value => !string.IsNullOrWhiteSpace(value)));
+        }
+
+        private static bool TextEquals(string left, string right)
+        {
+            return string.Equals(left?.Trim(), right?.Trim(), StringComparison.OrdinalIgnoreCase);
         }
 
         private static Border CreateRectangleOutline()
@@ -803,8 +1315,23 @@ namespace ControlLibrary.Controls.FlowchartEditor.Control
                 return;
             }
 
+            if (e.OriginalSource is FrameworkElement sourceElement && sourceElement.Tag is AnchorHandleInfo)
+            {
+                return;
+            }
+
             Focus();
             SelectNode(node.Id);
+
+            if (e.ClickCount >= 2)
+            {
+                NodeDoubleClick?.Invoke(
+                    this,
+                    new FlowchartNodeInteractionEventArgs(node.Id, node.Text, node.Kind, node.MetadataJson));
+                e.Handled = true;
+                return;
+            }
+
             _draggingNode = node;
             _nodeDragStartWorldPoint = ViewportToWorld(e.GetPosition(Viewport));
             _nodeDragStartX = node.X;
@@ -1410,5 +1937,27 @@ namespace ControlLibrary.Controls.FlowchartEditor.Control
             public Guid NodeId { get; }
             public FlowchartAnchor Anchor { get; }
         }
+
+        private sealed class DecisionParameter
+        {
+            public DecisionParameter(int sequence, string name, string value)
+            {
+                Sequence = sequence;
+                Name = name ?? string.Empty;
+                Value = value ?? string.Empty;
+            }
+
+            public int Sequence { get; }
+            public string Name { get; }
+            public string Value { get; }
+        }
+
+        private enum DecisionExecutionState
+        {
+            NotConfigured,
+            Success,
+            Failure
+        }
     }
 }
+

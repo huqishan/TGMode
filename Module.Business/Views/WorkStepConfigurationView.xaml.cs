@@ -4,6 +4,7 @@ using System;
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
@@ -11,7 +12,7 @@ using System.Windows.Media.Animation;
 namespace Module.Business.Views
 {
     /// <summary>
-    /// WorkStepConfigurationView.xaml 的交互逻辑。
+    /// Interaction logic for WorkStepConfigurationView.xaml.
     /// </summary>
     public partial class WorkStepConfigurationView : UserControl
     {
@@ -191,10 +192,16 @@ namespace Module.Business.Views
         private static bool IsInlineEditableOperationCell(DependencyObject? source)
         {
             DataGridCell? cell = FindAncestor<DataGridCell>(source);
-            string? header = cell?.Column?.Header?.ToString();
+            if (cell?.Column is DataGridBoundColumn boundColumn &&
+                boundColumn.Binding is Binding binding)
+            {
+                string? bindingPath = binding.Path?.Path;
 
-            return string.Equals(header, "延时(ms)", StringComparison.Ordinal) ||
-                   string.Equals(header, "描述", StringComparison.Ordinal);
+                return string.Equals(bindingPath, nameof(WorkStepOperation.DelayMilliseconds), StringComparison.Ordinal) ||
+                       string.Equals(bindingPath, nameof(WorkStepOperation.Remark), StringComparison.Ordinal);
+            }
+
+            return false;
         }
 
         private static bool IsOperationSelectionCheckBox(DependencyObject? source)

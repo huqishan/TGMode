@@ -293,17 +293,20 @@ public static class BusinessConfigurationStore
     {
         string operationObject = ResolveOperationObject(operation);
         bool isLuaOperation = IsLuaOperationObject(operationObject);
-        bool isSystemOperation = !isLuaOperation && IsSystemOperationObject(operationObject);
-        string protocolName = isSystemOperation || isLuaOperation
+        bool isJudgeOperation = !isLuaOperation && IsJudgeOperationObject(operationObject);
+        bool isSystemOperation = !isLuaOperation && !isJudgeOperation && IsNormalizedSystemOperationObject(operationObject);
+        string protocolName = isSystemOperation || isJudgeOperation || isLuaOperation
             ? string.Empty
             : operation.ProtocolName?.Trim() ?? string.Empty;
-        string commandName = isSystemOperation || isLuaOperation
+        string commandName = isSystemOperation || isJudgeOperation || isLuaOperation
             ? string.Empty
             : (string.IsNullOrWhiteSpace(operation.CommandName)
                 ? operation.InvokeMethod?.Trim() ?? string.Empty
                 : operation.CommandName.Trim());
         string invokeMethod = isLuaOperation
             ? "Lua"
+            : isJudgeOperation
+                ? operation.InvokeMethod?.Trim() ?? string.Empty
             : isSystemOperation
                 ? (string.IsNullOrWhiteSpace(operation.InvokeMethod) ? "等待" : operation.InvokeMethod.Trim())
                 : (string.IsNullOrWhiteSpace(commandName) ? "指令" : commandName);
@@ -318,7 +321,7 @@ public static class BusinessConfigurationStore
         return new WorkStepOperation
         {
             Id = string.IsNullOrWhiteSpace(operation.Id) ? Guid.NewGuid().ToString("N") : operation.Id.Trim(),
-            OperationType = isLuaOperation ? "Lua" : isSystemOperation ? "系统" : "设备",
+            OperationType = isLuaOperation ? "Lua" : isJudgeOperation ? "判断" : isSystemOperation ? "系统" : "设备",
             OperationObject = operationObject,
             ProtocolName = protocolName,
             CommandName = commandName,
@@ -343,8 +346,14 @@ public static class BusinessConfigurationStore
             return "Lua";
         }
 
-        if (IsLegacySystemOperationType(operation.OperationType) ||
-            IsSystemOperationObject(operation.OperationObject))
+        if (IsJudgeOperationObject(operation.OperationType) ||
+            IsJudgeOperationObject(operation.OperationObject))
+        {
+            return "\u5224\u65AD";
+        }
+
+        if (IsNormalizedSystemOperationType(operation.OperationType) ||
+            IsNormalizedSystemOperationObject(operation.OperationObject))
         {
             return "System";
         }
@@ -378,6 +387,25 @@ public static class BusinessConfigurationStore
     {
         return string.Equals(operationObject?.Trim(), "System", StringComparison.OrdinalIgnoreCase) ||
                string.Equals(operationObject?.Trim(), "系统", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsNormalizedSystemOperationType(string? operationType)
+    {
+        return string.Equals(operationType?.Trim(), "System", StringComparison.OrdinalIgnoreCase) ||
+               string.Equals(operationType?.Trim(), "\u7CFB\u7EDF", StringComparison.OrdinalIgnoreCase) ||
+               IsLegacySystemOperationType(operationType);
+    }
+
+    private static bool IsNormalizedSystemOperationObject(string? operationObject)
+    {
+        return string.Equals(operationObject?.Trim(), "System", StringComparison.OrdinalIgnoreCase) ||
+               string.Equals(operationObject?.Trim(), "\u7CFB\u7EDF", StringComparison.OrdinalIgnoreCase) ||
+               IsSystemOperationObject(operationObject);
+    }
+
+    private static bool IsJudgeOperationObject(string? operationObject)
+    {
+        return string.Equals(operationObject?.Trim(), "\u5224\u65AD", StringComparison.OrdinalIgnoreCase);
     }
 
     private static bool IsLuaOperationObject(string? operationObject)

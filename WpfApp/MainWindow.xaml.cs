@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Reflection;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -224,14 +225,29 @@ namespace WpfApp
                 }
             }
 
-            Type? targetType = Type.GetType(controlItem.Content!);
+            Type? targetType = ResolveContentType(controlItem.Content!);
             if (targetType is null)
             {
-                // Some items are still placeholders and do not map to a real view type yet.
+                MessageBox.Show(
+                    this,
+                    $"无法打开“{controlItem.Title}”页面，未找到对应的视图类型。\r\n{controlItem.Content}",
+                    "导航提示",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
                 return;
             }
 
-            FrameworkElement content = (FrameworkElement)Activator.CreateInstance(targetType)!;
+            if (Activator.CreateInstance(targetType) is not FrameworkElement content)
+            {
+                MessageBox.Show(
+                    this,
+                    $"无法打开“{controlItem.Title}”页面，对应视图创建失败。\r\n{controlItem.Content}",
+                    "导航提示",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+                return;
+            }
+
             content.HorizontalAlignment = HorizontalAlignment.Stretch;
             content.VerticalAlignment = VerticalAlignment.Stretch;
             UiPermissionRuntime.Attach(content);
@@ -245,6 +261,31 @@ namespace WpfApp
 
             tabControl.Items.Add(tabItem);
             tabControl.SelectedItem = tabItem;
+        }
+
+        private static Type? ResolveContentType(string contentTypeName)
+        {
+            Type? targetType = Type.GetType(contentTypeName, throwOnError: false);
+            if (targetType is not null)
+            {
+                return targetType;
+            }
+
+            string[] typeParts = contentTypeName.Split(',', 2, StringSplitOptions.TrimEntries);
+            if (typeParts.Length != 2 || string.IsNullOrWhiteSpace(typeParts[1]))
+            {
+                return null;
+            }
+
+            try
+            {
+                Assembly assembly = Assembly.Load(typeParts[1]);
+                return assembly.GetType(typeParts[0], throwOnError: false);
+            }
+            catch
+            {
+                return null;
+            }
         }
 
         private void CanCloseTabExecuted(object sender, CanExecuteRoutedEventArgs e)
