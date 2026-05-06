@@ -1,0 +1,22 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <UseWPF>true</UseWPF>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AppDesignerFolder>Propertys</AppDesignerFolder>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Folder Include="ViewModels\Commands\" />
+    <Folder Include="Models\" />
+    <Folder Include="ViewModels\Propertys\" />
+    <Folder Include="Services\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ControlLibrary\ControlLibrary.csproj" />
+  </ItemGroup>
+
+</Project>
