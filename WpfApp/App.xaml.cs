@@ -1,4 +1,5 @@
 using Module.User.Services;
+using Shared.Infrastructure.Events;
 using System;
 using System.Reflection;
 using System.Windows;
@@ -13,6 +14,7 @@ namespace WpfApp
         protected override void OnStartup(StartupEventArgs e)
         {
             base.OnStartup(e);
+            EventAggregator.Current = new EventAggregator();
 
             ShutdownMode = ShutdownMode.OnExplicitShutdown;
 

@@ -1,9 +1,11 @@
 using Module.Business.Models;
 using Shared.Abstractions;
 using Shared.Infrastructure.Communication;
+using Shared.Infrastructure.Events;
 using Shared.Infrastructure.Extensions;
 using Shared.Infrastructure.Lua;
 using Shared.Models.Communication;
+using Shared.Models.Test;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -108,6 +110,14 @@ public static class SchemeExecutionService
             return SchemeExecutionResult.CreateFailure("Scheme name is required.", startTime: startTime, endTime: DateTime.Now);
         }
 
+        PublishTestStatus(
+            normalizedStationNo,
+            "准备测试",
+            string.Empty,
+            normalizedSchemeName,
+            string.Empty,
+            $"准备执行测试方案：{normalizedSchemeName}");
+
         SchemeExecutionKey key = new(normalizedStationNo, normalizedSchemeName);
         SchemeExecutionContext context = new(key, startTime);
         if (!ActiveExecutions.TryAdd(normalizedStationNo, context))
@@ -116,10 +126,19 @@ public static class SchemeExecutionService
                 ? runningContext.Key.SchemeName
                 : string.Empty;
             context.Dispose();
+            string message = string.IsNullOrWhiteSpace(runningSchemeName)
+                ? $"Station '{normalizedStationNo}' already has a running scheme."
+                : $"Station '{normalizedStationNo}' is already running scheme '{runningSchemeName}'.";
+            PublishTestStatus(
+                normalizedStationNo,
+                "测试失败",
+                string.Empty,
+                normalizedSchemeName,
+                string.Empty,
+                message,
+                false);
             return SchemeExecutionResult.CreateFailure(
-                string.IsNullOrWhiteSpace(runningSchemeName)
-                    ? $"Station '{normalizedStationNo}' already has a running scheme."
-                    : $"Station '{normalizedStationNo}' is already running scheme '{runningSchemeName}'.",
+                message,
                 startTime: startTime,
                 endTime: DateTime.Now);
         }
@@ -131,6 +150,14 @@ public static class SchemeExecutionService
                 string.Equals(item.SchemeName?.Trim(), normalizedSchemeName, StringComparison.OrdinalIgnoreCase));
             if (scheme is null)
             {
+                PublishTestStatus(
+                    normalizedStationNo,
+                    "测试失败",
+                    string.Empty,
+                    normalizedSchemeName,
+                    string.Empty,
+                    $"Scheme '{normalizedSchemeName}' was not found.",
+                    false);
                 return SchemeExecutionResult.CreateFailure(
                     $"Scheme '{normalizedSchemeName}' was not found.",
                     startTime: startTime,
@@ -150,6 +177,14 @@ public static class SchemeExecutionService
         }
         catch (OperationCanceledException)
         {
+            PublishTestStatus(
+                normalizedStationNo,
+                "已停止",
+                string.Empty,
+                normalizedSchemeName,
+                string.Empty,
+                $"Scheme '{normalizedSchemeName}' on station '{normalizedStationNo}' was stopped.",
+                false);
             return SchemeExecutionResult.CreateCanceled(
                 $"Scheme '{normalizedSchemeName}' on station '{normalizedStationNo}' was stopped.",
                 context.Logs,
@@ -158,6 +193,14 @@ public static class SchemeExecutionService
         }
         catch (Exception ex)
         {
+            PublishTestStatus(
+                normalizedStationNo,
+                "测试失败",
+                string.Empty,
+                normalizedSchemeName,
+                string.Empty,
+                $"Scheme '{normalizedSchemeName}' on station '{normalizedStationNo}' failed: {ex.Message}",
+                false);
             return SchemeExecutionResult.CreateFailure(
                 $"Scheme '{normalizedSchemeName}' on station '{normalizedStationNo}' failed: {ex.Message}",
                 context.Logs,
@@ -182,6 +225,11 @@ public static class SchemeExecutionService
 
         string normalizedStationNo = NormalizeRequiredText(stationNo);
         int pausedCount = contexts.Count(context => context.Pause());
+        if (pausedCount > 0)
+        {
+            PublishExecutionControlStatus(normalizedStationNo, "已暂停", contexts.First().Key.SchemeName, "测试已暂停");
+        }
+
         return pausedCount > 0
             ? SchemeExecutionControlActionResult.CreateSuccess(
                 $"Station '{normalizedStationNo}' paused {pausedCount}/{contexts.Count} execution(s).")
@@ -200,6 +248,11 @@ public static class SchemeExecutionService
 
         string normalizedStationNo = NormalizeRequiredText(stationNo);
         int resumedCount = contexts.Count(context => context.Resume());
+        if (resumedCount > 0)
+        {
+            PublishExecutionControlStatus(normalizedStationNo, "测试中", contexts.First().Key.SchemeName, "测试已继续");
+        }
+
         return resumedCount > 0
             ? SchemeExecutionControlActionResult.CreateSuccess(
                 $"Station '{normalizedStationNo}' resumed {resumedCount}/{contexts.Count} execution(s).")
@@ -222,6 +275,7 @@ public static class SchemeExecutionService
         }
 
         string normalizedStationNo = NormalizeRequiredText(stationNo);
+        PublishExecutionControlStatus(normalizedStationNo, "停止中", contexts.First().Key.SchemeName, "已发送停止测试请求");
         return SchemeExecutionControlActionResult.CreateSuccess(
             $"Stop request sent to {contexts.Count} execution(s) on station '{normalizedStationNo}'.");
     }
@@ -257,6 +311,7 @@ public static class SchemeExecutionService
         if (beforeSchemeArgs.Cancel)
         {
             DateTime canceledAt = DateTime.Now;
+            PublishSchemeStatus(context.Key.StationNo, "已取消", scheme, product, "Scheme execution was canceled before start.", false);
             return SchemeExecutionResult.CreateCanceled(
                 "Scheme execution was canceled before start.",
                 context.Logs,
@@ -270,6 +325,7 @@ public static class SchemeExecutionService
             scheme,
             message: "Scheme is executing.",
             startTime: startTime));
+        PublishSchemeStatus(context.Key.StationNo, "测试中", scheme, product, $"测试方案执行中：{scheme.SchemeName}");
 
         for (int workStepIndex = 0; workStepIndex < scheme.Steps.Count; workStepIndex++)
         {
@@ -289,6 +345,7 @@ public static class SchemeExecutionService
                     failureMessage,
                     startTime,
                     failedAt));
+                PublishSchemeStatus(context.Key.StationNo, "测试失败", scheme, product, failureMessage, false);
                 return SchemeExecutionResult.CreateFailure(failureMessage, context.Logs, startTime, failedAt);
             }
 
@@ -310,6 +367,7 @@ public static class SchemeExecutionService
                     workStepResult.Message,
                     startTime,
                     failedAt));
+                PublishSchemeStatus(context.Key.StationNo, "测试失败", scheme, product, workStepResult.Message, false);
                 return workStepResult;
             }
         }
@@ -324,6 +382,7 @@ public static class SchemeExecutionService
             message,
             startTime,
             endTime));
+        PublishSchemeStatus(context.Key.StationNo, "测试通过", scheme, product, message, true);
         return SchemeExecutionResult.CreateSuccess(message, context.Logs, startTime, endTime);
     }
 
@@ -347,6 +406,7 @@ public static class SchemeExecutionService
         if (beforeWorkStepArgs.Cancel)
         {
             DateTime canceledAt = DateTime.Now;
+            PublishSchemeStatus(context.Key.StationNo, "已取消", scheme, product, "Work step execution was canceled before start.", false);
             return SchemeExecutionResult.CreateCanceled(
                 "Work step execution was canceled before start.",
                 context.Logs,
@@ -363,6 +423,12 @@ public static class SchemeExecutionService
             workStepIndex,
             message: "Work step is executing.",
             startTime: startTime));
+        PublishSchemeStatus(
+            context.Key.StationNo,
+            "测试中",
+            scheme,
+            product,
+            $"正在执行工步 {workStepIndex}：{schemeStep.SchemeStepName}");
 
         Dictionary<string, string> returnValues = new(StringComparer.OrdinalIgnoreCase);
         for (int stepIndex = 0; stepIndex < workStep.Steps.Count; stepIndex++)
@@ -440,6 +506,7 @@ public static class SchemeExecutionService
         if (beforeStepArgs.Cancel)
         {
             DateTime canceledAt = DateTime.Now;
+            PublishSchemeStatus(context.Key.StationNo, "已取消", scheme, product, "Step execution was canceled before start.", false);
             return SchemeExecutionResult.CreateCanceled(
                 "Step execution was canceled before start.",
                 context.Logs,
@@ -458,6 +525,12 @@ public static class SchemeExecutionService
             stepIndex,
             message: "Step is executing.",
             startTime: startTime));
+        PublishSchemeStatus(
+            context.Key.StationNo,
+            "测试中",
+            scheme,
+            product,
+            $"正在执行步骤 {workStepIndex}.{stepIndex}：{operation.DisplayText}");
 
         SchemeStepExecutionOutput output;
         try
@@ -512,6 +585,10 @@ public static class SchemeExecutionService
             output.Result,
             startTime,
             endTime));
+        if (!output.IsSuccess)
+        {
+            PublishSchemeStatus(context.Key.StationNo, "测试失败", scheme, product, message, false);
+        }
 
         return output.IsSuccess
             ? SchemeExecutionResult.CreateSuccess(message, context.Logs, startTime, endTime)
@@ -1009,6 +1086,99 @@ public static class SchemeExecutionService
     private static void Raise(EventHandler<SchemeExecutionEventArgs>? handler, SchemeExecutionEventArgs args)
     {
         handler?.Invoke(null, args);
+    }
+
+    private static void PublishSchemeStatus(
+        string stationNo,
+        string testStatus,
+        SchemeProfile scheme,
+        ProductProfile? product,
+        string message,
+        bool? isSuccess = null)
+    {
+        PublishTestStatus(
+            stationNo,
+            testStatus,
+            ResolveProductBarcode(product),
+            scheme.SchemeName,
+            scheme.ProductName,
+            message,
+            isSuccess);
+    }
+
+    private static void PublishTestStatus(
+        string stationNo,
+        string testStatus,
+        string productBarcode,
+        string schemeName,
+        string productName,
+        string message,
+        bool? isSuccess = null)
+    {
+        try
+        {
+            EventAggregator.Current
+                .GetEvent<TestExecutionStatusChangedEvent>()
+                .Publish(new TestExecutionStatusMessage(
+                    stationNo,
+                    testStatus,
+                    productBarcode,
+                    schemeName,
+                    productName,
+                    message,
+                    isSuccess));
+        }
+        catch
+        {
+            // Status publication must not interrupt the actual test execution.
+        }
+    }
+
+    private static void PublishExecutionControlStatus(
+        string stationNo,
+        string testStatus,
+        string schemeName,
+        string message)
+    {
+        PublishTestStatus(
+            stationNo,
+            testStatus,
+            string.Empty,
+            schemeName,
+            string.Empty,
+            message);
+    }
+
+    private static string ResolveProductBarcode(ProductProfile? product)
+    {
+        if (product is null)
+        {
+            return string.Empty;
+        }
+
+        string[] barcodeKeys =
+        {
+            "Barcode",
+            "BarCode",
+            "SN",
+            "SerialNumber",
+            "SerialNo",
+            "产品条码",
+            "条码",
+            "序列号"
+        };
+
+        foreach (string key in barcodeKeys)
+        {
+            ProductKeyValueItem? item = product.KeyValues.FirstOrDefault(value =>
+                string.Equals(value.Key?.Trim(), key, StringComparison.OrdinalIgnoreCase));
+            if (item is not null && !string.IsNullOrWhiteSpace(item.Value))
+            {
+                return item.Value.Trim();
+            }
+        }
+
+        return string.Empty;
     }
 
     private static object? ConvertToParameterType(string value, Type targetType)
