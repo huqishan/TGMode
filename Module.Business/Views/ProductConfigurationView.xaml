@@ -197,7 +197,7 @@
                                TextWrapping="Wrap" />
 
                     <DataGrid Grid.Row="2"
-                              ItemsSource="{Binding SelectedProduct.KeyValues}"
+                              ItemsSource="{Binding SelectedProduct.KeyValues}" HorizontalScrollBarVisibility="Disabled"
                               SelectedItem="{Binding SelectedKeyValue, Mode=TwoWay}"
                               Style="{StaticResource ColumnsDataGridStyle}">
                         <DataGrid.Columns>

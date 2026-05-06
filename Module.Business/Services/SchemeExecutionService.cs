@@ -7,6 +7,7 @@ using Shared.Models.Communication;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -521,8 +522,43 @@ public static class SchemeExecutionService
 
     #region 单步骤操作执行
 
+    /// <summary>
+    /// 供流程图等独立运行入口复用单步操作执行逻辑。
+    /// </summary>
+    internal static async Task<SchemeStepExecutionOutput> ExecuteStandaloneStepAsync(
+        IControlledExecutionContext context,
+        WorkStepOperation operation,
+        Dictionary<string, string> returnValues)
+    {
+        SchemeWorkStepItem standaloneStep = CreateStandaloneSchemeStep(operation);
+        SchemeStepExecutionOutput output = await ExecuteOperationAsync(context, operation, standaloneStep, null, returnValues)
+            .ConfigureAwait(false);
+
+        string resultText = output.Result?.ToString() ?? string.Empty;
+        if (!string.IsNullOrWhiteSpace(operation.ReturnValue))
+        {
+            returnValues[operation.ReturnValue.Trim()] = resultText;
+        }
+
+        if (operation.ShowDataToView)
+        {
+            Module.Business.Business.System.SendDataToView(
+                ResolveDisplayDataName(operation),
+                operation.ViewJudgeType,
+                resultText,
+                operation.ViewJudgeCondition);
+        }
+
+        if (operation.DelayMilliseconds > 0)
+        {
+            await DelayWithControlAsync(context, operation.DelayMilliseconds).ConfigureAwait(false);
+        }
+
+        return output;
+    }
+
     private static async Task<SchemeStepExecutionOutput> ExecuteOperationAsync(
-        SchemeExecutionContext context,
+        IControlledExecutionContext context,
         WorkStepOperation operation,
         SchemeWorkStepItem schemeStep,
         ProductProfile? product,
@@ -626,7 +662,7 @@ public static class SchemeExecutionService
     }
 
     private static async Task<SchemeStepExecutionOutput> ExecuteDeviceOperationAsync(
-        SchemeExecutionContext context,
+        IControlledExecutionContext context,
         WorkStepOperation operation,
         SchemeWorkStepItem schemeStep,
         ProductProfile? product,
@@ -889,7 +925,7 @@ public static class SchemeExecutionService
             ?.Clone();
     }
 
-    private static async Task DelayWithControlAsync(SchemeExecutionContext context, int delayMilliseconds)
+    private static async Task DelayWithControlAsync(IControlledExecutionContext context, int delayMilliseconds)
     {
         int remaining = Math.Max(0, delayMilliseconds);
         while (remaining > 0)
@@ -901,6 +937,25 @@ public static class SchemeExecutionService
             await Task.Delay(delay, context.CancellationToken).ConfigureAwait(false);
             remaining -= delay;
         }
+    }
+
+    private static SchemeWorkStepItem CreateStandaloneSchemeStep(WorkStepOperation operation)
+    {
+        return new SchemeWorkStepItem
+        {
+            ProductName = string.Empty,
+            StepName = "流程图节点",
+            SchemeStepName = "流程图节点",
+            Parameters = new ObservableCollection<SchemeWorkStepParameter>(
+                operation.Parameters.Select(parameter => new SchemeWorkStepParameter
+                {
+                    SourceOperationId = operation.Id,
+                    SourceParameterId = parameter.Id,
+                    ParameterName = ResolveParameterDisplayName(parameter),
+                    ParameterType = "设置值",
+                    JudgeCondition = parameter.Value
+                }))
+        };
     }
 
     private static bool TryGetStationContexts(
@@ -1220,7 +1275,7 @@ public static class SchemeExecutionService
         }
     }
 
-    private sealed class SchemeExecutionContext : IDisposable
+    private sealed class SchemeExecutionContext : IControlledExecutionContext, IDisposable
     {
         private readonly object _pauseLock = new();
         private TaskCompletionSource<bool>? _resumeSignal;
@@ -1589,6 +1644,15 @@ public sealed record SchemeExecutionSnapshot(
     DateTime? EndTime,
     TimeSpan ExecutionTime,
     IReadOnlyList<string> Steps);
+
+internal interface IControlledExecutionContext
+{
+    CancellationToken CancellationToken { get; }
+
+    Task WaitIfPausedAsync();
+
+    void ThrowIfCancellationRequested();
+}
 
 internal sealed class SchemeStepExecutionOutput
 {

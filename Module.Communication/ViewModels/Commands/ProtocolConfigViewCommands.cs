@@ -51,6 +51,21 @@ public sealed partial class ProtocolConfigViewModel
     }
 
     /// <summary>
+    /// 视图加载时恢复对当前选中协议的事件订阅。
+    /// </summary>
+    public void OnViewLoaded()
+    {
+        if (_selectedProfile is not null)
+        {
+            _selectedProfile.PropertyChanged -= SelectedProfile_PropertyChanged;
+            _selectedProfile.PropertyChanged += SelectedProfile_PropertyChanged;
+        }
+
+        UpdatePreviews();
+        RaiseCommandStatesChanged();
+    }
+
+    /// <summary>
     /// 视图卸载时取消对当前选中协议的事件订阅。
     /// </summary>
     public void OnViewUnloaded()

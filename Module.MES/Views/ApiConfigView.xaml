@@ -375,14 +375,15 @@
                                         Click="LuaButton_Click"
                                         Style="{StaticResource PrimaryActionButtonStyle}" />
                             </WrapPanel>
-                            <CheckBox Margin="0,10,0,0"
-                                      Foreground="{DynamicResource AppContentTextBrush}"
-                                      Content="启用接口"
-                                      IsChecked="{Binding SelectedProfile.IsEnabledAPI, Mode=TwoWay}" />
-                            <CheckBox Margin="0,8,0,0"
-                                      Foreground="{DynamicResource AppContentTextBrush}"
-                                      Content="通信查询中显示"
-                                      IsChecked="{Binding SelectedProfile.IsCommunicationQueryVisible, Mode=TwoWay}" />
+                            <CheckBox Margin="0,16,0,0"
+Foreground="{DynamicResource AppContentTextBrush}"
+Content="启用接口"
+IsChecked="{Binding SelectedProfile.IsEnabledAPI, Mode=TwoWay}" />
+                            <CheckBox Margin="0,16,0,0"
+Foreground="{DynamicResource AppContentTextBrush}"
+Content="通信查询中显示"
+IsChecked="{Binding SelectedProfile.IsCommunicationQueryVisible, Mode=TwoWay}" />
+
                         </StackPanel>
                     </Grid>
                 </Grid>

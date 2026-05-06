@@ -11,13 +11,13 @@ public static class NavigationCatalog
         return new List<ControlInfoDataItem>
         {
             new("Home", IconFactory.House, null, null, description: "Overview"),
-            new("测试界面", IconFactory.FlaskConical, "Module.Views.TestInfoView, Module", null, description: "Sandbox"),
+            new("测试界面", IconFactory.FlaskConical, null, null, description: "Sandbox"),
             new("MES", IconFactory.Boxes, null,
                 new ObservableCollection<ControlInfoDataItem>
                 {
                     new("接口配置", IconFactory.PlugZap, "Module.MES.Views.ApiConfigView, Module.MES", null),
                     new("结构配置", IconFactory.Network, "Module.MES.Views.DataStructureConfigView, Module.MES", null),
-                    new("通讯配置", IconFactory.MessageSquareCode, "通讯配置", null)
+                    new("通讯配置", IconFactory.MessageSquareCode,null, null)
                 },
                 description: "Manufacturing"),
             new("设备管理", IconFactory.Cpu, null,

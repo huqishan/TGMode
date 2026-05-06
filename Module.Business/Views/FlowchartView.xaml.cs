@@ -138,17 +138,10 @@ namespace Module.Business.Views
         {
             if (!string.IsNullOrWhiteSpace(e.MetadataJson))
             {
-                try
+                if (TryDeserializeNodeOperationMetadata(e.MetadataJson, out WorkStepOperation? operation) &&
+                    operation is not null)
                 {
-                    WorkStepOperation? operation = JsonSerializer.Deserialize<WorkStepOperation>(e.MetadataJson);
-                    if (operation is not null)
-                    {
-                        return operation;
-                    }
-                }
-                catch
-                {
-                    // Ignore broken node metadata and fall back to text parsing.
+                    return operation;
                 }
             }
 
@@ -191,6 +184,8 @@ namespace Module.Business.Views
 
             // 处理块与判断块共用同一个编辑步骤弹框，只通过模式参数切换判断方法相关行为。
             _nodeOperationEditorViewModel = new WorkStepConfigurationViewModel();
+            _nodeOperationEditorViewModel.SetStandaloneReturnValueOptions(
+                GetFlowchartReturnValueOptions(Editor.CreateDocumentSnapshot(), e.NodeId));
             _nodeOperationEditorViewModel.BeginStandaloneOperationEdit(
                 operation,
                 GetNodeEditorTitle(e.NodeKind),
@@ -244,6 +239,39 @@ namespace Module.Business.Views
                 FlowchartNodeKind.End => "结束",
                 _ => "处理"
             };
+        }
+
+        private static IEnumerable<string> GetFlowchartReturnValueOptions(FlowchartDocument document, Guid editingNodeId)
+        {
+            return document.Nodes
+                .Where(node => node.Id != editingNodeId)
+                .Select(node => TryDeserializeNodeOperationMetadata(node.MetadataJson, out WorkStepOperation? operation)
+                    ? operation?.ReturnValue
+                    : string.Empty)
+                .Where(value => !string.IsNullOrWhiteSpace(value))
+                .Select(value => value!.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(value => value, StringComparer.OrdinalIgnoreCase);
+        }
+
+        private static bool TryDeserializeNodeOperationMetadata(string? metadataJson, out WorkStepOperation? operation)
+        {
+            operation = null;
+            if (string.IsNullOrWhiteSpace(metadataJson))
+            {
+                return false;
+            }
+
+            try
+            {
+                operation = JsonSerializer.Deserialize<WorkStepOperation>(metadataJson);
+                return operation is not null;
+            }
+            catch
+            {
+                // Ignore broken node metadata and fall back to text parsing.
+                return false;
+            }
         }
 
         private static string NormalizeInlineText(string? text)

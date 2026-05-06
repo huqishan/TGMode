@@ -336,7 +336,7 @@ CornerRadius="999">
                                                 </Grid.ColumnDefinitions>
 
                                                 <TextBlock Style="{StaticResource FieldLabelStyle}" Text="占位符值" />
-                                                <DataGrid Grid.Row="1"
+                                                <DataGrid Grid.Row="1" HorizontalScrollBarVisibility="Disabled"
                                                           ItemsSource="{Binding SelectedProfile.PlaceholderValues}"
                                                           Style="{StaticResource ColumnsDataGridStyle}">
                                                     <DataGrid.Columns>

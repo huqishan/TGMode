@@ -79,7 +79,7 @@ namespace Shared.Infrastructure.PackMethod
         }
         public static MesResult ExecuteApi(string apiName, MesDataInfoTree sourceData = null)
         {
-            string apiFilePath = $"{_LayoutFile}\\CommunicateConfig\\{apiName}.json";
+            string apiFilePath = $"{_LayoutFile}\\ApiConfig\\{apiName}.json";
             APIConfig apiConfig = JsonHelper.ReadJson<APIConfig>(apiName);
             MesResult mesResult = new MesResult();
             if (apiConfig == null)
@@ -105,7 +105,7 @@ namespace Shared.Infrastructure.PackMethod
         }
         public static MesResult SendMES(string apiName, ref string data, MesDataInfoTree sourceData = null)
         {
-            string apiFilePath = $"{_LayoutFile}\\CommunicateConfig\\{apiName}.json";
+            string apiFilePath = $"{_LayoutFile}\\ApiConfig\\{apiName}.json";
             APIConfig apiConfig = JsonHelper.ReadJson<APIConfig>(apiFilePath);
             MesSystemConfig mesSystemConfig = JsonHelper.ReadJson<MesSystemConfig>($"{_LayoutFile}\\MesSystemConfig\\MesSystemConfig.json");
             MesResult mesResult = new MesResult();

@@ -1,4 +1,5 @@
 ﻿using Module.Business.Models;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 
@@ -48,6 +49,15 @@ public sealed partial class WorkStepConfigurationViewModel
         SetPageStatus(
             _isDecisionOperationMode ? "正在编辑流程图判断块。" : "正在编辑流程图处理块。",
             NeutralBrush);
+    }
+
+    /// <summary>
+    /// 设置独立编辑模式可引用的外部返回值，例如流程图其它节点的返回值。
+    /// </summary>
+    public void SetStandaloneReturnValueOptions(IEnumerable<string> returnValues)
+    {
+        ReplaceStringOptions(ExternalReturnValueOptions, returnValues);
+        RefreshParameterValueOptions();
     }
 
     /// <summary>

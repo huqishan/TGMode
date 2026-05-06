@@ -860,6 +860,7 @@ public sealed partial class WorkStepConfigurationViewModel
             : new[] { EditingReturnValue };
 
         return savedReturnValues
+            .Concat(ExternalReturnValueOptions)
             .Concat(editingReturnValues)
             .Select(value => value.Trim())
             .Distinct(StringComparer.OrdinalIgnoreCase)

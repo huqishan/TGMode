@@ -95,6 +95,8 @@ public sealed partial class WorkStepConfigurationViewModel
 
     public ObservableCollection<WorkStepOperationParameter> EditingInvokeParameters { get; } = new();
 
+    private ObservableCollection<string> ExternalReturnValueOptions { get; } = new();
+
     #endregion
 
     #region 搜索与当前编辑属性

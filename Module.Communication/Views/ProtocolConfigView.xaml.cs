@@ -19,6 +19,7 @@ namespace Module.Communication.Views
         private const double CommandDrawerClosedOffset = 56d;
         private static readonly Duration CommandDrawerAnimationDuration = new(TimeSpan.FromMilliseconds(220));
         private static readonly IEasingFunction CommandDrawerEasing = new CubicEase { EasingMode = EasingMode.EaseOut };
+        private ProtocolConfigViewModel? _attachedViewModel;
 
         #endregion
 
@@ -27,11 +28,8 @@ namespace Module.Communication.Views
         {
             InitializeComponent();
 
-            if (ViewModel is not null)
-            {
-                ViewModel.PropertyChanged += ViewModel_PropertyChanged;
-            }
-
+            AttachViewModelEvents();
+            DataContextChanged += ProtocolConfigView_DataContextChanged;
             Loaded += ProtocolConfigView_Loaded;
             Unloaded += ProtocolConfigView_Unloaded;
         }
@@ -40,16 +38,21 @@ namespace Module.Communication.Views
 
         private void ProtocolConfigView_Loaded(object sender, RoutedEventArgs e)
         {
+            AttachViewModelEvents();
+            ViewModel?.OnViewLoaded();
             UpdateCommandDrawerVisual(animate: false);
         }
 
         private void ProtocolConfigView_Unloaded(object sender, RoutedEventArgs e)
         {
-            if (ViewModel is not null)
-            {
-                ViewModel.PropertyChanged -= ViewModel_PropertyChanged;
-                ViewModel.OnViewUnloaded();
-            }
+            ViewModel?.OnViewUnloaded();
+            DetachViewModelEvents();
+        }
+
+        private void ProtocolConfigView_DataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
+        {
+            AttachViewModelEvents();
+            UpdateCommandDrawerVisual(animate: false);
         }
 
         #endregion
@@ -85,6 +88,45 @@ namespace Module.Communication.Views
         private void CommandDrawerBackdrop_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
             ViewModel?.CloseCommandDrawer();
+        }
+
+        #endregion
+
+        #region ViewModel事件订阅
+        /// <summary>
+        /// 视图切换回来时恢复 ViewModel 事件订阅，保证抽屉开关状态能够立刻刷新到界面。
+        /// </summary>
+        private void AttachViewModelEvents()
+        {
+            ProtocolConfigViewModel? viewModel = ViewModel;
+            if (ReferenceEquals(_attachedViewModel, viewModel))
+            {
+                return;
+            }
+
+            DetachViewModelEvents();
+
+            if (viewModel is null)
+            {
+                return;
+            }
+
+            viewModel.PropertyChanged += ViewModel_PropertyChanged;
+            _attachedViewModel = viewModel;
+        }
+
+        /// <summary>
+        /// 视图卸载或 DataContext 切换时退订事件，避免重复订阅和旧 ViewModel 残留。
+        /// </summary>
+        private void DetachViewModelEvents()
+        {
+            if (_attachedViewModel is null)
+            {
+                return;
+            }
+
+            _attachedViewModel.PropertyChanged -= ViewModel_PropertyChanged;
+            _attachedViewModel = null;
         }
 
         #endregion
