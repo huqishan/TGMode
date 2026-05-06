@@ -4,11 +4,16 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:searchBox="clr-namespace:ControlLibrary.Controls.SearchBox.Control;assembly=ControlLibrary"
+             xmlns:vm="clr-namespace:Module.Communication.ViewModels"
              mc:Ignorable="d"
              HorizontalAlignment="Stretch"
              VerticalAlignment="Stretch"
              d:DesignHeight="760"
              d:DesignWidth="1800">
+    <UserControl.DataContext>
+        <vm:ProtocolConfigViewModel />
+    </UserControl.DataContext>
+
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter" />
 
@@ -50,16 +55,16 @@
                 <UniformGrid Grid.Row="2" Columns="4" Margin="0,16,0,16">
                     <Button Content="新建"
                             Style="{StaticResource PrimaryActionButtonStyle}"
-                            Click="NewProfileButton_Click" />
+                            Command="{Binding NewProfileCommand}" />
                     <Button Content="复制"
                             Style="{StaticResource ActionButtonStyle}"
-                            Click="DuplicateProfileButton_Click" />
+                            Command="{Binding DuplicateProfileCommand}" />
                     <Button Content="删除"
                             Style="{StaticResource ActionButtonStyle}"
-                            Click="DeleteProfileButton_Click" />
+                            Command="{Binding DeleteProfileCommand}" />
                     <Button Content="保存"
                             Style="{StaticResource ActionButtonStyle}"
-                            Click="SaveProfilesButton_Click" />
+                            Command="{Binding SaveProfilesCommand}" />
                 </UniformGrid>
 
                 <ListBox Grid.Row="3"
@@ -140,13 +145,13 @@ CornerRadius="999">
                             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
                                 <Button Content="新建指令"
                                         Style="{StaticResource PrimaryActionButtonStyle}"
-                                        Click="NewCommandButton_Click" />
+                                        Command="{Binding NewCommandCommand}" />
                                 <Button Content="复制指令"
                                         Style="{StaticResource ActionButtonStyle}"
-                                        Click="DuplicateCommandButton_Click" />
+                                        Command="{Binding DuplicateCommandCommand}" />
                                 <Button Content="删除指令"
                                         Style="{StaticResource ActionButtonStyle}"
-                                        Click="DeleteCommandButton_Click" />
+                                        Command="{Binding DeleteCommandCommand}" />
                             </StackPanel>
                         </DockPanel>
 
@@ -210,7 +215,7 @@ CornerRadius="999">
                                 <Button DockPanel.Dock="Right"
                                         Content="关闭"
                                         Style="{StaticResource ActionButtonStyle}"
-                                        Click="CloseCommandDrawerButton_Click" />
+                                        Command="{Binding CloseCommandDrawerCommand}" />
                             </DockPanel>
 
                             <ScrollViewer Grid.Row="1"
@@ -228,8 +233,6 @@ CornerRadius="999">
 
                                             <StackPanel Grid.Column="0">
                                                 <TextBlock Style="{StaticResource SectionTitleStyle}" Text="基础设置" />
-
-                                                <TextBlock Style="{StaticResource FieldLabelStyle}" Text="协议名称" />
 
                                                 <TextBlock Style="{StaticResource FieldLabelStyle}" Text="指令名称" />
                                                 <TextBox Style="{StaticResource InputTextBoxStyle}"
@@ -354,7 +357,7 @@ CornerRadius="999">
                                                         Grid.Row="1" Grid.RowSpan="2"
                                                         Content=">>" FontSize="20"
                                                         Style="{StaticResource ConvertButtonStyle}"
-                                                        Click="GenerateCommandButton_Click" />
+                                                        Command="{Binding GenerateCommandCommand}" />
 
                                                 <TextBlock Grid.Column="2"
                                                            Style="{StaticResource FieldLabelStyle}"
@@ -433,7 +436,7 @@ CornerRadius="999">
         Grid.Column="1" Grid.RowSpan="2"
         Content=">>" FontSize="20"
         Style="{StaticResource ConvertButtonStyle}"
-        Click="ParseResultButton_Click" />
+        Command="{Binding ParseResultCommand}" />
 
                                                 <TextBlock Style="{StaticResource FieldLabelStyle}" Text="解析结果" Grid.Row="0" Grid.Column="2"/>
                                                 <TextBox Grid.Row="1" Grid.Column="2"

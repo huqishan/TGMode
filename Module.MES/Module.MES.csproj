@@ -8,8 +8,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Folder Include="Commands\" />
-    <Folder Include="Properties\" />
+    <Folder Include="ViewModels\Commands\" />
+    <Folder Include="ViewModels\Properties\" />
   </ItemGroup>
 
   <ItemGroup>

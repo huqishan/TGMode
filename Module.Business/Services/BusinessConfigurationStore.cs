@@ -57,6 +57,22 @@ public static class BusinessConfigurationStore
         return NormalizeCatalog(catalog);
     }
 
+    public static SchemeProfile? LoadSchemeByName(string schemeName)
+    {
+        if (string.IsNullOrWhiteSpace(schemeName))
+        {
+            return null;
+        }
+
+        string normalizedSchemeName = schemeName.Trim();
+        return LoadCatalog().Schemes
+            .FirstOrDefault(scheme => string.Equals(
+                scheme.SchemeName?.Trim(),
+                normalizedSchemeName,
+                StringComparison.OrdinalIgnoreCase))
+            ?.Clone();
+    }
+
     /// <summary>
     /// 保存业务配置，产品、方案各一个文件，工步按产品各一个文件。
     /// </summary>

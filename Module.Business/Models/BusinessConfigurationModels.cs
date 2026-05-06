@@ -245,12 +245,12 @@ public sealed class ProductKeyValueItem : ViewModelProperties
             Value = Value
         };
     }
-
     #endregion
 }
 
 /// <summary>
-/// 宸ユ閰嶇疆锛屾寜浜у搧鍚嶇О鍒嗙被銆?/// </summary>
+/// 工步配置，包含所属产品、工步名称以及该工步内按顺序执行的步骤列表。
+/// </summary>
 public sealed class WorkStepProfile : ViewModelProperties
 {
     #region 私有字段

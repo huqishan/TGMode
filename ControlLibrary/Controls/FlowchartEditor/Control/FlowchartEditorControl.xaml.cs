@@ -34,7 +34,7 @@ namespace ControlLibrary.Controls.FlowchartEditor.Control
         private const double AnchorSize = 14;
         private const double MinZoom = 0.25;
         private const double MaxZoom = 3.0;
-        private const int ExecutionStepDelayMilliseconds = 100;
+        private const int ExecutionStepDelayMilliseconds = 500;
         private const int ExecutionPollingIntervalMilliseconds = 50;
         private const int MaxExecutionSteps = 500;
         // 连线避障时，节点矩形会向外扩这个距离，避免折线贴着节点边缘走。

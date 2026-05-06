@@ -4,11 +4,16 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:convert="clr-namespace:ControlLibrary.Converts;assembly=ControlLibrary"
+             xmlns:vm="clr-namespace:Module.Communication.ViewModels"
              mc:Ignorable="d"
              HorizontalAlignment="Stretch"
              VerticalAlignment="Stretch"
              d:DesignHeight="760"
              d:DesignWidth="1800">
+    <UserControl.DataContext>
+        <vm:DeviceCommunicationConfigViewModel />
+    </UserControl.DataContext>
+
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter" />
         <convert:ComparisonToVisibilityConvert x:Key="ComparisonToVisibilityConvert"/>
@@ -73,16 +78,16 @@
                 <UniformGrid Grid.Row="1" Columns="4" Margin="0,18,0,16">
                     <Button Content="新建"
                             Style="{StaticResource PrimaryActionButtonStyle}"
-                            Click="NewProfileButton_Click" />
+                            Command="{Binding NewProfileCommand}" />
                     <Button Content="复制"
                             Style="{StaticResource ActionButtonStyle}"
-                            Click="DuplicateProfileButton_Click" />
+                            Command="{Binding DuplicateProfileCommand}" />
                     <Button Content="删除"
                             Style="{StaticResource ActionButtonStyle}"
-                            Click="DeleteProfileButton_Click" />
+                            Command="{Binding DeleteProfileCommand}" />
                     <Button Content="保存"
                             Style="{StaticResource ActionButtonStyle}"
-                            Click="SaveProfilesButton_Click" />
+                            Command="{Binding SaveProfilesCommand}" />
                 </UniformGrid>
 
                 <ListBox Grid.Row="2"
@@ -211,7 +216,7 @@ SelectedValuePath="Value" />
                                 <Button DockPanel.Dock="Right" HorizontalAlignment="Right"
                                         Content="刷新串口"
                                         Style="{StaticResource PrimaryActionButtonStyle}"
-                                        Click="RefreshPortsButton_Click" />
+                                        Command="{Binding RefreshPortsCommand}" />
                             </DockPanel>
                             <ComboBox Style="{StaticResource InputComboBoxStyle}"
                           IsEditable="True"
@@ -287,10 +292,10 @@ CornerRadius="999">
                                 </Border>
                                 <Button Content="测试连接"
 Style="{StaticResource PrimaryActionButtonStyle}"
-Click="TestConnectionButton_Click" />
+Command="{Binding TestConnectionCommand}" />
                                 <Button Content="断开"
 Style="{StaticResource ActionButtonStyle}"
-Click="CloseConnectionButton_Click" />
+Command="{Binding CloseConnectionCommand}" />
                             </StackPanel>
                         </DockPanel>
 
@@ -340,12 +345,12 @@ TextWrapping="Wrap" />
                             <Button Grid.Column="1"
  Content="发送"
 Style="{StaticResource PrimaryActionButtonStyle}"
-Click="SendButton_Click" />
+Command="{Binding SendCommand}" />
                             <Button Grid.Column="2"
  Content="全部发送"
 Style="{StaticResource ActionButtonStyle}"
  Visibility="{Binding ElementName=communicationType, Path=SelectedItem.Value, Converter={StaticResource ComparisonToVisibilityConvert}, ConverterParameter='TCPServer'}"
-Click="SendAllButton_Click" />
+Command="{Binding SendAllCommand}" />
                         </Grid>
 
                         <Grid Grid.Row="3"
@@ -401,12 +406,12 @@ Click="SendAllButton_Click" />
                                     VerticalAlignment="Bottom"
                                     Content="读取"
                                     Style="{StaticResource PrimaryActionButtonStyle}"
-                                    Click="ReadPlcButton_Click" />
+                                    Command="{Binding ReadPlcCommand}" />
                             <Button Grid.Column="10" Margin="0"
                                     VerticalAlignment="Bottom"
                                     Content="写入"
                                     Style="{StaticResource ActionButtonStyle}"
-                                    Click="WritePlcButton_Click" />
+                                    Command="{Binding WritePlcCommand}" />
                         </Grid>
                         <DockPanel Margin="0,14,0,6" LastChildFill="False" Grid.Row="5" >
                             <TextBlock DockPanel.Dock="Left" VerticalAlignment="Bottom"
@@ -417,7 +422,7 @@ Click="SendAllButton_Click" />
                                 <Button
 Content="清空"
 Style="{StaticResource ActionButtonStyle}"
-Click="ClearReceiveButton_Click" />
+Command="{Binding ClearReceiveCommand}" />
                             </StackPanel>
                             
                         </DockPanel>

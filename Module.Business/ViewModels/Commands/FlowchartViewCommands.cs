@@ -246,9 +246,7 @@ public sealed partial class FlowchartViewModel
     {
         if (parameter is not FlowchartEditorControl editor)
         {
-            FlowchartExecutionServiceResult invalidResult =
-                await FlowchartExecutionControlService.RunAsync(null).ConfigureAwait(true);
-            SetExecutionStatus($"状态：{invalidResult.Message}", WarningBrush);
+            SetExecutionStatus("状态：流程图编辑器未初始化。", WarningBrush);
             return;
         }
 
@@ -260,13 +258,22 @@ public sealed partial class FlowchartViewModel
 
         try
         {
-            FlowchartExecutionServiceResult result = await FlowchartExecutionControlService.RunAsync(
-                editor,
-                e =>
-                {
-                    ExecutionLogs.Add(e.Message);
-                    SetExecutionStatus($"状态：{e.Message}", NeutralBrush);
-                }).ConfigureAwait(true);
+            void OnExecutionStepChanged(object? _, FlowchartExecutionStepEventArgs e)
+            {
+                ExecutionLogs.Add(e.Message);
+                SetExecutionStatus($"状态：{e.Message}", NeutralBrush);
+            }
+
+            editor.ExecutionStepChanged += OnExecutionStepChanged;
+            FlowchartExecutionResult result;
+            try
+            {
+                result = await editor.ExecuteFlowAsync().ConfigureAwait(true);
+            }
+            finally
+            {
+                editor.ExecutionStepChanged -= OnExecutionStepChanged;
+            }
 
             if (!ExecutionLogs.Any())
             {
@@ -277,6 +284,10 @@ public sealed partial class FlowchartViewModel
             }
 
             SetExecutionStatus($"状态：{result.Message}", result.IsSuccess ? SuccessBrush : WarningBrush);
+        }
+        catch (Exception ex)
+        {
+            SetExecutionStatus($"状态：执行流程图失败：{ex.Message}", WarningBrush);
         }
         finally
         {
@@ -292,31 +303,39 @@ public sealed partial class FlowchartViewModel
     {
         if (IsPaused)
         {
-            FlowchartExecutionControlActionResult continueResult =
-                FlowchartExecutionControlService.Continue(parameter as FlowchartEditorControl);
-            if (continueResult.IsSuccess)
+            if (parameter is not FlowchartEditorControl editor)
+            {
+                SetExecutionStatus("状态：流程图编辑器未初始化。", WarningBrush);
+                return;
+            }
+
+            if (editor.ResumeExecution())
             {
                 IsPaused = false;
-                SetExecutionStatus($"状态：{continueResult.Message}", NeutralBrush);
+                SetExecutionStatus("状态：继续执行流程图。", NeutralBrush);
             }
             else
             {
-                SetExecutionStatus($"状态：{continueResult.Message}", WarningBrush);
+                SetExecutionStatus("状态：当前流程图未处于暂停状态。", WarningBrush);
             }
 
             return;
         }
 
-        FlowchartExecutionControlActionResult pauseResult =
-            FlowchartExecutionControlService.Pause(parameter as FlowchartEditorControl);
-        if (pauseResult.IsSuccess)
+        if (parameter is not FlowchartEditorControl currentEditor)
+        {
+            SetExecutionStatus("状态：流程图编辑器未初始化。", WarningBrush);
+            return;
+        }
+
+        if (currentEditor.PauseExecution())
         {
             IsPaused = true;
-            SetExecutionStatus($"状态：{pauseResult.Message}", NeutralBrush);
+            SetExecutionStatus("状态：流程图已暂停。", NeutralBrush);
         }
         else
         {
-            SetExecutionStatus($"状态：{pauseResult.Message}", WarningBrush);
+            SetExecutionStatus("状态：当前没有可暂停的流程图执行。", WarningBrush);
         }
     }
 
@@ -325,16 +344,20 @@ public sealed partial class FlowchartViewModel
     /// </summary>
     private void StopFlowchart(object? parameter)
     {
-        FlowchartExecutionControlActionResult stopResult =
-            FlowchartExecutionControlService.Stop(parameter as FlowchartEditorControl);
-        if (stopResult.IsSuccess)
+        if (parameter is not FlowchartEditorControl editor)
+        {
+            SetExecutionStatus("状态：流程图编辑器未初始化。", WarningBrush);
+            return;
+        }
+
+        if (editor.StopExecution())
         {
             IsPaused = false;
-            SetExecutionStatus($"状态：{stopResult.Message}", WarningBrush);
+            SetExecutionStatus("状态：正在结束执行。", WarningBrush);
         }
         else
         {
-            SetExecutionStatus($"状态：{stopResult.Message}", WarningBrush);
+            SetExecutionStatus("状态：当前没有正在执行的流程图。", WarningBrush);
         }
     }
 
