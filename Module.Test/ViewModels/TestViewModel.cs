@@ -14,9 +14,9 @@ public sealed class TestViewModel : ViewModelProperties, IDisposable
     {
         Stations = new ObservableCollection<TestMinViewModel>
         {
-            new("工位 1"),
-            new("工位 2"),
-            new("工位 3")
+            new("\u5de5\u4f4d 1"),
+            new("\u5de5\u4f4d 2"),
+            new("\u5de5\u4f4d 3")
         };
 
         AddStationCommand = new RelayCommand(_ => AddStation());
@@ -26,7 +26,7 @@ public sealed class TestViewModel : ViewModelProperties, IDisposable
 
     public ICommand AddStationCommand { get; }
 
-    public string StationCountText => $"共 {Stations.Count} 个工位";
+    public string StationCountText => $"\u5171 {Stations.Count} \u4e2a\u5de5\u4f4d";
 
     public void Dispose()
     {
@@ -45,7 +45,7 @@ public sealed class TestViewModel : ViewModelProperties, IDisposable
 
     private void AddStation()
     {
-        Stations.Add(new TestMinViewModel($"工位 {_nextStationIndex++}"));
+        Stations.Add(new TestMinViewModel($"\u5de5\u4f4d {_nextStationIndex++}"));
         OnPropertyChanged(nameof(StationCountText));
     }
 }
