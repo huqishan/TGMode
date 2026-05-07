@@ -8,31 +8,38 @@ namespace Module.Test.ViewModels;
 
 public sealed class TestMinViewModel : ViewModelProperties, IDisposable
 {
-    private static readonly Brush NeutralBrush = new SolidColorBrush(Color.FromRgb(100, 116, 139));
-    private static readonly Brush RunningBrush = new SolidColorBrush(Color.FromRgb(37, 99, 235));
-    private static readonly Brush SuccessBrush = new SolidColorBrush(Color.FromRgb(22, 163, 74));
-    private static readonly Brush WarningBrush = new SolidColorBrush(Color.FromRgb(217, 119, 6));
-    private static readonly Brush FailureBrush = new SolidColorBrush(Color.FromRgb(220, 38, 38));
+    private static readonly Brush WaitingBrush = CreateBrush("#1A69FF");
+    private static readonly Brush RunningBrush = CreateBrush("#2F80ED");
+    private static readonly Brush SuccessBrush = CreateBrush("#18A058");
+    private static readonly Brush FailureBrush = CreateBrush("#D14343");
 
     private readonly IEventAggregator _eventAggregator;
-    private string _stationName = "未选择工位";
-    private string _testStatus = "等待测试";
-    private string _productBarcode = "未读取";
+    private string _stationName;
+    private string _lineName;
+    private string _testStatus = "待配置";
+    private string _productName = "产品名称";
+    private string _productBarcode = "未读码";
     private string _schemeName = "未选择方案";
-    private string _productName = "未选择产品";
-    private string _statusMessage = "等待测试状态更新";
-    private string _lastUpdatedText = "最后更新：--";
-    private Brush _statusBrush = NeutralBrush;
+    private string _workOrderNo = "未下发";
+    private Brush _statusBrush = WaitingBrush;
     private bool _disposed;
 
     public TestMinViewModel()
-        : this(EventAggregator.Current)
+        : this("工位 1", EventAggregator.Current)
     {
     }
 
-    public TestMinViewModel(IEventAggregator eventAggregator)
+    public TestMinViewModel(string stationName)
+        : this(stationName, EventAggregator.Current)
     {
+    }
+
+    public TestMinViewModel(string stationName, IEventAggregator eventAggregator)
+    {
+        _stationName = string.IsNullOrWhiteSpace(stationName) ? "未命名工位" : stationName.Trim();
+        _lineName = "线体 A";
         _eventAggregator = eventAggregator;
+
         _eventAggregator
             .GetEvent<TestExecutionStatusChangedEvent>()
             .Subscribe(ApplyStatus, ThreadOption.UIThread, true);
@@ -41,13 +48,25 @@ public sealed class TestMinViewModel : ViewModelProperties, IDisposable
     public string StationName
     {
         get => _stationName;
-        private set => SetField(ref _stationName, value);
+        set => SetField(ref _stationName, value ?? string.Empty, true);
+    }
+
+    public string LineName
+    {
+        get => _lineName;
+        set => SetField(ref _lineName, value ?? string.Empty, true);
     }
 
     public string TestStatus
     {
         get => _testStatus;
         private set => SetField(ref _testStatus, value);
+    }
+
+    public string ProductName
+    {
+        get => _productName;
+        private set => SetField(ref _productName, value);
     }
 
     public string ProductBarcode
@@ -62,22 +81,10 @@ public sealed class TestMinViewModel : ViewModelProperties, IDisposable
         private set => SetField(ref _schemeName, value);
     }
 
-    public string ProductName
+    public string WorkOrderNo
     {
-        get => _productName;
-        private set => SetField(ref _productName, value);
-    }
-
-    public string StatusMessage
-    {
-        get => _statusMessage;
-        private set => SetField(ref _statusMessage, value);
-    }
-
-    public string LastUpdatedText
-    {
-        get => _lastUpdatedText;
-        private set => SetField(ref _lastUpdatedText, value);
+        get => _workOrderNo;
+        set => SetField(ref _workOrderNo, value ?? string.Empty, true);
     }
 
     public Brush StatusBrush
@@ -101,13 +108,16 @@ public sealed class TestMinViewModel : ViewModelProperties, IDisposable
 
     private void ApplyStatus(TestExecutionStatusMessage message)
     {
-        StationName = UseFallback(message.StationName, "未选择工位");
-        TestStatus = UseFallback(message.TestStatus, "等待测试");
-        ProductBarcode = UseFallback(message.ProductBarcode, "未读取");
-        SchemeName = UseFallback(message.SchemeName, "未选择方案");
-        ProductName = UseFallback(message.ProductName, "未选择产品");
-        StatusMessage = UseFallback(message.Message, "测试状态已更新");
-        LastUpdatedText = $"最后更新：{message.OccurredAt:yyyy-MM-dd HH:mm:ss}";
+        if (!string.IsNullOrWhiteSpace(message.StationName) &&
+            !string.Equals(message.StationName.Trim(), StationName, StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        TestStatus = UseFallback(message.TestStatus, TestStatus);
+        ProductName = UseFallback(message.ProductName, ProductName);
+        ProductBarcode = UseFallback(message.ProductBarcode, ProductBarcode);
+        SchemeName = UseFallback(message.SchemeName, SchemeName);
         StatusBrush = ResolveStatusBrush(message);
     }
 
@@ -123,20 +133,15 @@ public sealed class TestMinViewModel : ViewModelProperties, IDisposable
             return FailureBrush;
         }
 
-        string status = message.TestStatus.Trim();
-        if (status.Contains("准备", StringComparison.OrdinalIgnoreCase) ||
-            status.Contains("等待", StringComparison.OrdinalIgnoreCase))
-        {
-            return WarningBrush;
-        }
+        return message.TestStatus.Contains("测试中", StringComparison.OrdinalIgnoreCase) ||
+               message.TestStatus.Contains("执行中", StringComparison.OrdinalIgnoreCase)
+            ? RunningBrush
+            : WaitingBrush;
+    }
 
-        if (status.Contains("测试中", StringComparison.OrdinalIgnoreCase) ||
-            status.Contains("执行中", StringComparison.OrdinalIgnoreCase))
-        {
-            return RunningBrush;
-        }
-
-        return NeutralBrush;
+    private static Brush CreateBrush(string colorText)
+    {
+        return (Brush)new BrushConverter().ConvertFromString(colorText)!;
     }
 
     private static string UseFallback(string value, string fallback)

@@ -3,114 +3,221 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-             xmlns:local="clr-namespace:Module.Test.Views"
+             xmlns:vm="clr-namespace:Module.Test.ViewModels"
              mc:Ignorable="d"
-             d:DesignHeight="450" d:DesignWidth="800">
-    <Grid Background="{DynamicResource AppBackgroundBrush}">
-        <Grid.Resources>
-            <Style x:Key="StatusValueTextStyle" TargetType="TextBlock">
-                <Setter Property="FontSize" Value="24" />
-                <Setter Property="FontWeight" Value="SemiBold" />
-                <Setter Property="Foreground" Value="{DynamicResource AppContentTextBrush}" />
-                <Setter Property="TextTrimming" Value="CharacterEllipsis" />
-                <Setter Property="VerticalAlignment" Value="Center" />
-            </Style>
+             Width="400"
+             Height="370"
+             d:DataContext="{d:DesignInstance Type=vm:TestMinViewModel, IsDesignTimeCreatable=True}" >
+    <UserControl.Resources>
+        <Style x:Key="StationFieldLabelStyle" TargetType="{x:Type TextBlock}">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Foreground" Value="{DynamicResource AppMutedTextBrush}" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
 
-            <Style x:Key="StatusCaptionTextStyle" TargetType="TextBlock">
-                <Setter Property="FontSize" Value="13" />
-                <Setter Property="Foreground" Value="{DynamicResource AppMutedTextBrush}" />
-                <Setter Property="TextTrimming" Value="CharacterEllipsis" />
-            </Style>
+        <Style x:Key="StationFieldValueStyle" TargetType="{x:Type TextBlock}">
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="{DynamicResource AppContentTextBrush}" />
+            <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
 
-            <Style x:Key="StatusPanelStyle" TargetType="Border">
-                <Setter Property="Padding" Value="18" />
-                <Setter Property="CornerRadius" Value="8" />
-                <Setter Property="Background" Value="{DynamicResource PanelBrush}" />
-                <Setter Property="BorderBrush" Value="{DynamicResource AppCardBorderBrush}" />
-                <Setter Property="BorderThickness" Value="1" />
-                <Setter Property="MinHeight" Value="112" />
-            </Style>
-        </Grid.Resources>
+        <Style x:Key="BarcodeStripeStyle" TargetType="{x:Type Border}">
+            <Setter Property="Width" Value="3" />
+            <Setter Property="Margin" Value="0,0,3,0" />
+            <Setter Property="Background" Value="{DynamicResource AppContentTextBrush}" />
+            <Setter Property="CornerRadius" Value="1.5" />
+            <Setter Property="Opacity" Value="0.55" />
+        </Style>
 
-        <Grid Margin="24">
+        <Style x:Key="StationActionButtonStyle" TargetType="{x:Type Button}">
+            <Setter Property="Width" Value="48" />
+            <Setter Property="Height" Value="40" />
+            <Setter Property="Margin" Value="0,0,10,0" />
+            <Setter Property="Foreground" Value="{DynamicResource AppContentTextBrush}" />
+            <Setter Property="Background" Value="{DynamicResource SecondaryButtonBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource SecondaryButtonBorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Focusable" Value="False" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type Button}">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="8">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center" />
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </UserControl.Resources>
+
+    <Border Background="{DynamicResource PanelBrush}"
+            BorderBrush="{DynamicResource AppCardBorderBrush}"
+            BorderThickness="1"
+            CornerRadius="15"
+            SnapsToDevicePixels="True">
+        <Grid Margin="10">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
-                <RowDefinition Height="16" />
+                <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
+            <Grid Grid.Row="0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="12" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
 
-            <Border Grid.Row="0"
-                    Padding="18"
-                    CornerRadius="8"
-                    Background="{DynamicResource PanelBrush}"
-                    BorderBrush="{DynamicResource AppCardBorderBrush}"
-                    BorderThickness="1">
+                <Grid Grid.Column="0"
+                      Width="42"
+                      Height="42"
+                      VerticalAlignment="Center">
+                    <Ellipse Fill="{DynamicResource TabItemBackgroundBrush}" />
+                    <Ellipse Width="28"
+                             Height="28"
+                             Fill="{DynamicResource BoardBrush}"
+                             Stroke="{Binding StatusBrush}"
+                             StrokeThickness="2"
+                             HorizontalAlignment="Center"
+                             VerticalAlignment="Center" />
+                    <Ellipse Width="11"
+                             Height="11"
+                             Fill="{Binding StatusBrush}"
+                             HorizontalAlignment="Center"
+                             VerticalAlignment="Center" />
+                </Grid>
+
+                <StackPanel Grid.Column="2"
+                            VerticalAlignment="Center">
+                    <TextBlock FontSize="18"
+                               FontWeight="SemiBold"
+                               Foreground="{DynamicResource AppContentTextBrush}"
+                               Text="{Binding StationName}"
+                               TextTrimming="CharacterEllipsis" />
+                    <TextBlock Margin="0,3,0,0"
+                               FontSize="12"
+                               Foreground="{DynamicResource AppMutedTextBrush}"
+                               Text="{Binding SchemeName}"
+                               TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+
+                <StackPanel HorizontalAlignment="Right" Grid.Column="2"
+            Orientation="Horizontal">
+                    <Button Style="{StaticResource StationActionButtonStyle}"
+            ToolTip="开始测试">
+                        <Path Width="18"
+              Height="18"
+              Data="M 5 3 L 5 21 L 21 12 Z"
+              Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+              Stretch="Uniform" />
+                    </Button>
+
+                    <Button Style="{StaticResource StationActionButtonStyle}"
+            ToolTip="停止测试">
+                        <Path Width="17"
+              Height="17"
+              Data="M 4 4 H 20 V 20 H 4 Z"
+              Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+              Stretch="Uniform" />
+                    </Button>
+
+                    <Button Margin="0"
+            Style="{StaticResource StationActionButtonStyle}"
+            ToolTip="清除报警">
+                        <Grid Width="24" Height="24">
+                            <Path Data="M 8 18 H 16 M 10 18 C 10 20 11 21 12 21 C 13 21 14 20 14 18 M 7 17 H 17 L 16 15 V 11 C 16 8.5 14.2 7 12 7 C 9.8 7 8 8.5 8 11 V 15 Z"
+                  Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                  StrokeEndLineCap="Round"
+                  StrokeLineJoin="Round"
+                  StrokeStartLineCap="Round"
+                  StrokeThickness="1.9"
+                  Stretch="Uniform" />
+                            <Path Data="M 5 20 L 20 5"
+                  Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                  StrokeEndLineCap="Round"
+                  StrokeStartLineCap="Round"
+                  StrokeThickness="2.1" />
+                        </Grid>
+                    </Button>
+                </StackPanel>
+            </Grid>
+            <Border Grid.Row="1" Margin="0,8,0,0"
+        Padding="12,10"
+        Background="{DynamicResource BoardBrush}"
+        BorderBrush="{DynamicResource TabItemSelectedBorderBrush}"
+        BorderThickness="1"
+        CornerRadius="8">
                 <Grid>
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="10" />
+                        <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
 
-                    <StackPanel>
-                        <TextBlock Text="当前测试状态"
-                                   Style="{StaticResource StatusCaptionTextStyle}" />
-                        <TextBlock Margin="0,8,0,0"
-                                   FontSize="32"
-                                   FontWeight="SemiBold"
-                                   Foreground="{Binding StatusBrush}"
-                                   Text="{Binding TestStatus}"
-                                   TextTrimming="CharacterEllipsis" />
-                        <TextBlock Margin="0,8,0,0"
-                                   Foreground="{DynamicResource AppMutedTextBrush}"
-                                   Text="{Binding StatusMessage}"
-                                   TextTrimming="CharacterEllipsis" />
+                    <StackPanel Grid.Column="0"
+                    Orientation="Horizontal"
+                    VerticalAlignment="Center">
+                        <Border Height="24" Style="{StaticResource BarcodeStripeStyle}" />
+                        <Border Height="30" Style="{StaticResource BarcodeStripeStyle}" />
+                        <Border Height="18" Style="{StaticResource BarcodeStripeStyle}" />
+                        <Border Height="31" Style="{StaticResource BarcodeStripeStyle}" />
+                        <Border Height="22" Style="{StaticResource BarcodeStripeStyle}" />
                     </StackPanel>
 
-                    <TextBlock Grid.Column="1"
-                               Margin="24,0,0,0"
-                               VerticalAlignment="Top"
-                               Foreground="{DynamicResource AppMutedTextBrush}"
-                               Text="{Binding LastUpdatedText}" />
+                    <StackPanel Grid.Column="2">
+                        <TextBlock FontSize="11"
+                       Foreground="{DynamicResource AppMutedTextBrush}"
+                       Text="产品条码" />
+                        <TextBlock Margin="0,3,0,0"
+                       FontFamily="Consolas"
+                       FontSize="20"
+                       FontWeight="SemiBold"
+                       Foreground="{DynamicResource AppContentTextBrush}"
+                       Text="{Binding ProductBarcode}"
+                       TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
                 </Grid>
             </Border>
+            <Grid Grid.Row="2" Margin="0,8,0,0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+                <Border Grid.Row="0"
+                        Padding="12,8"
+                        Background="{DynamicResource BoardBrush}"
+                        BorderBrush="{DynamicResource TabItemBorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="8">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="72" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="22" />
+                            <RowDefinition Height="22" />
+                            <RowDefinition Height="22" />
+                        </Grid.RowDefinitions>
 
-            <UniformGrid Grid.Row="2" Columns="2" Rows="2">
-                <Border Margin="0,0,8,8" Style="{StaticResource StatusPanelStyle}">
-                    <StackPanel>
-                        <TextBlock Text="当前工位名称" Style="{StaticResource StatusCaptionTextStyle}" />
-                        <TextBlock Margin="0,14,0,0"
-                                   Style="{StaticResource StatusValueTextStyle}"
-                                   Text="{Binding StationName}" />
-                    </StackPanel>
-                </Border>
+                        <TextBlock Grid.Row="0" Grid.Column="0" Style="{StaticResource StationFieldLabelStyle}" Text="测试方案" />
+                        <TextBlock Grid.Row="0" Grid.Column="1" Style="{StaticResource StationFieldValueStyle}" Text="{Binding SchemeName}" />
 
-                <Border Margin="8,0,0,8" Style="{StaticResource StatusPanelStyle}">
-                    <StackPanel>
-                        <TextBlock Text="产品条码" Style="{StaticResource StatusCaptionTextStyle}" />
-                        <TextBlock Margin="0,14,0,0"
-                                   Style="{StaticResource StatusValueTextStyle}"
-                                   Text="{Binding ProductBarcode}" />
-                    </StackPanel>
+                    </Grid>
                 </Border>
-
-                <Border Margin="0,8,8,0" Style="{StaticResource StatusPanelStyle}">
-                    <StackPanel>
-                        <TextBlock Text="当前测试方案" Style="{StaticResource StatusCaptionTextStyle}" />
-                        <TextBlock Margin="0,14,0,0"
-                                   Style="{StaticResource StatusValueTextStyle}"
-                                   Text="{Binding SchemeName}" />
-                    </StackPanel>
-                </Border>
-
-                <Border Margin="8,8,0,0" Style="{StaticResource StatusPanelStyle}">
-                    <StackPanel>
-                        <TextBlock Text="当前产品" Style="{StaticResource StatusCaptionTextStyle}" />
-                        <TextBlock Margin="0,14,0,0"
-                                   Style="{StaticResource StatusValueTextStyle}"
-                                   Text="{Binding ProductName}" />
-                    </StackPanel>
-                </Border>
-            </UniformGrid>
+                <Border Grid.Row="1" Margin="0,8,0,0"
+         Padding="12,8"
+         Background="{DynamicResource BoardBrush}"
+         BorderBrush="{DynamicResource TabItemBorderBrush}"
+         BorderThickness="1"
+         CornerRadius="8"></Border>
+            </Grid>
         </Grid>
-    </Grid>
+    </Border>
 </UserControl>
