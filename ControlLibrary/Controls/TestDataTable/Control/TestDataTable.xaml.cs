@@ -6,6 +6,7 @@ using System.ComponentModel;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
 
 namespace ControlLibrary.Controls.TestDataTable.Control;
@@ -16,6 +17,7 @@ public partial class TestDataTable : UserControl
     private const double HeaderHeight = 30;
     private const double RowHeight = 32;
     private const double WorkStepMaxHeight = 400;
+    private const int MaxVisibleMergedRows = (int)(WorkStepMaxHeight / RowHeight);
 
     public static readonly DependencyProperty ItemsSourceProperty =
         DependencyProperty.Register(
@@ -149,14 +151,14 @@ public partial class TestDataTable : UserControl
 
     private void BuildTable()
     {
-        if (TablePanel is null)
+        if (HeaderHost is null || TablePanel is null)
         {
             return;
         }
 
         List<TableRowData> rows = GetRows();
+        HeaderHost.Content = CreateHeaderGrid();
         TablePanel.Children.Clear();
-        TablePanel.Children.Add(CreateHeaderGrid());
 
         if (rows.Count == 0)
         {
@@ -216,16 +218,113 @@ public partial class TestDataTable : UserControl
 
         ScrollViewer detailScrollViewer = new()
         {
+            Height = groupHeight,
             MaxHeight = WorkStepMaxHeight,
             HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
             VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
             Content = CreateDetailGrid(group.Rows)
         };
+        detailScrollViewer.PreviewMouseWheel += ScrollViewer_PreviewMouseWheel;
 
         Grid.SetRow(detailScrollViewer, 0);
         Grid.SetColumn(detailScrollViewer, 1);
         groupGrid.Children.Add(detailScrollViewer);
         return groupGrid;
+    }
+
+    private void BodyScrollViewer_ScrollChanged(object sender, ScrollChangedEventArgs e)
+    {
+        HeaderScrollViewer?.ScrollToHorizontalOffset(e.HorizontalOffset);
+    }
+
+    private void HeaderScrollViewer_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        if (BodyScrollViewer is null)
+        {
+            return;
+        }
+
+        if (CanScrollVertically(BodyScrollViewer, e.Delta))
+        {
+            e.Handled = true;
+            BodyScrollViewer.ScrollToVerticalOffset(BodyScrollViewer.VerticalOffset - e.Delta);
+            return;
+        }
+
+        e.Handled = true;
+        ScrollBodyViewer(e.Delta);
+    }
+
+    private void ScrollViewer_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        if (sender is not ScrollViewer scrollViewer)
+        {
+            return;
+        }
+
+        if (ReferenceEquals(scrollViewer, BodyScrollViewer) &&
+            IsOriginalSourceInsideNestedScrollViewer(e.OriginalSource, scrollViewer))
+        {
+            return;
+        }
+
+        if (CanScrollVertically(scrollViewer, e.Delta))
+        {
+            e.Handled = true;
+            scrollViewer.ScrollToVerticalOffset(scrollViewer.VerticalOffset - e.Delta);
+            return;
+        }
+
+        e.Handled = true;
+        if (!ReferenceEquals(scrollViewer, BodyScrollViewer))
+        {
+            ScrollBodyViewer(e.Delta);
+        }
+    }
+
+    private static bool CanScrollVertically(ScrollViewer scrollViewer, int delta)
+    {
+        if (scrollViewer.ScrollableHeight <= 0)
+        {
+            return false;
+        }
+
+        return delta > 0
+            ? scrollViewer.VerticalOffset > 0
+            : scrollViewer.VerticalOffset < scrollViewer.ScrollableHeight;
+    }
+
+    private static bool IsOriginalSourceInsideNestedScrollViewer(object? originalSource, ScrollViewer boundary)
+    {
+        if (originalSource is not DependencyObject current)
+        {
+            return false;
+        }
+
+        while (current is not null && !ReferenceEquals(current, boundary))
+        {
+            if (current is ScrollViewer)
+            {
+                return true;
+            }
+
+            current = VisualTreeHelper.GetParent(current);
+        }
+
+        return false;
+    }
+
+    private void ScrollBodyViewer(int delta)
+    {
+        if (BodyScrollViewer is null)
+        {
+            return;
+        }
+
+        if (CanScrollVertically(BodyScrollViewer, delta))
+        {
+            BodyScrollViewer.ScrollToVerticalOffset(BodyScrollViewer.VerticalOffset - delta);
+        }
     }
 
     private Grid CreateDetailGrid(IReadOnlyList<TableRowData> rows)
@@ -299,8 +398,27 @@ public partial class TestDataTable : UserControl
             }
 
             bool hasFailure = rows.Skip(startIndex).Take(span).Any(row => IsFailure(row.Result));
-            AddDataCell(detailGrid, startIndex, 2, value, hasFailure, true, span);
+            AddJudgmentCells(detailGrid, startIndex, span, value, hasFailure);
             startIndex += span;
+        }
+    }
+
+    private void AddJudgmentCells(
+        Grid detailGrid,
+        int startRow,
+        int totalSpan,
+        string text,
+        bool isFailure)
+    {
+        int remainingSpan = totalSpan;
+        int currentRow = startRow;
+
+        while (remainingSpan > 0)
+        {
+            int span = Math.Min(remainingSpan, MaxVisibleMergedRows);
+            AddDataCell(detailGrid, currentRow, 2, text, isFailure, true, span);
+            currentRow += span;
+            remainingSpan -= span;
         }
     }
 

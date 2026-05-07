@@ -15,8 +15,6 @@ public sealed class TestViewModel : ViewModelProperties, IDisposable
         Stations = new ObservableCollection<TestMinViewModel>
         {
             new("\u5de5\u4f4d 1"),
-            new("\u5de5\u4f4d 2"),
-            new("\u5de5\u4f4d 3")
         };
 
         AddStationCommand = new RelayCommand(_ => AddStation());

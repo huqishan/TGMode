@@ -8,28 +8,6 @@
              mc:Ignorable="d"
              d:DataContext="{d:DesignInstance Type=vm:TestMinViewModel, IsDesignTimeCreatable=True}">
     <UserControl.Resources>
-        <Style x:Key="StationFieldLabelStyle" TargetType="{x:Type TextBlock}">
-            <Setter Property="FontSize" Value="12" />
-            <Setter Property="Foreground" Value="{DynamicResource AppMutedTextBrush}" />
-            <Setter Property="VerticalAlignment" Value="Center" />
-        </Style>
-
-        <Style x:Key="StationFieldValueStyle" TargetType="{x:Type TextBlock}">
-            <Setter Property="FontSize" Value="13" />
-            <Setter Property="FontWeight" Value="SemiBold" />
-            <Setter Property="Foreground" Value="{DynamicResource AppContentTextBrush}" />
-            <Setter Property="TextTrimming" Value="CharacterEllipsis" />
-            <Setter Property="VerticalAlignment" Value="Center" />
-        </Style>
-
-        <Style x:Key="BarcodeStripeStyle" TargetType="{x:Type Border}">
-            <Setter Property="Width" Value="3" />
-            <Setter Property="Margin" Value="0,0,3,0" />
-            <Setter Property="Background" Value="{DynamicResource AppContentTextBrush}" />
-            <Setter Property="CornerRadius" Value="1.5" />
-            <Setter Property="Opacity" Value="0.55" />
-        </Style>
-
         <Style x:Key="StationActionButtonStyle" TargetType="{x:Type Button}">
             <Setter Property="Width" Value="48" />
             <Setter Property="Height" Value="40" />
@@ -53,6 +31,13 @@
                 </Setter.Value>
             </Setter>
         </Style>
+        <Style x:Key="BarcodeStripeStyle" TargetType="{x:Type Border}">
+            <Setter Property="Width" Value="3" />
+            <Setter Property="Margin" Value="0,0,3,0" />
+            <Setter Property="Background" Value="{DynamicResource AppContentTextBrush}" />
+            <Setter Property="CornerRadius" Value="1.5" />
+            <Setter Property="Opacity" Value="0.55" />
+        </Style>
     </UserControl.Resources>
 
     <Border Background="{DynamicResource PanelBrush}"
@@ -63,93 +48,181 @@
         <Grid Margin="10">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
-
-            <Grid Grid.Row="0">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="12" />
-                    <ColumnDefinition Width="*" />
-                </Grid.ColumnDefinitions>
-
-                <Grid Grid.Column="0"
-                      Width="42"
-                      Height="42"
-                      VerticalAlignment="Center">
+            <StackPanel Orientation="Horizontal">
+                <Grid
+      Width="42"
+      Height="42"
+      VerticalAlignment="Center">
                     <Ellipse Fill="{DynamicResource TabItemBackgroundBrush}" />
                     <Ellipse Width="28"
-                             Height="28"
-                             Fill="{DynamicResource BoardBrush}"
-                             Stroke="{Binding StatusBrush}"
-                             StrokeThickness="2"
-                             HorizontalAlignment="Center"
-                             VerticalAlignment="Center" />
+             Height="28"
+             Fill="{DynamicResource BoardBrush}"
+             Stroke="{Binding StatusBrush}"
+             StrokeThickness="2"
+             HorizontalAlignment="Center"
+             VerticalAlignment="Center" />
                     <Ellipse Width="11"
-                             Height="11"
-                             Fill="{Binding StatusBrush}"
-                             HorizontalAlignment="Center"
-                             VerticalAlignment="Center" />
+             Height="11"
+             Fill="{Binding StatusBrush}"
+             HorizontalAlignment="Center"
+             VerticalAlignment="Center" />
                 </Grid>
-
-                <StackPanel Grid.Column="2"
-                            VerticalAlignment="Center">
+                <StackPanel Margin="8,0,0,0"
+            VerticalAlignment="Center">
                     <TextBlock FontSize="18"
-                               FontWeight="SemiBold"
-                               Foreground="{DynamicResource AppContentTextBrush}"
-                               Text="{Binding StationName}"
-                               TextTrimming="CharacterEllipsis" />
+               FontWeight="SemiBold"
+               Foreground="{DynamicResource AppContentTextBrush}"
+               Text="{Binding StationName}"
+               TextTrimming="CharacterEllipsis" />
                     <TextBlock Margin="0,3,0,0"
-                               FontSize="12"
-                               Foreground="{DynamicResource AppMutedTextBrush}"
-                               Text="{Binding SchemeName}"
-                               TextTrimming="CharacterEllipsis" />
+               FontSize="12"
+               Foreground="{DynamicResource AppMutedTextBrush}"
+               Text="{Binding SchemeName}"
+               TextTrimming="CharacterEllipsis" />
                 </StackPanel>
+            </StackPanel>
+            <Grid Grid.Row="1">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="400" />
+                    <ColumnDefinition Width="16" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Border Grid.Column="0" Style="{StaticResource CardBorderStyle}" Margin="0,16,0,0">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
 
-                <StackPanel Grid.Column="2"
-                            HorizontalAlignment="Right"
-                            Orientation="Horizontal">
-                    <Button Style="{StaticResource StationActionButtonStyle}"
-                            ToolTip="&#x5F00;&#x59CB;&#x6D4B;&#x8BD5;">
-                        <Path Width="18"
-                              Height="18"
-                              Data="M 5 3 L 5 21 L 21 12 Z"
-                              Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
-                              Stretch="Uniform" />
-                    </Button>
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource SectionTitleStyle}" Text="方案选择" />
+                            <TextBlock Margin="0,6,0,0" Style="{StaticResource AppMutedTextBlockStyle}" Text="集中维护 MES 接口、调用方式、示例报文和测试返回结果。" TextWrapping="Wrap"  />
+                        </StackPanel>
+                        <StackPanel Grid.Row="1" Margin="0,6,0,0">
+                            <DockPanel LastChildFill="True">
+                                <Button DockPanel.Dock="Right"
+                Margin="12,0,0,0"
+                Content="刷新"
+                Command="{Binding RefreshProductsCommand}"
+                Style="{StaticResource ActionButtonStyle}" />
+                                <ComboBox Style="{StaticResource InputComboBoxStyle}"
+                  Height="46"
+                  ItemContainerStyle="{StaticResource InputComboBoxItemStyle}"
+                  ItemsSource="{Binding ProductOptions}"
+                  SelectedItem="{Binding SelectedProductName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            </DockPanel>
+                        </StackPanel>
+                        <ListBox
+     BorderThickness="0"
+     Background="Transparent"
+     ItemContainerStyle="{StaticResource ListBoxItemStyle}"
+     ItemsSource="{Binding ProfilesView}"
+     SelectedItem="{Binding SelectedProfile, Mode=TwoWay}">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel>
+                                        <DockPanel LastChildFill="False">
+                                            <TextBlock FontSize="15"
+                           FontWeight="SemiBold"
+                           Foreground="{DynamicResource AppContentTextBrush}"
+                           Text="{Binding WorkStepName}" />
+                                            <Border DockPanel.Dock="Right"  Width="100"
+                        Margin="10,0,0,0"
+                        Padding="8,2"
+                        Background="{DynamicResource PrimaryButtonBrush}"
+                        BorderBrush="{DynamicResource TabItemBorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="999">
+                                                <TextBlock Foreground="{DynamicResource SecondaryButtonForegroundBrush}"
+                               FontSize="11" HorizontalAlignment="Center"
+                               FontWeight="SemiBold"
+                               Text="{Binding TypeDisplayName}" />
+                                            </Border>
+                                        </DockPanel>
+                                        <TextBlock Margin="0,8,0,0"
+                       Foreground="{DynamicResource AppMutedTextBrush}"
+                       Text="{Binding Summary}"
+                       TextWrapping="Wrap" />
 
-                    <Button Style="{StaticResource StationActionButtonStyle}"
-                            ToolTip="&#x505C;&#x6B62;&#x6D4B;&#x8BD5;">
-                        <Path Width="17"
-                              Height="17"
-                              Data="M 4 4 H 20 V 20 H 4 Z"
-                              Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
-                              Stretch="Uniform" />
-                    </Button>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </Grid>
+                </Border>
 
-                    <Button Margin="0"
-                            Style="{StaticResource StationActionButtonStyle}"
-                            ToolTip="&#x6E05;&#x9664;&#x62A5;&#x8B66;">
-                        <Grid Width="24" Height="24">
-                            <Path Data="M 8 18 H 16 M 10 18 C 10 20 11 21 12 21 C 13 21 14 20 14 18 M 7 17 H 17 L 16 15 V 11 C 16 8.5 14.2 7 12 7 C 9.8 7 8 8.5 8 11 V 15 Z"
-                                  Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
-                                  StrokeEndLineCap="Round"
-                                  StrokeLineJoin="Round"
-                                  StrokeStartLineCap="Round"
-                                  StrokeThickness="1.9"
-                                  Stretch="Uniform" />
-                            <Path Data="M 5 20 L 20 5"
-                                  Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
-                                  StrokeEndLineCap="Round"
-                                  StrokeStartLineCap="Round"
-                                  StrokeThickness="2.1" />
-                        </Grid>
-                    </Button>
-                </StackPanel>
+                <Border Grid.Column="2" Style="{StaticResource CardBorderStyle}" Margin="0,16,0,0">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+                        <StackPanel x:Name="buttons"
+                                 HorizontalAlignment="Right"
+                                 Orientation="Horizontal">
+                                     <Button Style="{StaticResource StationActionButtonStyle}"
+                                 ToolTip="&#x5F00;&#x59CB;&#x6D4B;&#x8BD5;">
+                                         <Path Width="18"
+                                   Height="18"
+                                   Data="M 5 3 L 5 21 L 21 12 Z"
+                                   Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                   Stretch="Uniform" />
+                                     </Button>
+
+                                     <Button Style="{StaticResource StationActionButtonStyle}"
+                                 ToolTip="&#x505C;&#x6B62;&#x6D4B;&#x8BD5;">
+                                         <Path Width="17"
+                                   Height="17"
+                                   Data="M 4 4 H 20 V 20 H 4 Z"
+                                   Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                   Stretch="Uniform" />
+                                     </Button>
+
+                                     <Button Margin="0"
+                                 Style="{StaticResource StationActionButtonStyle}"
+                                 ToolTip="&#x6E05;&#x9664;&#x62A5;&#x8B66;">
+                                         <Grid Width="24" Height="24">
+                                             <Path Data="M 8 18 H 16 M 10 18 C 10 20 11 21 12 21 C 13 21 14 20 14 18 M 7 17 H 17 L 16 15 V 11 C 16 8.5 14.2 7 12 7 C 9.8 7 8 8.5 8 11 V 15 Z"
+                                       Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                       StrokeEndLineCap="Round"
+                                       StrokeLineJoin="Round"
+                                       StrokeStartLineCap="Round"
+                                       StrokeThickness="1.9"
+                                       Stretch="Uniform" />
+                                             <Path Data="M 5 20 L 20 5"
+                                       Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                       StrokeEndLineCap="Round"
+                                       StrokeStartLineCap="Round"
+                                       StrokeThickness="2.1" />
+                                         </Grid>
+                                     </Button>
+                                 </StackPanel>
+                        <testControls:TestDataTable x:Name="testData" Margin="0,8,0,0"
+                            Grid.Row="1"
+                            ItemsSource="{Binding TestData}" />
+                    </Grid>
+                </Border>
             </Grid>
+            
 
-            <Border Grid.Row="1"
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+           
+            <!--<Border Grid.Row="1"
                     Margin="0,8,0,0"
                     Padding="12,10"
                     Background="{DynamicResource BoardBrush}"
@@ -186,9 +259,9 @@
                                    TextTrimming="CharacterEllipsis" />
                     </StackPanel>
                 </Grid>
-            </Border>
+            </Border>-->
 
-            <Grid Grid.Row="2" Margin="0,8,0,0">
+            <!--<Grid Grid.Row="2" Margin="0,8,0,0">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="*" />
                     <RowDefinition Height="Auto" />
@@ -211,14 +284,14 @@
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
                         <TextBlock Grid.Column="0"
-                                   Style="{StaticResource StationFieldLabelStyle}"
+                                   Style="{StaticResource SectionTitleStyle}"
                                    Text="&#x6D4B;&#x8BD5;&#x65B9;&#x6848;" />
                         <TextBlock Grid.Column="1"
-                                   Style="{StaticResource StationFieldValueStyle}"
+                                   Style="{StaticResource AppMutedTextBlockStyle}"
                                    Text="{Binding SchemeName}" />
                     </Grid>
                 </Border>
-            </Grid>
+            </Grid>-->
         </Grid>
     </Border>
 </UserControl>

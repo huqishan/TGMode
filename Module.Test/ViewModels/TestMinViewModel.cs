@@ -46,8 +46,8 @@ public sealed class TestMinViewModel : ViewModelProperties, IDisposable
         {
             TestData.Add(new()
             {
-                WorkStep = "单体电压",
-                Name = $"单体电压{i}",
+                WorkStep = "鍗曚綋鐢靛帇",
+                Name = $"鍗曚綋鐢靛帇{i}",
                 TestValue = "23.8V",
                 JudgmentCondition = "\u7535\u538b > 22V",
                 Result = "OK"
