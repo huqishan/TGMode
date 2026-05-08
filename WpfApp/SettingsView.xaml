@@ -27,25 +27,49 @@
                 CornerRadius="18">
             <StackPanel>
                 <TextBlock Style="{StaticResource AppTitleTextBlockStyle}"
-                           Text="Theme Mode" />
+                           Text="{DynamicResource SettingsThemeTitle}" />
 
                 <TextBlock Margin="0,8,0,0"
                            Style="{StaticResource AppMutedTextBlockStyle}"
-                           Text="Switch the application color theme. Dark keeps the current background and text colors."
+                           Text="{DynamicResource SettingsThemeDescription}"
                            TextWrapping="Wrap" />
 
                 <StackPanel x:Name="ThemePanel" Margin="0,18,0,0">
                     <RadioButton Checked="OnThemeRadioButtonChecked"
-                                 Content="Dark"
+                                 Content="{DynamicResource SettingsThemeDark}"
                                  GroupName="AppTheme"
                                  Style="{StaticResource SettingsRadioButtonStyle}"
                                  Tag="Dark" />
                     <RadioButton Checked="OnThemeRadioButtonChecked"
-                                 Content="Light"
+                                 Content="{DynamicResource SettingsThemeLight}"
                                  GroupName="AppTheme"
                                  Style="{StaticResource SettingsRadioButtonStyle}"
                                  Tag="Light" />
                 </StackPanel>
+
+                <Border Height="1"
+                        Margin="0,24,0,22"
+                        Background="{DynamicResource TabItemBorderBrush}" />
+
+                <TextBlock Style="{StaticResource AppTitleTextBlockStyle}"
+                           Text="{DynamicResource SettingsLanguageTitle}" />
+
+                <TextBlock Margin="0,8,0,0"
+                           Style="{StaticResource AppMutedTextBlockStyle}"
+                           Text="{DynamicResource SettingsLanguageDescription}"
+                           TextWrapping="Wrap" />
+
+                <ComboBox x:Name="LanguageComboBox"
+                          Width="240"
+                          Margin="0,18,0,0"
+                          HorizontalAlignment="Left"
+                          FontSize="14"
+                          MaxDropDownHeight="240"
+                          DisplayMemberPath="DisplayName"
+                          ItemContainerStyle="{StaticResource InputComboBoxItemStyle}"
+                          SelectedValuePath="Key"
+                          Style="{StaticResource InputComboBoxStyle}"
+                          SelectionChanged="OnLanguageSelectionChanged" />
             </StackPanel>
         </Border>
     </Grid>

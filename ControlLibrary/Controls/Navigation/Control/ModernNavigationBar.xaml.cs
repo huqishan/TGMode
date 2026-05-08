@@ -185,8 +185,8 @@ namespace ControlLibrary.Controls.Navigation.Control
             }
 
             _compactFlyoutItemId = item.UniqueId;
-            CompactFlyoutTitleText.Text = item.Title;
-            CompactFlyoutDescriptionText.Text = item.Description ?? string.Empty;
+            CompactFlyoutTitleText.Text = GetLocalizedText(item.Title);
+            CompactFlyoutDescriptionText.Text = GetLocalizedText(item.Description);
             CompactFlyoutDescriptionText.Visibility = string.IsNullOrWhiteSpace(item.Description)
                 ? Visibility.Collapsed
                 : Visibility.Visible;
@@ -238,7 +238,9 @@ namespace ControlLibrary.Controls.Navigation.Control
 
             HeaderTextStack.Visibility = IsPaneOpen ? Visibility.Visible : Visibility.Collapsed;
             SearchBox.Visibility = IsPaneOpen ? Visibility.Visible : Visibility.Collapsed;
-            PaneToggleButton.ToolTip = IsPaneOpen ? "Collapse navigation pane" : "Expand navigation pane";
+            PaneToggleButton.SetResourceReference(
+                FrameworkElement.ToolTipProperty,
+                IsPaneOpen ? "NavigationCollapseToolTip" : "NavigationExpandToolTip");
             UpdatePaneToggleIcon();
 
             SettingsLabelText.Visibility = IsPaneOpen ? Visibility.Visible : Visibility.Collapsed;
@@ -249,7 +251,14 @@ namespace ControlLibrary.Controls.Navigation.Control
             SettingsButton.HorizontalContentAlignment = IsPaneOpen
                 ? HorizontalAlignment.Stretch
                 : HorizontalAlignment.Center;
-            SettingsButton.ToolTip = IsPaneOpen ? null : "Settings";
+            if (IsPaneOpen)
+            {
+                SettingsButton.ClearValue(FrameworkElement.ToolTipProperty);
+            }
+            else
+            {
+                SettingsButton.SetResourceReference(FrameworkElement.ToolTipProperty, "SettingsNavigationLabel");
+            }
 
             RebuildNavigation();
         }
@@ -389,7 +398,7 @@ namespace ControlLibrary.Controls.Navigation.Control
                 Margin = new Thickness(0, 0, 0, 6),
                 Padding = new Thickness(14, 12, 14, 12),
                 HorizontalContentAlignment = HorizontalAlignment.Stretch,
-                ToolTip = string.IsNullOrWhiteSpace(item.Description) ? null : item.Description,
+                ToolTip = string.IsNullOrWhiteSpace(item.Description) ? null : GetLocalizedText(item.Description),
                 IsEnabled = item.IsEnable
             };
             ApplyButtonSelectionVisual(button, isSelected);
@@ -410,7 +419,7 @@ namespace ControlLibrary.Controls.Navigation.Control
 
             TextBlock titleText = new TextBlock
             {
-                Text = item.Title,
+                Text = GetLocalizedText(item.Title),
                 FontSize = 14,
                 FontWeight = isSelected ? FontWeights.Bold : FontWeights.SemiBold
             };
@@ -454,8 +463,8 @@ namespace ControlLibrary.Controls.Navigation.Control
                 : HorizontalAlignment.Center;
             button.MinHeight = IsPaneOpen ? 0 : 52;
             button.ToolTip = IsPaneOpen
-                ? (string.IsNullOrWhiteSpace(item.Description) ? null : item.Description)
-                : item.Title;
+                ? (string.IsNullOrWhiteSpace(item.Description) ? null : GetLocalizedText(item.Description))
+                : GetLocalizedText(item.Title);
 
             Grid contentGrid = new Grid();
             contentGrid.HorizontalAlignment = IsPaneOpen ? HorizontalAlignment.Stretch : HorizontalAlignment.Center;
@@ -485,7 +494,7 @@ namespace ControlLibrary.Controls.Navigation.Control
 
                 TextBlock titleText = new TextBlock
                 {
-                    Text = item.Title,
+                    Text = GetLocalizedText(item.Title),
                     FontSize = isChild ? 14 : 15,
                     FontWeight = isSelected ? FontWeights.Bold : FontWeights.SemiBold
                 };
@@ -497,7 +506,7 @@ namespace ControlLibrary.Controls.Navigation.Control
                     {
                         Margin = new Thickness(0, 3, 0, 0),
                         Style = (Style)FindResource(NavDescriptionTextBlockStyleKey),
-                        Text = item.Description
+                        Text = GetLocalizedText(item.Description)
                     };
                     textStack.Children.Add(descriptionText);
                 }
@@ -594,7 +603,10 @@ namespace ControlLibrary.Controls.Navigation.Control
 
             // Match both title and description to keep search behavior broad enough.
             return item.Title.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ||
-                   (!string.IsNullOrWhiteSpace(item.Description) && item.Description.Contains(_searchText, StringComparison.OrdinalIgnoreCase));
+                   GetLocalizedText(item.Title).Contains(_searchText, StringComparison.OrdinalIgnoreCase) ||
+                   (!string.IsNullOrWhiteSpace(item.Description) &&
+                    (item.Description.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ||
+                     GetLocalizedText(item.Description).Contains(_searchText, StringComparison.OrdinalIgnoreCase)));
         }
 
         private bool IsSelectedGroup(ControlInfoDataItem group)
@@ -675,6 +687,16 @@ namespace ControlLibrary.Controls.Navigation.Control
         private static void SetBrushResource(FrameworkElement element, DependencyProperty property, string resourceKey)
         {
             element.SetResourceReference(property, resourceKey);
+        }
+
+        private static string GetLocalizedText(string? resourceKey)
+        {
+            if (string.IsNullOrWhiteSpace(resourceKey))
+            {
+                return string.Empty;
+            }
+
+            return Application.Current?.TryFindResource(resourceKey) as string ?? resourceKey;
         }
     }
 }

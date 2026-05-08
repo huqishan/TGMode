@@ -10,23 +10,23 @@ public static class NavigationCatalog
     {
         return new List<ControlInfoDataItem>
         {
-            new("Home", IconFactory.House, null, null, description: "Overview"),
-            new("测试界面", IconFactory.FlaskConical, "Module.Test.Views.TestMinView, Module.Test",null,description: "Test"),
+            new("首页", IconFactory.House, null, null, description: "概览"),
+            new("测试界面", IconFactory.FlaskConical, "Module.Test.Views.TestMinView, Module.Test", null, description: "测试"),
             new("MES", IconFactory.Boxes, null,
                 new ObservableCollection<ControlInfoDataItem>
                 {
                     new("接口配置", IconFactory.PlugZap, "Module.MES.Views.ApiConfigView, Module.MES", null),
                     new("结构配置", IconFactory.Network, "Module.MES.Views.DataStructureConfigView, Module.MES", null),
-                    new("通讯配置", IconFactory.MessageSquareCode,null, null)
+                    new("通讯配置", IconFactory.MessageSquareCode, null, null)
                 },
-                description: "Manufacturing"),
+                description: "制造执行"),
             new("设备管理", IconFactory.Cpu, null,
                 new ObservableCollection<ControlInfoDataItem>
                 {
                     new("设备通信配置", IconFactory.Router, "Module.Communication.Views.DeviceCommunicationConfigView, Module.Communication", null),
                     new("协议配置", IconFactory.FileCog, "Module.Communication.Views.ProtocolConfigView, Module.Communication", null)
                 },
-                description: "Devices"),
+                description: "设备"),
             new("业务管理", IconFactory.Cpu, null,
                 new ObservableCollection<ControlInfoDataItem>
                 {
@@ -36,7 +36,7 @@ public static class NavigationCatalog
                     new("流程图", IconFactory.Workflow, "Module.Business.Views.FlowchartView, Module.Business", null),
                     new("脚本管理", IconFactory.Workflow, "Module.Business.Views.LuaScriptView, Module.Business", null),
                 },
-                description: "Business"),
+                description: "业务"),
             new("数据管理", IconFactory.Cpu, null,
                 new ObservableCollection<ControlInfoDataItem>
                 {
@@ -44,14 +44,14 @@ public static class NavigationCatalog
                     new("MES通讯数据", IconFactory.Workflow, string.Empty, null),
                     new("数据源配置", IconFactory.FileCog, "WpfApp.Views.DataManagement.DataSourceConfigView, WpfApp", null)
                 },
-                description: "Data"),
+                description: "数据"),
             new("用户管理", IconFactory.Cpu, null,
                 new ObservableCollection<ControlInfoDataItem>
                 {
                     new("账号", IconFactory.Router, "Module.User.Views.AccountManagementView, Module.User", null),
                     new("权限配置", IconFactory.Workflow, "Module.User.Views.PermissionConfigurationView, Module.User", null)
                 },
-                description: "Users"),
+                description: "用户"),
         };
     }
 }

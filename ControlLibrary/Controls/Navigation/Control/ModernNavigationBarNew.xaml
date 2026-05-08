@@ -158,7 +158,7 @@
                                VerticalAlignment="Center"
                                FontSize="15"
                                FontWeight="SemiBold"
-                               Text="Settings" />
+                               Text="{DynamicResource SettingsNavigationLabel}" />
                 </Grid>
             </Button>
 

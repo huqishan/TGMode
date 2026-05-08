@@ -15,6 +15,8 @@ namespace WpfApp
         {
             base.OnStartup(e);
             EventAggregator.Current = new EventAggregator();
+            AppLanguageManager.EnableAutoLocalization();
+            AppLanguageManager.ApplyLanguage(AppLanguageManager.CurrentLanguage);
 
             ShutdownMode = ShutdownMode.OnExplicitShutdown;
 

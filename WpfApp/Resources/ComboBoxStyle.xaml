@@ -7,8 +7,7 @@
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="Foreground" Value="{DynamicResource AppContentTextBrush}" />
         <Setter Property="TextElement.Foreground" Value="{DynamicResource AppContentTextBrush}" />
-        <Setter Property="FontWeight" Value="Normal" />
-        <Setter Property="FontWeight" Value="Bold" />
+        <Setter Property="FontWeight" Value="SemiBold" />
         <Setter Property="HorizontalContentAlignment" Value="Stretch" />
         <Setter Property="VerticalContentAlignment" Value="Center" />
     </Style>
@@ -86,7 +85,9 @@
                                     MaxHeight="{TemplateBinding MaxDropDownHeight}"
                                     Background="{TemplateBinding Background}"
                                     BorderBrush="{TemplateBinding BorderBrush}"
-                                    BorderThickness="{TemplateBinding BorderThickness}">
+                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                    CornerRadius="4"
+                                    Padding="0,4">
                                 <ScrollViewer Background="{TemplateBinding Background}"
                                               CanContentScroll="True">
                                     <ItemsPresenter KeyboardNavigation.DirectionalNavigation="Contained" />
@@ -130,16 +131,18 @@
         <Setter Property="Foreground" Value="{DynamicResource AppContentTextBrush}" />
         <Setter Property="Background" Value="{DynamicResource TabCardBackgroundBrush}" />
         <Setter Property="FontSize" Value="14" />
-        <Setter Property="FontWeight" Value="SemiBold" />
-        <Setter Property="Padding" Value="10,7" />
+        <Setter Property="FontWeight" Value="Normal" />
+        <Setter Property="Padding" Value="12,8" />
         <Setter Property="HorizontalContentAlignment" Value="Stretch" />
         <Setter Property="VerticalContentAlignment" Value="Center" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ComboBoxItem">
                     <Border x:Name="ItemChrome"
+                            Margin="4,1"
                             Padding="{TemplateBinding Padding}"
-                            Background="{TemplateBinding Background}">
+                            Background="{TemplateBinding Background}"
+                            CornerRadius="4">
                         <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
                                           VerticalAlignment="Center"
                                           TextElement.Foreground="{TemplateBinding Foreground}" />

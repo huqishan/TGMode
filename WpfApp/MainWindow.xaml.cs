@@ -33,7 +33,13 @@ namespace WpfApp
             InitializeComponent();
             CommandBindings.Add(new CommandBinding(CloseTabCommand, CloseTabExecuted, CanCloseTabExecuted));
             StateChanged += (_, _) => UpdateMaximizeRestoreButton();
-            Loaded += (_, _) => UpdateMaximizeRestoreButton();
+            Loaded += (_, _) =>
+            {
+                UpdateMaximizeRestoreButton();
+                AppLanguageManager.LocalizeElement(this);
+            };
+            Closed += (_, _) => AppLanguageManager.LanguageChanged -= AppLanguageManager_LanguageChanged;
+            AppLanguageManager.LanguageChanged += AppLanguageManager_LanguageChanged;
             UpdateLoginUserDisplay();
 
             // Reuse the existing navigation item model instead of adding a new menu schema.
@@ -45,7 +51,7 @@ namespace WpfApp
             NavigationBar.ItemsSource = _navigationInfo;
             NavigationBar.SelectionChanged += NavigationBar_SelectionChanged;
 
-            ControlInfoDataItem? homeItem = _navigationInfo.FirstOrDefault(item => item.Title == "Home");
+            ControlInfoDataItem? homeItem = _navigationInfo.FirstOrDefault(item => string.Equals(item.ImageIconPath, IconFactory.House, StringComparison.Ordinal));
             if (homeItem is not null)
             {
                 NavigationBar.SelectItem(homeItem);
@@ -104,7 +110,17 @@ namespace WpfApp
 
             bool isMaximized = WindowState == WindowState.Maximized;
             MaximizeRestoreWindowButton.Content = isMaximized ? "❐" : "□";
-            MaximizeRestoreWindowButton.ToolTip = isMaximized ? "还原" : "最大化";
+            MaximizeRestoreWindowButton.ToolTip = isMaximized
+                ? AppLanguageManager.GetString("WindowRestoreToolTip", "还原")
+                : AppLanguageManager.GetString("WindowMaximizeToolTip", "最大化");
+        }
+
+        private void AppLanguageManager_LanguageChanged(object? sender, EventArgs e)
+        {
+            UpdateMaximizeRestoreButton();
+            UpdateTabHeaders();
+            NavigationBar.ItemsSource = _navigationInfo;
+            AppLanguageManager.LocalizeElement(this);
         }
 
         private static string GetCurrentUserName()
@@ -176,8 +192,6 @@ namespace WpfApp
 
         private void OpenSettingsTab()
         {
-            const string settingsHeader = "Setting";
-
             // Reuse the settings tab if it already exists.
             foreach (object item in tabControl.Items)
             {
@@ -197,7 +211,7 @@ namespace WpfApp
 
             TabItem tabItem = new TabItem
             {
-                Header = settingsHeader,
+                Header = AppLanguageManager.GetString("SettingsTabHeader", "设置"),
                 Tag = SettingsTabKey,
                 Content = settingsView
             };
@@ -230,8 +244,11 @@ namespace WpfApp
             {
                 MessageBox.Show(
                     this,
-                    $"无法打开“{controlItem.Title}”页面，未找到对应的视图类型。\r\n{controlItem.Content}",
-                    "导航提示",
+                    string.Format(
+                        AppLanguageManager.GetString("NavigationViewTypeNotFoundMessage", "无法打开“{0}”页面，未找到对应的视图类型。\r\n{1}"),
+                        AppLanguageManager.GetString(controlItem.Title, controlItem.Title),
+                        controlItem.Content),
+                    AppLanguageManager.GetString("NavigationMessageTitle", "导航提示"),
                     MessageBoxButton.OK,
                     MessageBoxImage.Warning);
                 return;
@@ -241,8 +258,11 @@ namespace WpfApp
             {
                 MessageBox.Show(
                     this,
-                    $"无法打开“{controlItem.Title}”页面，对应视图创建失败。\r\n{controlItem.Content}",
-                    "导航提示",
+                    string.Format(
+                        AppLanguageManager.GetString("NavigationViewCreateFailedMessage", "无法打开“{0}”页面，对应视图创建失败。\r\n{1}"),
+                        AppLanguageManager.GetString(controlItem.Title, controlItem.Title),
+                        controlItem.Content),
+                    AppLanguageManager.GetString("NavigationMessageTitle", "导航提示"),
                     MessageBoxButton.OK,
                     MessageBoxImage.Warning);
                 return;
@@ -254,7 +274,7 @@ namespace WpfApp
 
             TabItem tabItem = new TabItem
             {
-                Header = controlItem.Title,
+                Header = AppLanguageManager.GetString(controlItem.Title, controlItem.Title),
                 Tag = controlItem,
                 Content = content
             };
@@ -285,6 +305,26 @@ namespace WpfApp
             catch
             {
                 return null;
+            }
+        }
+
+        private void UpdateTabHeaders()
+        {
+            foreach (object item in tabControl.Items)
+            {
+                if (item is not TabItem tabItem)
+                {
+                    continue;
+                }
+
+                if (string.Equals(tabItem.Tag?.ToString(), SettingsTabKey, StringComparison.Ordinal))
+                {
+                    tabItem.Header = AppLanguageManager.GetString("SettingsTabHeader", "设置");
+                }
+                else if (tabItem.Tag is ControlInfoDataItem controlItem)
+                {
+                    tabItem.Header = AppLanguageManager.GetString(controlItem.Title, controlItem.Title);
+                }
             }
         }
 
