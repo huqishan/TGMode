@@ -189,7 +189,7 @@ public sealed partial class ProtocolConfigViewModel
         "模板中使用 {{Placeholder}} 形式占位；占位符值会从模板自动提取，可在表格中填写对应值。";
 
     public string ParseRuleHelpText =>
-        "规则格式：Field = Expression。支持 hex、ascii、utf8、text、len、hex(start,length)、ascii(start,length)、utf8(start,length)、u8(index)、u16le(index)、u16be(index)、u32le(index)、u32be(index)，其中 length=-1 表示截取到末尾。";
+        "\u89e3\u6790\u811a\u672c\u4f7f\u7528 Lua \u6267\u884c\uff0c\u53ea\u6ce8\u5165 data \u4e00\u4e2a\u53d8\u91cf\u8868\u793a\u5f53\u524d\u8fd4\u56de\u6570\u636e\u3002\u811a\u672c\u53ea\u9700 return \u4efb\u610f\u503c\uff0c\u4f8b\u5982 return data; \u6216 return string.sub(data, 1, 2);\u53cc\u51fb\u811a\u672c\u7f16\u8f91\u533a\u53ef\u50cf\u6d41\u7a0b\u56fe\u5904\u7406\u5757\u4e00\u6837\u5f39\u51fa\u7f16\u8f91\u754c\u9762\u3002";
 
     public string WaitForResponseHelpText =>
         "选中后显示返回示例与解析规则，并允许对返回数据执行解析。";

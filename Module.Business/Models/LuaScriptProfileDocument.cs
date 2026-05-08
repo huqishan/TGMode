@@ -1,6 +1,6 @@
 using System;
 
-namespace ControlLibrary.ControlViews.LuaScrip.Models
+namespace Module.Business.Models
 {
     public sealed class LuaScriptProfileDocument
     {

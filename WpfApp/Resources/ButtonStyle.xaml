@@ -56,4 +56,110 @@
         <Setter Property="BorderBrush" Value="{DynamicResource PrimaryButtonBrush}" />
         <Setter Property="Foreground" Value="{DynamicResource PrimaryButtonForegroundBrush}" />
     </Style>
+
+    <LinearGradientBrush x:Key="TestStepButtonBrush" StartPoint="0,0" EndPoint="1,1">
+        <GradientStop Color="#11D7B6" Offset="0" />
+        <GradientStop Color="#00BFA5" Offset="1" />
+    </LinearGradientBrush>
+
+    <LinearGradientBrush x:Key="TestContinuousButtonBrush" StartPoint="0,0" EndPoint="1,1">
+        <GradientStop Color="#05AEE8" Offset="0" />
+        <GradientStop Color="#0072C8" Offset="1" />
+    </LinearGradientBrush>
+
+    <LinearGradientBrush x:Key="TestStopButtonBrush" StartPoint="0,0" EndPoint="1,1">
+        <GradientStop Color="#FF6D72" Offset="0" />
+        <GradientStop Color="#EF1119" Offset="1" />
+    </LinearGradientBrush>
+
+    <SolidColorBrush x:Key="TestStatusPanelBrush" Color="#CBD7E3" />
+    <SolidColorBrush x:Key="TestStatusPanelTextBrush" Color="#FFFFFF" />
+
+    <Style x:Key="TestOperationButtonStyle" TargetType="{x:Type Button}">
+        <Setter Property="Height" Value="56" />
+        <Setter Property="MinWidth" Value="150" />
+        <Setter Property="Margin" Value="0,0,16,0" />
+        <Setter Property="Padding" Value="18,0" />
+        <Setter Property="Foreground" Value="#FFFFFF" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Focusable" Value="False" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type Button}">
+                    <Border x:Name="Chrome"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="6"
+                            SnapsToDevicePixels="True">
+                        <ContentPresenter Margin="{TemplateBinding Padding}"
+                                          HorizontalAlignment="Center"
+                                          VerticalAlignment="Center"
+                                          RecognizesAccessKey="True" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Chrome" Property="Opacity" Value="0.9" />
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="Chrome" Property="Opacity" Value="0.78" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter TargetName="Chrome" Property="Background" Value="{DynamicResource DisabledButtonBrush}" />
+                            <Setter Property="Foreground" Value="{DynamicResource DisabledButtonForegroundBrush}" />
+                            <Setter Property="Cursor" Value="Arrow" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="TestStepButtonStyle"
+           TargetType="{x:Type Button}"
+           BasedOn="{StaticResource TestOperationButtonStyle}">
+        <Setter Property="Background" Value="{StaticResource TestStepButtonBrush}" />
+    </Style>
+
+    <Style x:Key="TestContinuousButtonStyle"
+           TargetType="{x:Type Button}"
+           BasedOn="{StaticResource TestOperationButtonStyle}">
+        <Setter Property="Background" Value="{StaticResource TestContinuousButtonBrush}" />
+    </Style>
+
+    <Style x:Key="TestStopButtonStyle"
+           TargetType="{x:Type Button}"
+           BasedOn="{StaticResource TestOperationButtonStyle}">
+        <Setter Property="Background" Value="{StaticResource TestStopButtonBrush}" />
+    </Style>
+
+    <Style x:Key="TestOperationButtonTextStyle" TargetType="{x:Type TextBlock}">
+        <Setter Property="Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" />
+        <Setter Property="FontSize" Value="20" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+
+    <Style x:Key="TestStatusPanelStyle" TargetType="{x:Type Border}">
+        <Setter Property="Height" Value="56" />
+        <Setter Property="MinWidth" Value="470" />
+        <Setter Property="Padding" Value="24,0" />
+        <Setter Property="Background" Value="{StaticResource TestStatusPanelBrush}" />
+        <Setter Property="CornerRadius" Value="6" />
+    </Style>
+
+    <Style x:Key="TestStatusTextStyle" TargetType="{x:Type TextBlock}">
+        <Setter Property="Foreground" Value="{StaticResource TestStatusPanelTextBrush}" />
+        <Setter Property="FontSize" Value="29" />
+        <Setter Property="FontWeight" Value="Bold" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+
+    <Style x:Key="TestElapsedTextStyle"
+           TargetType="{x:Type TextBlock}"
+           BasedOn="{StaticResource TestStatusTextStyle}">
+        <Setter Property="FontSize" Value="22" />
+        <Setter Property="HorizontalAlignment" Value="Right" />
+    </Style>
 </ResourceDictionary>

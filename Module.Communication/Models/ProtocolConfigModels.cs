@@ -1,9 +1,12 @@
+using NLua;
 using Shared.Infrastructure.Extensions;
+using Shared.Infrastructure.Lua;
 using System;
 using System.Collections.Generic;
-using System.Collections.Specialized;
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
 using System.ComponentModel;
+using System.Globalization;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -233,7 +236,7 @@ namespace Module.Communication.Models
         private string _contentTemplate = "AA {{Address}} {{Command}}";
         private string _placeholderValuesText = "Address=01\r\nCommand=03";
         private string _sampleResponseText = "AA 01 03";
-        private string _parseRulesText = "FullHex = hex\r\nLength = len";
+        private string _parseRulesText = "return data;";
         private bool _isSyncingPlaceholders;
 
         public ProtocolCommandConfig()
@@ -954,32 +957,30 @@ namespace Module.Communication.Models
                 return false;
             }
 
-            Dictionary<string, string> parsedValues;
+            object? parsedValue;
             if (string.IsNullOrWhiteSpace(command.ParseRulesText))
             {
-                parsedValues = CreateDefaultParsedValues(responseBytes, normalizedResponse, command.ResponseFormat);
-                message = "已生成返回预览，未填写解析规则。";
+                parsedValue = CreateDefaultParsedValues(responseBytes, normalizedResponse, command.ResponseFormat);
+                message = "\u5df2\u751f\u6210\u8fd4\u56de\u9884\u89c8\uff0c\u672a\u586b\u5199 Lua \u89e3\u6790\u811a\u672c\u3002";
             }
             else
             {
-                if (!TryApplyParseRules(
+                if (!TryApplyLuaParseRules(
                         command.ParseRulesText,
-                        responseBytes,
                         normalizedResponse,
-                        command.ResponseFormat,
-                        out parsedValues,
+                        out parsedValue,
                         out message))
                 {
                     return false;
                 }
 
-                message = "返回数据解析预览已生成。";
+                message = "\u8fd4\u56de\u6570\u636e Lua \u89e3\u6790\u9884\u89c8\u5df2\u751f\u6210\u3002";
             }
 
             result = new ProtocolResponsePreviewResult(
                 responseBytes.ByteArrayToHexString(),
                 FormatBytesAsAscii(responseBytes),
-                JsonSerializer.Serialize(parsedValues, ParsedJsonOptions));
+                FormatParsedValue(parsedValue));
             return true;
         }
 
@@ -1122,15 +1123,142 @@ namespace Module.Communication.Models
             }
         }
 
+        public static bool TryBuildLuaParseExecutionPrefix(
+            ProtocolCommandConfig command,
+            out string prefixScript,
+            out string message)
+        {
+            prefixScript = string.Empty;
+            if (string.IsNullOrWhiteSpace(command.SampleResponseText))
+            {
+                message = "\u8bf7\u5148\u586b\u5199\u793a\u4f8b\u8fd4\u56de\u6570\u636e\u3002";
+                return false;
+            }
+
+            if (!TryConvertContentToBytes(
+                    command.SampleResponseText,
+                    command.ResponseFormat,
+                    out byte[] responseBytes,
+                    out string normalizedResponse,
+                    out message))
+            {
+                return false;
+            }
+
+            prefixScript = BuildLuaParsePrelude(normalizedResponse);
+            message = string.Empty;
+            return true;
+        }
+
+        private static bool TryApplyLuaParseRules(
+            string parseRulesText,
+            string data,
+            out object? parsedValue,
+            out string message)
+        {
+            parsedValue = null;
+            string script = $"{BuildLuaParsePrelude(data)}{Environment.NewLine}{parseRulesText}";
+            LuaManage lua = new();
+            try
+            {
+                object[] results = lua.DoString(script);
+                if (results.Length == 1 && results[0] is Exception exception)
+                {
+                    message = exception.Message;
+                    return false;
+                }
+
+                parsedValue = results[0];
+                message = string.Empty;
+                return true;
+            }
+            catch (Exception ex)
+            {
+                message = $"\u89e3\u6790 Lua \u811a\u672c\u6267\u884c\u5931\u8d25\uff1a{ex.Message}";
+                return false;
+            }
+        }
+
+        private static string BuildLuaParsePrelude(string data)
+        {
+            StringBuilder script = new();
+            script.Append("data = ").Append(ToLuaStringLiteral(data)).AppendLine();
+            return script.ToString();
+        }
+
+        private static object? ConvertLuaValue(object? value)
+        {
+            if (value is null)
+            {
+                return null;
+            }
+
+            if (value is LuaTable table)
+            {
+                Dictionary<string, object?> nested = new(StringComparer.OrdinalIgnoreCase);
+                foreach (object key in table.Keys)
+                {
+                    string? fieldName = Convert.ToString(key);
+                    if (!string.IsNullOrWhiteSpace(fieldName))
+                    {
+                        nested[fieldName] = ConvertLuaValue(table[key]);
+                    }
+                }
+
+                return nested;
+            }
+
+            if (value is double doubleValue && Math.Abs(doubleValue - Math.Round(doubleValue)) < double.Epsilon)
+            {
+                return Convert.ToInt64(doubleValue);
+            }
+
+            return value;
+        }
+
+        private static string FormatParsedValue(object? value)
+        {
+            return value switch
+            {
+                null => "nil",
+                string text => text,
+                bool boolValue => boolValue ? "true" : "false",
+                byte or sbyte or short or ushort or int or uint or long or ulong or float or double or decimal =>
+                    Convert.ToString(value, CultureInfo.InvariantCulture) ?? string.Empty,
+                _ => JsonSerializer.Serialize(value, ParsedJsonOptions)
+            };
+        }
+
+        private static string ToLuaStringLiteral(string value)
+        {
+            StringBuilder builder = new(value.Length + 2);
+            builder.Append('"');
+            foreach (char character in value)
+            {
+                builder.Append(character switch
+                {
+                    '\\' => "\\\\",
+                    '"' => "\\\"",
+                    '\r' => "\\r",
+                    '\n' => "\\n",
+                    '\t' => "\\t",
+                    _ => character.ToString()
+                });
+            }
+
+            builder.Append('"');
+            return builder.ToString();
+        }
+
         private static bool TryApplyParseRules(
             string parseRulesText,
             byte[] responseBytes,
             string originalResponseText,
             ProtocolPayloadFormat responseFormat,
-            out Dictionary<string, string> parsedValues,
+            out Dictionary<string, object?> parsedValues,
             out string message)
         {
-            parsedValues = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            parsedValues = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
             string[] lines = SplitLines(parseRulesText);
             for (int index = 0; index < lines.Length; index++)
             {
@@ -1371,14 +1499,14 @@ namespace Module.Communication.Models
             return true;
         }
 
-        private static Dictionary<string, string> CreateDefaultParsedValues(
+        private static Dictionary<string, object?> CreateDefaultParsedValues(
             byte[] responseBytes,
             string originalResponseText,
             ProtocolPayloadFormat responseFormat)
         {
-            return new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            return new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase)
             {
-                ["Length"] = responseBytes.Length.ToString(),
+                ["Length"] = responseBytes.Length,
                 ["FullHex"] = responseBytes.ByteArrayToHexString(),
                 ["FullAscii"] = FormatBytesAsAscii(responseBytes),
                 ["Text"] = responseFormat == ProtocolPayloadFormat.Ascii

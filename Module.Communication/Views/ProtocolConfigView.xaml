@@ -5,6 +5,8 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:searchBox="clr-namespace:ControlLibrary.Controls.SearchBox.Control;assembly=ControlLibrary"
              xmlns:vm="clr-namespace:Module.Communication.ViewModels"
+             xmlns:luaScript="clr-namespace:ControlLibrary.Controls.LuaScripEditor.Control;assembly=ControlLibrary"
+             xmlns:luaCompiler="clr-namespace:ControlLibrary.ControlViews.LuaScrip;assembly=ControlLibrary"
              mc:Ignorable="d"
              HorizontalAlignment="Stretch"
              VerticalAlignment="Stretch"
@@ -158,7 +160,7 @@ CornerRadius="999">
                         <TextBlock Grid.Row="1"
                                    Margin="0,8,0,10"
                                    Foreground="{DynamicResource AppMutedTextBrush}"
-                                   Text="点击某条设备指令后，会从下侧滑出弹窗，显示基础设置、执行行为、协议模板与占位符、返回示例与解析规则。"
+                                   Text="&#x70b9;&#x51fb;&#x67d0;&#x6761;&#x8bbe;&#x5907;&#x6307;&#x4ee4;&#x540e;&#xff0c;&#x4f1a;&#x4ece;&#x4e0b;&#x4fa7;&#x6ed1;&#x51fa;&#x5f39;&#x7a97;&#xff0c;&#x663e;&#x793a;&#x57fa;&#x7840;&#x8bbe;&#x7f6e;&#x3001;&#x6267;&#x884c;&#x884c;&#x4e3a;&#x3001;&#x534f;&#x8bae;&#x6a21;&#x677f;&#x4e0e;&#x5360;&#x4f4d;&#x7b26;&#x3001;&#x8fd4;&#x56de;&#x793a;&#x4f8b;&#x4e0e; Lua &#x89e3;&#x6790;&#x811a;&#x672c;&#x3002;"
                                    TextWrapping="Wrap" />
 
                         <ListBox Grid.Row="2"
@@ -391,7 +393,7 @@ CornerRadius="999">
 
                                             <TextBlock Grid.Row="0"
                                                        Style="{StaticResource SectionTitleStyle}"
-                                                       Text="返回示例与解析规则" />
+                                                       Text="&#x8fd4;&#x56de;&#x793a;&#x4f8b;&#x4e0e; Lua &#x89e3;&#x6790;&#x811a;&#x672c;" />
                                             <TextBlock Grid.Row="1"
                                                        Grid.ColumnSpan="3"
                                                        Margin="0,8,0,0"
@@ -423,14 +425,18 @@ CornerRadius="999">
                                                     <ColumnDefinition Width="110" />
                                                     <ColumnDefinition Width="*" />
                                                 </Grid.ColumnDefinitions>
-                                                <TextBlock Style="{StaticResource FieldLabelStyle}" Text="解析规则" />
-                                                <TextBox Grid.Row="1"
+                                                <TextBlock Style="{StaticResource FieldLabelStyle}" Text="Lua &#x89e3;&#x6790;&#x811a;&#x672c;" />
+                                                <luaScript:LuaScriptEditor x:Name="ParseRulesLuaEditor"
+                                                                           Grid.Row="1"
+                                                                           PreviewMouseDoubleClick="ParseRulesLuaEditor_PreviewMouseDoubleClick"
+                                                                           ScriptText="{Binding SelectedProfile.ParseRulesText, UpdateSourceTrigger=PropertyChanged}" />
+                                                <!--<TextBox Grid.Row="1"
       Style="{StaticResource InputTextBoxStyle}"
       AcceptsReturn="True"
       FontFamily="Consolas"
       VerticalAlignment="Stretch"
       VerticalScrollBarVisibility="Auto"
-      Text="{Binding SelectedProfile.ParseRulesText, UpdateSourceTrigger=PropertyChanged}" />
+      Text="{Binding SelectedProfile.ParseRulesText, UpdateSourceTrigger=PropertyChanged}" />-->
 
                                                 <Button Grid.Row="1"
         Grid.Column="1" Grid.RowSpan="2"
@@ -458,6 +464,60 @@ Text="{Binding ParsedResultText, Mode=OneWay}" />
                     </Border>
                 </Grid>
             </Grid>
+        </Grid>
+
+        <Grid x:Name="ParseRuleEditorHost"
+              Grid.ColumnSpan="3"
+              Panel.ZIndex="80"
+              Visibility="Collapsed">
+            <Border Background="#59000000"
+                    MouseLeftButtonDown="ParseRuleEditorBackdrop_MouseLeftButtonDown" />
+
+            <Border Width="980"
+                    MaxWidth="1180"
+                    MaxHeight="760"
+                    Padding="24"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Style="{StaticResource CardBorderStyle}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <DockPanel LastChildFill="False">
+                        <StackPanel DockPanel.Dock="Left">
+                            <TextBlock Style="{StaticResource SectionTitleStyle}"
+                                       Text="Lua &#x89e3;&#x6790;&#x811a;&#x672c;" />
+                            <TextBlock Margin="0,8,0,0"
+                                       Foreground="{DynamicResource AppMutedTextBrush}"
+                                       Text="data &#x8868;&#x793a;&#x5f53;&#x524d;&#x8fd4;&#x56de;&#x6570;&#x636e;&#xff0c;&#x811a;&#x672c;&#x53ea;&#x9700; return &#x4efb;&#x610f;&#x503c;&#x3002;" />
+                        </StackPanel>
+                        <TextBlock DockPanel.Dock="Right"
+                                   VerticalAlignment="Center"
+                                   Foreground="{Binding PageStatusBrush}"
+                                   Text="{Binding PageStatusText}" />
+                    </DockPanel>
+
+                    <luaCompiler:LuaScriptCompilerView x:Name="ParseRuleCompilerView"
+                                                       Grid.Row="1"
+                                                       Margin="0,14,0,0" />
+
+                    <StackPanel Grid.Row="2"
+                                Margin="0,18,0,0"
+                                HorizontalAlignment="Right"
+                                Orientation="Horizontal">
+                        <Button Content="&#x53d6;&#x6d88;"
+                                Click="ParseRuleEditorCancelButton_Click"
+                                Style="{StaticResource ActionButtonStyle}" />
+                        <Button Content="&#x4fdd;&#x5b58;"
+                                Click="ParseRuleEditorSaveButton_Click"
+                                Style="{StaticResource PrimaryActionButtonStyle}" />
+                    </StackPanel>
+                </Grid>
+            </Border>
         </Grid>
     </Grid>
 </UserControl>

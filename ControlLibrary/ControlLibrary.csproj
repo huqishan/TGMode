@@ -12,10 +12,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="ControlViews\LuaScrip\Models\" />
-  </ItemGroup>
-
-  <ItemGroup>
     <Compile Update="Controls\Navigation\Control\ModernNavigationBarNew.xaml.cs">
       <SubType>Code</SubType>
     </Compile>

@@ -11,4 +11,6 @@ public sealed class TestDataDisplayItem
     public string JudgmentCondition { get; set; } = string.Empty;
 
     public string Result { get; set; } = string.Empty;
+
+    public string WorkStepElapsedTime { get; set; } = string.Empty;
 }

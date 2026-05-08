@@ -1,120 +1,63 @@
-﻿<UserControl x:Class="ControlLibrary.Controls.LuaScripEditor.Control.LuaScriptEditor"
+<UserControl x:Class="ControlLibrary.Controls.LuaScripEditor.Control.LuaScriptEditor"
              x:Name="Root"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
-             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
-             xmlns:local="clr-namespace:ControlLibrary.Controls.LuaScripEditor.Control"
-             mc:Ignorable="d" 
-             d:DesignHeight="450" d:DesignWidth="800">
-    <Grid>
-        <Grid.RowDefinitions>
-            <RowDefinition Height="*" />
-            <RowDefinition Height="12" />
-            <RowDefinition Height="150" />
-        </Grid.RowDefinitions>
-        <WrapPanel Grid.Row="0">
-            
-        </WrapPanel>
-        <Border Grid.Row="0"
-         Padding="14"
-         Background="{DynamicResource TabCardBackgroundBrush}"
-         BorderBrush="{DynamicResource TabItemBorderBrush}"
-         BorderThickness="1"
-         CornerRadius="14">
-            <Grid>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="10" />
-                    <RowDefinition Height="*" />
-                </Grid.RowDefinitions>
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             mc:Ignorable="d"
+             d:DesignHeight="450"
+             d:DesignWidth="800">
+    <Border Background="{DynamicResource TabCardBackgroundBrush}"
+            BorderBrush="{DynamicResource TabItemSelectedBorderBrush}"
+            BorderThickness="1"
+            ClipToBounds="True"
+            CornerRadius="12">
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
 
-                <DockPanel LastChildFill="False">
-                    <Button Content="执行脚本"
-Click="CompileLuaButton_Click"
-Style="{StaticResource PrimaryActionButtonStyle}" />
-                </DockPanel>
+            <Border MinWidth="48"
+                    Padding="0,10,10,10"
+                    CornerRadius="12,0,0,12"
+                    Background="{DynamicResource TabItemBackgroundBrush}"
+                    BorderBrush="{DynamicResource TabItemBorderBrush}"
+                    BorderThickness="0,0,1,0"
+                    ClipToBounds="True">
+                <TextBlock FontFamily="Consolas"
+                           FontSize="20"
+                           Foreground="{DynamicResource AppMutedTextBrush}"
+                           LineHeight="24"
+                           LineStackingStrategy="BlockLineHeight"
+                           Text="{Binding LuaLineNumberText, ElementName=Root}"
+                           TextAlignment="Right">
+                    <TextBlock.RenderTransform>
+                        <TranslateTransform x:Name="LuaLineNumberOffsetTransform" />
+                    </TextBlock.RenderTransform>
+                </TextBlock>
+            </Border>
 
-                <Border Grid.Row="2"
-                 Background="{DynamicResource TabCardBackgroundBrush}"
-                 BorderBrush="{DynamicResource TabItemSelectedBorderBrush}"
-                 BorderThickness="1"
-                 ClipToBounds="True"
-                 CornerRadius="12">
-                    <Grid Grid.Row="2">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="*" />
-                        </Grid.ColumnDefinitions>
-
-                        <Border MinWidth="48"
- Padding="0,10,10,10" CornerRadius="12,0,0,12"
- Background="{DynamicResource TabItemBackgroundBrush}"
- BorderBrush="{DynamicResource TabItemBorderBrush}"
- BorderThickness="0,0,1,0"
- ClipToBounds="True">
-                            <TextBlock FontFamily="Consolas"
-        FontSize="20"
-        Foreground="{DynamicResource AppMutedTextBrush}"
-        LineHeight="24"
-        LineStackingStrategy="BlockLineHeight"
-        Text="{Binding LuaLineNumberText, ElementName=Root}"
-        TextAlignment="Right">
-                                <TextBlock.RenderTransform>
-                                    <TranslateTransform x:Name="LuaLineNumberOffsetTransform" />
-                                </TextBlock.RenderTransform>
-                            </TextBlock>
-                        </Border>
-                        <RichTextBox x:Name="LuaEditorRichTextBox"
-      Grid.Column="1"
-      Padding="10,10,0,10"
-      BorderThickness="0"
-      Background="Transparent"
-      Foreground="{DynamicResource LuaEditorPlainTextBrush}"
-      CaretBrush="{DynamicResource LuaEditorCaretBrush}"
-      SelectionBrush="{DynamicResource LuaEditorSelectionBrush}"
-      SelectionTextBrush="{DynamicResource LuaEditorSelectionTextBrush}"
-      FontFamily="Consolas"
-      FontSize="20"
-      AcceptsTab="True"
-      VerticalScrollBarVisibility="Auto"
-      HorizontalScrollBarVisibility="Auto"
-      ScrollViewer.ScrollChanged="LuaEditorRichTextBox_ScrollChanged"
-      SelectionChanged="LuaEditorRichTextBox_SelectionChanged"
-      TextChanged="LuaEditorRichTextBox_TextChanged"
-      SpellCheck.IsEnabled="False">
-                            <FlowDocument PagePadding="0" />
-                        </RichTextBox>
-                    </Grid>
-                </Border>
-            </Grid>
-        </Border>
-        
-        <Border Grid.Row="2"
-        Padding="14"
-        Background="{DynamicResource TabCardBackgroundBrush}"
-        BorderBrush="{DynamicResource TabItemBorderBrush}"
-        BorderThickness="1"
-        CornerRadius="14">
-            <Grid>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="8" />
-                    <RowDefinition Height="*" />
-                </Grid.RowDefinitions>
-
-                <TextBlock Style="{StaticResource SectionTitleStyle}" Text="编译结果" />
-                <TextBox Grid.Row="2"
-                 Style="{StaticResource InputTextBoxStyle}"
-                 IsReadOnly="True"
-                 AcceptsReturn="True"
-                 VerticalScrollBarVisibility="Auto"
-                 HorizontalScrollBarVisibility="Auto"
-                 FontFamily="Consolas"
-                 FontSize="13" Foreground="{Binding LuaEditorStatusBrush, ElementName=Root}"
-                 Text="{Binding LuaCompileResultText, ElementName=Root, Mode=OneWay}" />
-            </Grid>
-        </Border>
-    </Grid>
-   
+            <RichTextBox x:Name="LuaEditorRichTextBox"
+                         Grid.Column="1"
+                         Padding="10,10,0,10"
+                         BorderThickness="0"
+                         Background="Transparent"
+                         Foreground="{DynamicResource LuaEditorPlainTextBrush}"
+                         CaretBrush="{DynamicResource LuaEditorCaretBrush}"
+                         SelectionBrush="{DynamicResource LuaEditorSelectionBrush}"
+                         SelectionTextBrush="{DynamicResource LuaEditorSelectionTextBrush}"
+                         FontFamily="Consolas"
+                         FontSize="20"
+                         AcceptsTab="True"
+                         VerticalScrollBarVisibility="Auto"
+                         HorizontalScrollBarVisibility="Auto"
+                         ScrollViewer.ScrollChanged="LuaEditorRichTextBox_ScrollChanged"
+                         SelectionChanged="LuaEditorRichTextBox_SelectionChanged"
+                         TextChanged="LuaEditorRichTextBox_TextChanged"
+                         SpellCheck.IsEnabled="False">
+                <FlowDocument PagePadding="0" />
+            </RichTextBox>
+        </Grid>
+    </Border>
 </UserControl>

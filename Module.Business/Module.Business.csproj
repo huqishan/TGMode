@@ -26,6 +26,9 @@
     <Compile Update="Views\FlowchartView.xaml.cs">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Update="Views\LuaScriptView.xaml.cs">
+      <SubType>Code</SubType>
+    </Compile>
   </ItemGroup>
 
 </Project>

@@ -372,7 +372,7 @@ public sealed partial class ProtocolConfigViewModel
             previewResult.ResponseHex,
             "返回 ASCII",
             previewResult.ResponseAscii,
-            "解析结果(JSON)",
+            "解析结果",
             previewResult.ParsedJson);
     }
 
@@ -441,7 +441,7 @@ public sealed partial class ProtocolConfigViewModel
             ContentTemplate = "AA {{Address}} {{Command}}",
             PlaceholderValuesText = "Address=01\r\nCommand=03",
             SampleResponseText = "AA 01 03",
-            ParseRulesText = "FullHex = hex\r\nLength = len"
+            ParseRulesText = "return data;"
         };
     }
 
@@ -458,7 +458,7 @@ public sealed partial class ProtocolConfigViewModel
             ContentTemplate = "{{Station}} {{Function}} {{AddressHi}} {{AddressLo}} {{CountHi}} {{CountLo}}",
             PlaceholderValuesText = "Station=01\r\nFunction=03\r\nAddressHi=00\r\nAddressLo=00\r\nCountHi=00\r\nCountLo=02",
             SampleResponseText = "01 03 04 00 0A 00 14",
-            ParseRulesText = "Station = u8(0)\r\nFunction = u8(1)\r\nByteCount = u8(2)\r\nDataHex = hex(3,-1)"
+            ParseRulesText = "return {\r\n    Station = string.sub(data, 1, 2),\r\n    Function = string.sub(data, 3, 4),\r\n    ByteCount = string.sub(data, 5, 6),\r\n    DataHex = string.sub(data, 7)\r\n}"
         };
 
         profile.AddCommand(new ProtocolCommandConfig
@@ -471,7 +471,7 @@ public sealed partial class ProtocolConfigViewModel
             ContentTemplate = "{{Station}} 06 {{AddressHi}} {{AddressLo}} {{ValueHi}} {{ValueLo}}",
             PlaceholderValuesText = "Station=01\r\nAddressHi=00\r\nAddressLo=01\r\nValueHi=00\r\nValueLo=0A",
             SampleResponseText = "01 06 00 01 00 0A",
-            ParseRulesText = "Station = u8(0)\r\nFunction = u8(1)\r\nAddress = hex(2,2)\r\nValue = hex(4,2)"
+            ParseRulesText = "return {\r\n    Station = string.sub(data, 1, 2),\r\n    Function = string.sub(data, 3, 4),\r\n    Address = string.sub(data, 5, 8),\r\n    Value = string.sub(data, 9, 12)\r\n}"
         });
 
         profile.SelectedCommand = null;
@@ -491,7 +491,7 @@ public sealed partial class ProtocolConfigViewModel
             ContentTemplate = "READ {{Channel}}",
             PlaceholderValuesText = "Channel=T1",
             SampleResponseText = "OK,T1,25.6",
-            ParseRulesText = "FullText = text\r\nLength = len\r\nPrefix = ascii(0,2)"
+            ParseRulesText = "local parts = {}\r\nfor value in string.gmatch(data, \"([^,]+)\") do\r\n    parts[#parts + 1] = value\r\nend\r\nreturn {\r\n    Status = parts[1],\r\n    Channel = parts[2],\r\n    Value = parts[3]\r\n}"
         };
 
         profile.SelectedCommand = null;

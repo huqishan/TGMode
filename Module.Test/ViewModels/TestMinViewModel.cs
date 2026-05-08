@@ -4,6 +4,8 @@ using Shared.Infrastructure.Events;
 using Shared.Models.Test;
 using System;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
+using System.Windows.Input;
 using System.Windows.Media;
 
 namespace Module.Test.ViewModels;
@@ -23,7 +25,12 @@ public sealed class TestMinViewModel : ViewModelProperties, IDisposable
     private string _productBarcode = "\u672a\u8bfb\u7801";
     private string _schemeName = "\u672a\u9009\u62e9\u65b9\u6848";
     private string _workOrderNo = "\u672a\u4e0b\u53d1";
+    private string _selectedProductName = string.Empty;
+    private TestProfileOption? _selectedProfile;
+    private string _runStateText = "Waiting";
+    private string _elapsedTimeText = "0.0 s";
     private Brush _statusBrush = WaitingBrush;
+    private readonly Stopwatch _elapsedStopwatch = new();
     private bool _disposed;
 
     public TestMinViewModel()
@@ -41,7 +48,22 @@ public sealed class TestMinViewModel : ViewModelProperties, IDisposable
         _stationName = string.IsNullOrWhiteSpace(stationName) ? "\u672a\u547d\u540d\u5de5\u4f4d" : stationName.Trim();
         _lineName = "\u7ebf\u4f53 A";
         _eventAggregator = eventAggregator;
+
+        SingleStepTestCommand = new RelayCommand(_ => StartSingleStepTest());
+        ContinuousTestCommand = new RelayCommand(_ => StartContinuousTest());
+        StopTestCommand = new RelayCommand(_ => StopTest());
+        RefreshProductsCommand = new RelayCommand(_ => RefreshProducts());
+
         TestData = new ObservableCollection<TestDataDisplayItem>(CreateDefaultTestData());
+        ProductOptions = new ObservableCollection<string>(CreateDefaultProductOptions());
+        ProfilesView = new ObservableCollection<TestProfileOption>(CreateDefaultProfiles());
+        _selectedProductName = ProductOptions.Count > 0 ? ProductOptions[0] : string.Empty;
+        _selectedProfile = ProfilesView.Count > 0 ? ProfilesView[0] : null;
+        if (_selectedProfile is not null)
+        {
+            _schemeName = _selectedProfile.WorkStepName;
+        }
+
         for (int i = 0; i < 100; i++)
         {
             TestData.Add(new()
@@ -101,13 +123,61 @@ public sealed class TestMinViewModel : ViewModelProperties, IDisposable
         set => SetField(ref _workOrderNo, value ?? string.Empty, true);
     }
 
+    public string SelectedProductName
+    {
+        get => _selectedProductName;
+        set
+        {
+            if (SetField(ref _selectedProductName, value ?? string.Empty, true))
+            {
+                ProductName = _selectedProductName;
+            }
+        }
+    }
+
+    public TestProfileOption? SelectedProfile
+    {
+        get => _selectedProfile;
+        set
+        {
+            if (SetField(ref _selectedProfile, value))
+            {
+                SchemeName = value?.WorkStepName ?? "\u672a\u9009\u62e9\u65b9\u6848";
+            }
+        }
+    }
+
     public Brush StatusBrush
     {
         get => _statusBrush;
         private set => SetField(ref _statusBrush, value);
     }
 
+    public string RunStateText
+    {
+        get => _runStateText;
+        private set => SetField(ref _runStateText, value);
+    }
+
+    public string ElapsedTimeText
+    {
+        get => _elapsedTimeText;
+        private set => SetField(ref _elapsedTimeText, value);
+    }
+
     public ObservableCollection<TestDataDisplayItem> TestData { get; }
+
+    public ObservableCollection<string> ProductOptions { get; }
+
+    public ObservableCollection<TestProfileOption> ProfilesView { get; }
+
+    public ICommand SingleStepTestCommand { get; }
+
+    public ICommand ContinuousTestCommand { get; }
+
+    public ICommand StopTestCommand { get; }
+
+    public ICommand RefreshProductsCommand { get; }
 
     public void Dispose()
     {
@@ -120,6 +190,86 @@ public sealed class TestMinViewModel : ViewModelProperties, IDisposable
             .GetEvent<TestExecutionStatusChangedEvent>()
             .Unsubscribe(ApplyStatus);
         _disposed = true;
+    }
+
+    private void StartSingleStepTest()
+    {
+        StartTest("\u5355\u6b65\u6d4b\u8bd5");
+    }
+
+    private void StartContinuousTest()
+    {
+        StartTest("\u8fde\u7eed\u6d4b\u8bd5");
+    }
+
+    private void StopTest()
+    {
+        _elapsedStopwatch.Stop();
+        UpdateElapsedTime();
+        ApplyCurrentWorkStepElapsedTime(ElapsedTimeText);
+        _elapsedStopwatch.Reset();
+        TestStatus = "\u5df2\u505c\u6b62";
+        RunStateText = "Waiting";
+        StatusBrush = WaitingBrush;
+    }
+
+    private void StartTest(string statusText)
+    {
+        TestStatus = statusText;
+        RunStateText = "Running";
+        StatusBrush = RunningBrush;
+        _elapsedStopwatch.Restart();
+        UpdateElapsedTime();
+        ApplyCurrentWorkStepElapsedTime(ElapsedTimeText);
+    }
+
+    private void UpdateElapsedTime()
+    {
+        ElapsedTimeText = $"{_elapsedStopwatch.Elapsed.TotalSeconds:0.0} s";
+    }
+
+    private void ApplyCurrentWorkStepElapsedTime(string elapsedTimeText)
+    {
+        string workStepName = SelectedProfile?.WorkStepName ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(workStepName))
+        {
+            return;
+        }
+
+        for (int i = 0; i < TestData.Count; i++)
+        {
+            TestDataDisplayItem item = TestData[i];
+            if (!string.Equals(item.WorkStep, workStepName, StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            TestData[i] = new TestDataDisplayItem
+            {
+                WorkStep = item.WorkStep,
+                Name = item.Name,
+                TestValue = item.TestValue,
+                JudgmentCondition = item.JudgmentCondition,
+                Result = item.Result,
+                WorkStepElapsedTime = elapsedTimeText
+            };
+        }
+    }
+
+    private void RefreshProducts()
+    {
+        if (ProductOptions.Count == 0)
+        {
+            foreach (string productName in CreateDefaultProductOptions())
+            {
+                ProductOptions.Add(productName);
+            }
+        }
+
+        if (string.IsNullOrWhiteSpace(SelectedProductName) && ProductOptions.Count > 0)
+        {
+            SelectedProductName = ProductOptions[0];
+        }
     }
 
     private void ApplyStatus(TestExecutionStatusMessage message)
@@ -203,4 +353,49 @@ public sealed class TestMinViewModel : ViewModelProperties, IDisposable
             }
         ];
     }
+
+    private static string[] CreateDefaultProductOptions()
+    {
+        return
+        [
+            "\u6807\u51c6\u7535\u6c60\u5305",
+            "\u9ad8\u538b\u63a7\u5236\u76d2",
+            "\u4ea7\u7ebf\u6837\u4ef6"
+        ];
+    }
+
+    private static TestProfileOption[] CreateDefaultProfiles()
+    {
+        return
+        [
+            new(
+                "\u4e0a\u7535\u68c0\u67e5",
+                "\u5355\u6b65",
+                "\u6821\u9a8c\u7535\u538b\u3001\u7535\u6d41\u548c PLC \u63e1\u624b\u72b6\u6001\u3002"),
+            new(
+                "\u901a\u8baf\u6d4b\u8bd5",
+                "\u8fde\u7eed",
+                "\u5faa\u73af\u8bfb\u53d6\u6761\u7801\u3001\u5de5\u5355\u548c MES \u8fd4\u56de\u7ed3\u679c\u3002"),
+            new(
+                "\u7ed3\u679c\u590d\u6838",
+                "\u5224\u5b9a",
+                "\u6c47\u603b\u6d4b\u8bd5\u6570\u636e\u5e76\u5237\u65b0\u5224\u5b9a\u72b6\u6001\u3002")
+        ];
+    }
+}
+
+public sealed class TestProfileOption
+{
+    public TestProfileOption(string workStepName, string typeDisplayName, string summary)
+    {
+        WorkStepName = workStepName;
+        TypeDisplayName = typeDisplayName;
+        Summary = summary;
+    }
+
+    public string WorkStepName { get; }
+
+    public string TypeDisplayName { get; }
+
+    public string Summary { get; }
 }

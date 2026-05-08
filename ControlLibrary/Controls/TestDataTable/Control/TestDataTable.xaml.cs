@@ -13,11 +13,17 @@ namespace ControlLibrary.Controls.TestDataTable.Control;
 
 public partial class TestDataTable : UserControl
 {
-    private const double FieldWidth = 220;
+    private const double WorkStepWidth = 220;
+    private const double NameWidth = 220;
+    private const double TestValueWidth = 100;
+    private const double ResultWidth = 80;
+    private const double MinJudgmentConditionWidth = 220;
+    private const double FixedColumnWidth = WorkStepWidth + NameWidth + TestValueWidth + ResultWidth;
     private const double HeaderHeight = 30;
     private const double RowHeight = 32;
     private const double WorkStepMaxHeight = 400;
     private const int MaxVisibleMergedRows = (int)(WorkStepMaxHeight / RowHeight);
+    private double _lastLayoutWidth;
 
     public static readonly DependencyProperty ItemsSourceProperty =
         DependencyProperty.Register(
@@ -61,6 +67,13 @@ public partial class TestDataTable : UserControl
             typeof(TestDataTable),
             new PropertyMetadata("Result", OnPathChanged));
 
+    public static readonly DependencyProperty WorkStepElapsedTimePathProperty =
+        DependencyProperty.Register(
+            nameof(WorkStepElapsedTimePath),
+            typeof(string),
+            typeof(TestDataTable),
+            new PropertyMetadata("WorkStepElapsedTime", OnPathChanged));
+
     private static readonly Brush FailureBrush =
         (Brush)new BrushConverter().ConvertFromString("#D14343")!;
 
@@ -69,6 +82,7 @@ public partial class TestDataTable : UserControl
     public TestDataTable()
     {
         InitializeComponent();
+        SizeChanged += TestDataTable_SizeChanged;
         BuildTable();
     }
 
@@ -106,6 +120,12 @@ public partial class TestDataTable : UserControl
     {
         get => (string?)GetValue(ResultPathProperty) ?? string.Empty;
         set => SetValue(ResultPathProperty, value ?? string.Empty);
+    }
+
+    public string WorkStepElapsedTimePath
+    {
+        get => (string?)GetValue(WorkStepElapsedTimePathProperty) ?? string.Empty;
+        set => SetValue(WorkStepElapsedTimePathProperty, value ?? string.Empty);
     }
 
     private static void OnItemsSourceChanged(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs e)
@@ -149,6 +169,17 @@ public partial class TestDataTable : UserControl
         BuildTable();
     }
 
+    private void TestDataTable_SizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        if (Math.Abs(e.NewSize.Width - _lastLayoutWidth) < 0.5)
+        {
+            return;
+        }
+
+        _lastLayoutWidth = e.NewSize.Width;
+        BuildTable();
+    }
+
     private void BuildTable()
     {
         if (HeaderHost is null || TablePanel is null)
@@ -174,24 +205,24 @@ public partial class TestDataTable : UserControl
 
     private Grid CreateHeaderGrid()
     {
-        Grid headerGrid = CreateGrid(columnCount: 5);
+        Grid headerGrid = CreateGrid(WorkStepWidth, NameWidth, TestValueWidth, ResultWidth, GetJudgmentConditionWidth());
         headerGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(HeaderHeight) });
 
-        AddHeaderCell(headerGrid, 0, "\u5de5\u6b65");
-        AddHeaderCell(headerGrid, 1, "\u540d\u79f0");
-        AddHeaderCell(headerGrid, 2, "\u6d4b\u8bd5\u503c");
-        AddHeaderCell(headerGrid, 3, "\u5224\u65ad\u6761\u4ef6");
-        AddHeaderCell(headerGrid, 4, "\u7ed3\u679c");
+        AddHeaderCell(headerGrid, 0, "工步");
+        AddHeaderCell(headerGrid, 1, "名称");
+        AddHeaderCell(headerGrid, 2, "测试值");
+        AddHeaderCell(headerGrid, 3, "结果");
+        AddHeaderCell(headerGrid, 4, "判断条件");
         return headerGrid;
     }
 
     private Grid CreateEmptyGrid()
     {
-        Grid emptyGrid = CreateGrid(columnCount: 5);
+        Grid emptyGrid = CreateGrid(WorkStepWidth, NameWidth, TestValueWidth, ResultWidth, GetJudgmentConditionWidth());
         emptyGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(RowHeight) });
 
         Border emptyCell = CreateCellBorder(0, 0, 1, 5, false);
-        TextBlock emptyText = CreateTextBlock("\u6682\u65e0\u6570\u636e", false, false, true);
+        TextBlock emptyText = CreateTextBlock("暂无数据", false, false, true);
         emptyText.SetResourceReference(TextBlock.ForegroundProperty, "AppMutedTextBrush");
         emptyCell.Child = emptyText;
         emptyGrid.Children.Add(emptyCell);
@@ -202,18 +233,18 @@ public partial class TestDataTable : UserControl
     {
         Grid groupGrid = new()
         {
-            Width = FieldWidth * 5,
+            Width = GetTableWidth(),
             HorizontalAlignment = HorizontalAlignment.Left
         };
-        groupGrid.ColumnDefinitions.Add(CreateColumn(FieldWidth));
-        groupGrid.ColumnDefinitions.Add(CreateColumn(FieldWidth * 4));
+        groupGrid.ColumnDefinitions.Add(CreateColumn(WorkStepWidth));
+        groupGrid.ColumnDefinitions.Add(CreateColumn(GetDetailWidth()));
 
         double groupHeight = Math.Min(group.Rows.Count * RowHeight, WorkStepMaxHeight);
         groupGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(groupHeight) });
 
         bool hasFailure = group.Rows.Any(row => IsFailure(row.Result));
         Border workStepCell = CreateCellBorder(0, 0, 1, 1, false);
-        workStepCell.Child = CreateTextBlock(group.WorkStep, hasFailure, false, true);
+        workStepCell.Child = CreateWorkStepContent(group.WorkStep, group.ElapsedTime, hasFailure);
         groupGrid.Children.Add(workStepCell);
 
         ScrollViewer detailScrollViewer = new()
@@ -329,7 +360,7 @@ public partial class TestDataTable : UserControl
 
     private Grid CreateDetailGrid(IReadOnlyList<TableRowData> rows)
     {
-        Grid detailGrid = CreateGrid(columnCount: 4);
+        Grid detailGrid = CreateGrid(NameWidth, TestValueWidth, ResultWidth, GetJudgmentConditionWidth());
         for (int i = 0; i < rows.Count; i++)
         {
             detailGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(RowHeight) });
@@ -343,24 +374,24 @@ public partial class TestDataTable : UserControl
             bool isFailure = IsFailure(row.Result);
             AddDataCell(detailGrid, i, 0, row.Name, isFailure, false);
             AddDataCell(detailGrid, i, 1, row.TestValue, isFailure, false);
-            AddDataCell(detailGrid, i, 3, row.Result, isFailure, true);
+            AddDataCell(detailGrid, i, 2, row.Result, isFailure, true);
         }
 
         return detailGrid;
     }
 
-    private static Grid CreateGrid(int columnCount)
+    private static Grid CreateGrid(params double[] columnWidths)
     {
         Grid grid = new()
         {
-            Width = FieldWidth * columnCount,
+            Width = columnWidths.Sum(),
             HorizontalAlignment = HorizontalAlignment.Left,
             SnapsToDevicePixels = true
         };
 
-        for (int i = 0; i < columnCount; i++)
+        foreach (double columnWidth in columnWidths)
         {
-            grid.ColumnDefinitions.Add(CreateColumn(FieldWidth));
+            grid.ColumnDefinitions.Add(CreateColumn(columnWidth));
         }
 
         return grid;
@@ -373,6 +404,27 @@ public partial class TestDataTable : UserControl
             Width = new GridLength(width),
             MaxWidth = width
         };
+    }
+
+    private double GetJudgmentConditionWidth()
+    {
+        double availableWidth = ActualWidth;
+        if (double.IsNaN(availableWidth) || availableWidth <= 0)
+        {
+            return MinJudgmentConditionWidth;
+        }
+
+        return Math.Max(MinJudgmentConditionWidth, availableWidth - FixedColumnWidth);
+    }
+
+    private double GetDetailWidth()
+    {
+        return NameWidth + TestValueWidth + ResultWidth + GetJudgmentConditionWidth();
+    }
+
+    private double GetTableWidth()
+    {
+        return FixedColumnWidth + GetJudgmentConditionWidth();
     }
 
     private void AddHeaderCell(Grid targetGrid, int column, string text)
@@ -416,7 +468,7 @@ public partial class TestDataTable : UserControl
         while (remainingSpan > 0)
         {
             int span = Math.Min(remainingSpan, MaxVisibleMergedRows);
-            AddDataCell(detailGrid, currentRow, 2, text, isFailure, true, span);
+            AddDataCell(detailGrid, currentRow, 3, text, isFailure, true, span);
             currentRow += span;
             remainingSpan -= span;
         }
@@ -464,7 +516,6 @@ public partial class TestDataTable : UserControl
             FontWeight = isHeader ? FontWeights.SemiBold : FontWeights.Normal,
             HorizontalAlignment = center ? HorizontalAlignment.Center : HorizontalAlignment.Left,
             VerticalAlignment = VerticalAlignment.Center,
-            MaxWidth = FieldWidth,
             TextAlignment = center ? TextAlignment.Center : TextAlignment.Left,
             TextTrimming = TextTrimming.CharacterEllipsis,
             TextWrapping = TextWrapping.NoWrap,
@@ -497,7 +548,8 @@ public partial class TestDataTable : UserControl
                 ResolveValue(item, NamePath),
                 ResolveValue(item, TestValuePath),
                 ResolveValue(item, JudgmentConditionPath),
-                ResolveValue(item, ResultPath)))
+                ResolveValue(item, ResultPath),
+                ResolveValue(item, WorkStepElapsedTimePath)))
             .ToList();
     }
 
@@ -518,7 +570,11 @@ public partial class TestDataTable : UserControl
                 startIndex++;
             }
 
-            groups.Add(new WorkStepGroup(workStep, groupRows));
+            string elapsedTime = groupRows
+                .Select(row => row.WorkStepElapsedTime)
+                .FirstOrDefault(value => !string.IsNullOrWhiteSpace(value)) ?? string.Empty;
+
+            groups.Add(new WorkStepGroup(workStep, elapsedTime, groupRows));
         }
 
         return groups;
@@ -556,12 +612,37 @@ public partial class TestDataTable : UserControl
         return string.Equals(result?.Trim(), "NG", StringComparison.OrdinalIgnoreCase);
     }
 
-    private sealed record WorkStepGroup(string WorkStep, IReadOnlyList<TableRowData> Rows);
+    private UIElement CreateWorkStepContent(string workStep, string elapsedTime, bool hasFailure)
+    {
+        if (string.IsNullOrWhiteSpace(elapsedTime))
+        {
+            return CreateTextBlock(workStep, hasFailure, false, true);
+        }
+
+        StackPanel panel = new()
+        {
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center
+        };
+
+        panel.Children.Add(CreateTextBlock(workStep, hasFailure, false, true));
+
+        TextBlock elapsedText = CreateTextBlock($"耗时 {elapsedTime}", hasFailure, false, true);
+        elapsedText.Margin = new Thickness(0, 4, 0, 0);
+        elapsedText.FontSize = 11;
+        elapsedText.SetResourceReference(TextBlock.ForegroundProperty, hasFailure ? "AppContentTextBrush" : "AppMutedTextBrush");
+        panel.Children.Add(elapsedText);
+
+        return panel;
+    }
+
+    private sealed record WorkStepGroup(string WorkStep, string ElapsedTime, IReadOnlyList<TableRowData> Rows);
 
     private readonly record struct TableRowData(
         string WorkStep,
         string Name,
         string TestValue,
         string JudgmentCondition,
-        string Result);
+        string Result,
+        string WorkStepElapsedTime);
 }

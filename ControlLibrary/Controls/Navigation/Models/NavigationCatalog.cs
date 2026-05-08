@@ -34,9 +34,9 @@ public static class NavigationCatalog
                     new("工步配置", IconFactory.Router, "Module.Business.Views.WorkStepConfigurationView, Module.Business", null),
                     new("方案配置", IconFactory.FileCog, "Module.Business.Views.SchemeConfigurationView, Module.Business", null),
                     new("流程图", IconFactory.Workflow, "Module.Business.Views.FlowchartView, Module.Business", null),
+                    new("脚本管理", IconFactory.Workflow, "Module.Business.Views.LuaScriptView, Module.Business", null),
                 },
                 description: "Business"),
-            new("脚本管理", IconFactory.FlaskConical, "ControlLibrary.ControlViews.LuaScrip.LuaScriptView, ControlLibrary", null, description: "Lua"),
             new("数据管理", IconFactory.Cpu, null,
                 new ObservableCollection<ControlInfoDataItem>
                 {

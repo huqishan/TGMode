@@ -32,7 +32,7 @@ namespace Shared.Infrastructure.Lua
             try
             {
                 _Lua.State.Encoding = Encoding.UTF8;
-                return _Lua.DoString(lua);
+                return _Lua.DoString(lua).Select(ConvertLuaValue).ToArray();
             }
             catch (Exception ex)
             {
@@ -43,6 +43,27 @@ namespace Shared.Infrastructure.Lua
                 _Lua.Close();
             }
         }
+
+        private static object? ConvertLuaValue(object? value)
+        {
+            if (value is NLua.LuaTable table)
+            {
+                Dictionary<string, object?> values = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+                foreach (object key in table.Keys)
+                {
+                    string? fieldName = Convert.ToString(key);
+                    if (!string.IsNullOrWhiteSpace(fieldName))
+                    {
+                        values[fieldName] = ConvertLuaValue(table[key]);
+                    }
+                }
+
+                return values;
+            }
+
+            return value;
+        }
+
         private void RegisterFunction()
         {
             LuaMethodManage methodManage = new LuaMethodManage();

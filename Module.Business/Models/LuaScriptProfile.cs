@@ -3,7 +3,7 @@ using System.ComponentModel;
 using System.Linq;
 using System.Runtime.CompilerServices;
 
-namespace ControlLibrary.ControlViews.LuaScrip.Models
+namespace Module.Business.Models
 {
     public sealed class LuaScriptProfile : INotifyPropertyChanged
     {

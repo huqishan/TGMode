@@ -8,29 +8,6 @@
              mc:Ignorable="d"
              d:DataContext="{d:DesignInstance Type=vm:TestMinViewModel, IsDesignTimeCreatable=True}">
     <UserControl.Resources>
-        <Style x:Key="StationActionButtonStyle" TargetType="{x:Type Button}">
-            <Setter Property="Width" Value="48" />
-            <Setter Property="Height" Value="40" />
-            <Setter Property="Margin" Value="0,0,10,0" />
-            <Setter Property="Foreground" Value="{DynamicResource AppContentTextBrush}" />
-            <Setter Property="Background" Value="{DynamicResource SecondaryButtonBrush}" />
-            <Setter Property="BorderBrush" Value="{DynamicResource SecondaryButtonBorderBrush}" />
-            <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="Focusable" Value="False" />
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="{x:Type Button}">
-                        <Border Background="{TemplateBinding Background}"
-                                BorderBrush="{TemplateBinding BorderBrush}"
-                                BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="8">
-                            <ContentPresenter HorizontalAlignment="Center"
-                                              VerticalAlignment="Center" />
-                        </Border>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
         <Style x:Key="BarcodeStripeStyle" TargetType="{x:Type Border}">
             <Setter Property="Width" Value="3" />
             <Setter Property="Margin" Value="0,0,3,0" />
@@ -97,24 +74,27 @@
                         </Grid.RowDefinitions>
 
                         <StackPanel>
-                            <TextBlock Style="{StaticResource SectionTitleStyle}" Text="方案选择" />
-                            <TextBlock Margin="0,6,0,0" Style="{StaticResource AppMutedTextBlockStyle}" Text="集中维护 MES 接口、调用方式、示例报文和测试返回结果。" TextWrapping="Wrap"  />
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource SectionTitleStyle}" Text="方案选择" />
+                                <TextBlock Margin="0,6,0,0" Style="{StaticResource AppMutedTextBlockStyle}" Text="集中维护 MES 接口、调用方式、示例报文和测试返回结果。" TextWrapping="Wrap"  />
+                            </StackPanel>
+                            <StackPanel Margin="0,6,0,0">
+                                <DockPanel LastChildFill="True">
+                                    <Button DockPanel.Dock="Right"
+Margin="12,0,0,0"
+Content="刷新"
+Command="{Binding RefreshProductsCommand}"
+Style="{StaticResource ActionButtonStyle}" />
+                                    <ComboBox Style="{StaticResource InputComboBoxStyle}"
+  Height="46"
+  ItemContainerStyle="{StaticResource InputComboBoxItemStyle}"
+  ItemsSource="{Binding ProductOptions}"
+  SelectedItem="{Binding SelectedProductName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                </DockPanel>
+                            </StackPanel>
                         </StackPanel>
-                        <StackPanel Grid.Row="1" Margin="0,6,0,0">
-                            <DockPanel LastChildFill="True">
-                                <Button DockPanel.Dock="Right"
-                Margin="12,0,0,0"
-                Content="刷新"
-                Command="{Binding RefreshProductsCommand}"
-                Style="{StaticResource ActionButtonStyle}" />
-                                <ComboBox Style="{StaticResource InputComboBoxStyle}"
-                  Height="46"
-                  ItemContainerStyle="{StaticResource InputComboBoxItemStyle}"
-                  ItemsSource="{Binding ProductOptions}"
-                  SelectedItem="{Binding SelectedProductName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                            </DockPanel>
-                        </StackPanel>
-                        <ListBox
+                        
+                        <ListBox Grid.Row="1" Margin="0,16,0,0"
      BorderThickness="0"
      Background="Transparent"
      ItemContainerStyle="{StaticResource ListBoxItemStyle}"
@@ -128,18 +108,7 @@
                            FontWeight="SemiBold"
                            Foreground="{DynamicResource AppContentTextBrush}"
                            Text="{Binding WorkStepName}" />
-                                            <Border DockPanel.Dock="Right"  Width="100"
-                        Margin="10,0,0,0"
-                        Padding="8,2"
-                        Background="{DynamicResource PrimaryButtonBrush}"
-                        BorderBrush="{DynamicResource TabItemBorderBrush}"
-                        BorderThickness="1"
-                        CornerRadius="999">
-                                                <TextBlock Foreground="{DynamicResource SecondaryButtonForegroundBrush}"
-                               FontSize="11" HorizontalAlignment="Center"
-                               FontWeight="SemiBold"
-                               Text="{Binding TypeDisplayName}" />
-                                            </Border>
+                                            
                                         </DockPanel>
                                         <TextBlock Margin="0,8,0,0"
                        Foreground="{DynamicResource AppMutedTextBrush}"
@@ -159,46 +128,94 @@
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="*"/>
                         </Grid.RowDefinitions>
-                        <StackPanel x:Name="buttons"
-                                 HorizontalAlignment="Right"
-                                 Orientation="Horizontal">
-                                     <Button Style="{StaticResource StationActionButtonStyle}"
-                                 ToolTip="&#x5F00;&#x59CB;&#x6D4B;&#x8BD5;">
-                                         <Path Width="18"
-                                   Height="18"
-                                   Data="M 5 3 L 5 21 L 21 12 Z"
-                                   Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
-                                   Stretch="Uniform" />
-                                     </Button>
+                        <Grid x:Name="buttons">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
 
-                                     <Button Style="{StaticResource StationActionButtonStyle}"
-                                 ToolTip="&#x505C;&#x6B62;&#x6D4B;&#x8BD5;">
-                                         <Path Width="17"
-                                   Height="17"
-                                   Data="M 4 4 H 20 V 20 H 4 Z"
-                                   Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
-                                   Stretch="Uniform" />
-                                     </Button>
+                            <Button Grid.Column="0"
+                                    Command="{Binding SingleStepTestCommand}"
+                                    Style="{StaticResource TestStepButtonStyle}"
+                                    ToolTip="&#x5355;&#x6B65;&#x6D4B;&#x8BD5;">
+                                <StackPanel Orientation="Horizontal">
+                                    <Grid Width="28"
+                                          Height="28"
+                                          Margin="0,0,12,0"
+                                          VerticalAlignment="Center">
+                                        <Ellipse Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                                 StrokeThickness="5" />
+                                        <Path Width="12"
+                                              Height="12"
+                                              Data="M 7 4 L 11 4 L 6 13 L 7 8 L 3 8 Z"
+                                              Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                              Stretch="Uniform" />
+                                    </Grid>
+                                    <TextBlock Style="{StaticResource TestOperationButtonTextStyle}"
+                                               Text="&#x5355;&#x6B65;&#x6D4B;&#x8BD5;" />
+                                </StackPanel>
+                            </Button>
 
-                                     <Button Margin="0"
-                                 Style="{StaticResource StationActionButtonStyle}"
-                                 ToolTip="&#x6E05;&#x9664;&#x62A5;&#x8B66;">
-                                         <Grid Width="24" Height="24">
-                                             <Path Data="M 8 18 H 16 M 10 18 C 10 20 11 21 12 21 C 13 21 14 20 14 18 M 7 17 H 17 L 16 15 V 11 C 16 8.5 14.2 7 12 7 C 9.8 7 8 8.5 8 11 V 15 Z"
-                                       Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
-                                       StrokeEndLineCap="Round"
-                                       StrokeLineJoin="Round"
-                                       StrokeStartLineCap="Round"
-                                       StrokeThickness="1.9"
-                                       Stretch="Uniform" />
-                                             <Path Data="M 5 20 L 20 5"
-                                       Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
-                                       StrokeEndLineCap="Round"
-                                       StrokeStartLineCap="Round"
-                                       StrokeThickness="2.1" />
-                                         </Grid>
-                                     </Button>
-                                 </StackPanel>
+                            <Button Grid.Column="1"
+                                    Command="{Binding ContinuousTestCommand}"
+                                    Style="{StaticResource TestContinuousButtonStyle}"
+                                    ToolTip="&#x8FDE;&#x7EED;&#x6D4B;&#x8BD5;">
+                                <StackPanel Orientation="Horizontal">
+                                    <Grid Width="28"
+                                          Height="28"
+                                          Margin="0,0,12,0"
+                                          VerticalAlignment="Center">
+                                        <Ellipse Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" />
+                                        <Path Width="18"
+                                              Height="11"
+                                              Data="M 1 6 L 5 6 L 7 2 L 11 10 L 13 6 L 17 6"
+                                              Stroke="{Binding Background, RelativeSource={RelativeSource AncestorType=Button}}"
+                                              StrokeEndLineCap="Round"
+                                              StrokeLineJoin="Round"
+                                              StrokeStartLineCap="Round"
+                                              StrokeThickness="2.2"
+                                              Stretch="Fill" />
+                                    </Grid>
+                                    <TextBlock Style="{StaticResource TestOperationButtonTextStyle}"
+                                               Text="&#x8FDE;&#x7EED;&#x6D4B;&#x8BD5;" />
+                                </StackPanel>
+                            </Button>
+
+                            <Button Grid.Column="2"
+                                    Command="{Binding StopTestCommand}"
+                                    Style="{StaticResource TestStopButtonStyle}"
+                                    ToolTip="&#x505C;&#x6B62;&#x6D4B;&#x8BD5;">
+                                <StackPanel Orientation="Horizontal">
+                                    <Rectangle Width="17"
+                                               Height="17"
+                                               Margin="0,0,14,0"
+                                               RadiusX="3"
+                                               RadiusY="3"
+                                               VerticalAlignment="Center"
+                                               Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" />
+                                    <TextBlock Style="{StaticResource TestOperationButtonTextStyle}"
+                                               Text="&#x505C;&#x6B62;&#x6D4B;&#x8BD5;" />
+                                </StackPanel>
+                            </Button>
+
+                            <Border Grid.Column="3"
+                                    Style="{StaticResource TestStatusPanelStyle}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0"
+                                               Style="{StaticResource TestStatusTextStyle}"
+                                               Text="{Binding RunStateText}" />
+                                    <TextBlock Grid.Column="1"
+                                               Style="{StaticResource TestElapsedTextStyle}"
+                                               Text="{Binding ElapsedTimeText}" />
+                                </Grid>
+                            </Border>
+                        </Grid>
                         <testControls:TestDataTable x:Name="testData" Margin="0,8,0,0"
                             Grid.Row="1"
                             ItemsSource="{Binding TestData}" />

@@ -1,3 +1,4 @@
+using ControlLibrary.ControlViews.LuaScrip;
 using Module.Communication.Models;
 using Module.Communication.ViewModels;
 using System;
@@ -20,6 +21,8 @@ namespace Module.Communication.Views
         private static readonly Duration CommandDrawerAnimationDuration = new(TimeSpan.FromMilliseconds(220));
         private static readonly IEasingFunction CommandDrawerEasing = new CubicEase { EasingMode = EasingMode.EaseOut };
         private ProtocolConfigViewModel? _attachedViewModel;
+        private ProtocolCommandConfig? _editingParseRuleCommand;
+        private string _originalParseRuleScript = string.Empty;
 
         #endregion
 
@@ -88,6 +91,61 @@ namespace Module.Communication.Views
         private void CommandDrawerBackdrop_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
             ViewModel?.CloseCommandDrawer();
+        }
+
+        private void ParseRulesLuaEditor_PreviewMouseDoubleClick(object sender, MouseButtonEventArgs e)
+        {
+            ProtocolCommandConfig? command = ViewModel?.SelectedProfile?.SelectedCommand;
+            if (command is null)
+            {
+                return;
+            }
+
+            _editingParseRuleCommand = command;
+            _originalParseRuleScript = command.ParseRulesText;
+            ParseRuleCompilerView.ScriptText = command.ParseRulesText;
+            ParseRuleCompilerView.ExecutionPrefixScript = string.Empty;
+            if (ProtocolPreviewEngine.TryBuildLuaParseExecutionPrefix(command, out string prefixScript, out _))
+            {
+                ParseRuleCompilerView.ExecutionPrefixScript = prefixScript;
+            }
+
+            ParseRuleEditorHost.Visibility = Visibility.Visible;
+            e.Handled = true;
+        }
+
+        private void ParseRuleEditorSaveButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (_editingParseRuleCommand is not null)
+            {
+                _editingParseRuleCommand.ParseRulesText = ParseRuleCompilerView.ScriptText;
+            }
+
+            CloseParseRuleEditor();
+        }
+
+        private void ParseRuleEditorCancelButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (_editingParseRuleCommand is not null)
+            {
+                _editingParseRuleCommand.ParseRulesText = _originalParseRuleScript;
+            }
+
+            CloseParseRuleEditor();
+        }
+
+        private void ParseRuleEditorBackdrop_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            ParseRuleEditorCancelButton_Click(sender, e);
+        }
+
+        private void CloseParseRuleEditor()
+        {
+            ParseRuleEditorHost.Visibility = Visibility.Collapsed;
+            ParseRuleCompilerView.ScriptText = string.Empty;
+            ParseRuleCompilerView.ExecutionPrefixScript = string.Empty;
+            _editingParseRuleCommand = null;
+            _originalParseRuleScript = string.Empty;
         }
 
         #endregion

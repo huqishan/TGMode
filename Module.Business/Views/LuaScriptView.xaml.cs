@@ -1,4 +1,4 @@
-using ControlLibrary.ControlViews.LuaScrip.Models;
+using Module.Business.Models;
 using Shared.Infrastructure.Extensions;
 using Shared.Infrastructure.PackMethod;
 using System;
@@ -13,7 +13,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 
-namespace ControlLibrary.ControlViews.LuaScrip
+namespace Module.Business.Views
 {
     /// <summary>
     /// LuaScriptView.xaml 的交互逻辑

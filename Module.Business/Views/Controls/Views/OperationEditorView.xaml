@@ -4,7 +4,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:converts="clr-namespace:ControlLibrary.Converts;assembly=ControlLibrary"
-             xmlns:luaEditor="clr-namespace:ControlLibrary.Controls.LuaScripEditor.Control;assembly=ControlLibrary"
+             xmlns:luaEditor="clr-namespace:ControlLibrary.ControlViews.LuaScrip;assembly=ControlLibrary"
              mc:Ignorable="d"
              d:DesignHeight="680"
              d:DesignWidth="760">
@@ -128,7 +128,7 @@
                   Height="490"
                   Margin="0,14,0,0"
                   Visibility="{Binding ElementName=operationObj, Path=SelectedItem, Converter={StaticResource comp2Vis}, ConverterParameter='Lua'}">
-                <luaEditor:LuaScriptEditor ScriptText="{Binding EditingLuaScript, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                <luaEditor:LuaScriptCompilerView ScriptText="{Binding EditingLuaScript, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
             </Grid>
 
             <DockPanel Margin="0,14,0,8"

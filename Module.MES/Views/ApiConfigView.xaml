@@ -8,7 +8,7 @@
              mc:Ignorable="d"
              xmlns:searchBox="clr-namespace:ControlLibrary.Controls.SearchBox.Control;assembly=ControlLibrary"
              xmlns:converts="clr-namespace:ControlLibrary.Converts;assembly=ControlLibrary"
-             xmlns:controls="clr-namespace:ControlLibrary.Controls.LuaScripEditor.Control;assembly=ControlLibrary"
+             xmlns:luaScrip="clr-namespace:ControlLibrary.ControlViews.LuaScrip;assembly=ControlLibrary"
              HorizontalAlignment="Stretch"
              VerticalAlignment="Stretch"
              d:DesignHeight="900"
@@ -786,7 +786,7 @@ IsChecked="{Binding SelectedProfile.IsCommunicationQueryVisible, Mode=TwoWay}" /
                                           Margin="0,14,0,0"
                                           HorizontalScrollBarVisibility="Disabled"
                                           VerticalScrollBarVisibility="Auto">
-                            <controls:LuaScriptEditor ScriptText="{Binding SelectedProfile.Lua, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <luaScrip:LuaScriptCompilerView ScriptText="{Binding SelectedProfile.Lua, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                         </ScrollViewer>
                     </Grid>
                 </Border>
