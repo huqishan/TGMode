@@ -17,7 +17,7 @@ public static class NavigationCatalog
                 {
                     new("接口配置", IconFactory.PlugZap, "Module.MES.Views.ApiConfigView, Module.MES", null),
                     new("结构配置", IconFactory.Network, "Module.MES.Views.DataStructureConfigView, Module.MES", null),
-                    new("通讯配置", IconFactory.MessageSquareCode, null, null)
+                    new("通讯配置", IconFactory.MessageSquareCode, "Module.MES.Views.CommunicationConfigView, Module.MES", null)
                 },
                 description: "制造执行"),
             new("设备管理", IconFactory.Cpu, null,
@@ -30,8 +30,7 @@ public static class NavigationCatalog
             new("业务管理", IconFactory.Cpu, null,
                 new ObservableCollection<ControlInfoDataItem>
                 {
-                    new("产品配置", IconFactory.Boxes, "Module.Business.Views.ProductConfigurationView, Module.Business", null),
-                    new("工步配置", IconFactory.Router, "Module.Business.Views.WorkStepConfigurationView, Module.Business", null),
+                    new("工步配置", IconFactory.Boxes, "Module.Business.Views.WorkStepConfigurationView, Module.Business", null),
                     new("方案配置", IconFactory.FileCog, "Module.Business.Views.SchemeConfigurationView, Module.Business", null),
                     new("流程图", IconFactory.Workflow, "Module.Business.Views.FlowchartView, Module.Business", null),
                     new("脚本管理", IconFactory.Workflow, "Module.Business.Views.LuaScriptView, Module.Business", null),

@@ -1,4 +1,4 @@
-using ControlLibrary;
+﻿using ControlLibrary;
 using Microsoft.Win32;
 using Module.Business.Models;
 using Module.Business.Services;
@@ -35,7 +35,6 @@ public sealed partial class SchemeConfigurationViewModel
         SchemesView = CollectionViewSource.GetDefaultView(Schemes);
         SchemesView.Filter = FilterSchemes;
         InitializeCommands();
-        RefreshProductOptions();
         SelectedScheme = Schemes.FirstOrDefault();
         SetPageStatus(Schemes.Count == 0 ? "暂无方案配置，请点击新增。" : $"已读取 {Schemes.Count} 个方案", NeutralBrush);
     }
@@ -51,7 +50,7 @@ public sealed partial class SchemeConfigurationViewModel
         SaveSchemesCommand = new RelayCommand(_ => SaveSchemes());
         ImportSchemeCommand = new RelayCommand(_ => ImportScheme());
         ExportSchemeCommand = new RelayCommand(_ => ExportSelectedScheme(), _ => SelectedScheme is not null);
-        RefreshWorkStepsCommand = new RelayCommand(_ => RefreshProductAndAvailableWorkSteps());
+        RefreshWorkStepsCommand = new RelayCommand(_ => RefreshAvailableWorkStepsFromStore());
         AddWorkStepToSchemeCommand = new RelayCommand(_ => AddWorkStepToScheme(), _ => SelectedScheme is not null);
         RemoveWorkStepFromSchemeCommand = new RelayCommand(_ => RemoveSelectedSchemeStep(), _ => SelectedScheme is not null && SelectedSchemeStep is not null);
         MoveSchemeStepUpCommand = new RelayCommand(_ => MoveSelectedSchemeStep(-1), _ => CanMoveSelectedSchemeStep(-1));
@@ -72,11 +71,7 @@ public sealed partial class SchemeConfigurationViewModel
             return;
         }
 
-        string productName = string.IsNullOrWhiteSpace(SelectedScheme?.ProductName)
-            ? ProductOptions.FirstOrDefault() ?? WorkSteps.FirstOrDefault()?.ProductName ?? "默认产品"
-            : SelectedScheme.ProductName;
-
-        SchemeProfile scheme = CreateScheme(productName, GenerateUniqueSchemeName("方案"));
+        SchemeProfile scheme = CreateScheme(GenerateUniqueSchemeName("方案"));
         Schemes.Add(scheme);
         SelectCreatedScheme(scheme);
         SetPageStatus("已新增方案，选择产品后添加工步。", SuccessBrush);
@@ -206,20 +201,17 @@ public sealed partial class SchemeConfigurationViewModel
             SetPageStatus($"导出方案失败：{ex.Message}", WarningBrush);
         }
     }
-
     /// <summary>
-    /// 重新读取产品名称和可添加工步列表，保留当前正在编辑的方案。
+    /// 重新读取可添加工步列表，保留当前正在编辑的方案。
     /// </summary>
-    private void RefreshProductAndAvailableWorkSteps()
+    private void RefreshAvailableWorkStepsFromStore()
     {
         List<SchemeStepRefreshSelectionSnapshot> stepSelections = CaptureSchemeStepRefreshSelections();
         string? selectedSchemeStepId = SelectedSchemeStep?.Id;
         BusinessConfigurationCatalog latestCatalog = BusinessConfigurationStore.LoadCatalog();
-        _catalog.Products = latestCatalog.Products;
         _catalog.WorkSteps = latestCatalog.WorkSteps;
 
         OnPropertyChanged(nameof(WorkSteps));
-        RefreshProductOptions();
         RefreshAvailableWorkSteps();
         RestoreSchemeStepRefreshSelections(stepSelections);
         SynchronizeSelectedSchemeWorkStepSnapshots();
@@ -227,9 +219,8 @@ public sealed partial class SchemeConfigurationViewModel
                                string.Equals(step.Id, selectedSchemeStepId, StringComparison.Ordinal)) ??
                            SelectedSchemeStep;
         OnPropertyChanged(nameof(DisplayedSchemeStepParameters));
-        SetPageStatus("已刷新产品名称、工步列表和工步参数。", SuccessBrush);
+        SetPageStatus("已刷新工步列表和工步参数。", SuccessBrush);
     }
-
     #endregion
 
     #region 方案工步命令方法
@@ -246,7 +237,7 @@ public sealed partial class SchemeConfigurationViewModel
 
         WorkStepProfile? preferredWorkStep = ResolvePreferredAvailableWorkStep();
         SchemeWorkStepItem schemeStep = preferredWorkStep is null
-            ? CreateEmptySchemeStep(SelectedScheme.ProductName)
+            ? CreateEmptySchemeStep()
             : SchemeWorkStepItem.FromWorkStep(preferredWorkStep);
 
         int insertIndex = SelectedSchemeStep is null
@@ -338,52 +329,19 @@ public sealed partial class SchemeConfigurationViewModel
 
     #region 筛选与校验方法
 
-    private void RefreshProductOptions()
-    {
-        string? selectedProductName = SelectedScheme?.ProductName;
-        IEnumerable<string?> productNames = _catalog.Products
-            .Select(product => product.ProductName)
-            .Concat(WorkSteps.Select(step => step.ProductName));
-
-        if (!string.IsNullOrWhiteSpace(selectedProductName))
-        {
-            productNames = productNames.Append(selectedProductName);
-        }
-
-        List<string> distinctProductNames = productNames
-            .Where(name => !string.IsNullOrWhiteSpace(name))
-            .Select(name => name!.Trim())
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
-            .ToList();
-
-        if (ProductOptions.SequenceEqual(distinctProductNames, StringComparer.OrdinalIgnoreCase))
-        {
-            return;
-        }
-
-        ProductOptions.Clear();
-        foreach (string productName in distinctProductNames)
-        {
-            ProductOptions.Add(productName);
-        }
-    }
-
     private void RefreshAvailableWorkSteps()
     {
         string? preferredWorkStepId = SelectedSchemeStep?.WorkStepId ?? SelectedAvailableWorkStep?.Id;
         AvailableWorkSteps.Clear();
         SelectedAvailableWorkStep = null;
 
-        if (SelectedScheme is null || string.IsNullOrWhiteSpace(SelectedScheme.ProductName))
+        if (SelectedScheme is null)
         {
             RaisePageSummaryChanged();
             return;
         }
 
-        foreach (WorkStepProfile workStep in WorkSteps
-                     .Where(step => string.Equals(step.ProductName, SelectedScheme.ProductName, StringComparison.OrdinalIgnoreCase))
-                     .OrderBy(step => step.StepName))
+        foreach (WorkStepProfile workStep in WorkSteps.OrderBy(step => step.StepName))
         {
             AvailableWorkSteps.Add(workStep);
         }
@@ -414,7 +372,6 @@ public sealed partial class SchemeConfigurationViewModel
         }
 
         Dictionary<string, WorkStepProfile> availableWorkStepsById = WorkSteps
-            .Where(step => string.Equals(step.ProductName, SelectedScheme.ProductName, StringComparison.OrdinalIgnoreCase))
             .GroupBy(step => step.Id, StringComparer.Ordinal)
             .ToDictionary(group => group.Key, group => group.First(), StringComparer.Ordinal);
 
@@ -429,7 +386,6 @@ public sealed partial class SchemeConfigurationViewModel
                 availableWorkStepsById.TryGetValue(selection.WorkStepId, out WorkStepProfile? workStep))
             {
                 selection.SchemeStep.WorkStepId = workStep.Id;
-                selection.SchemeStep.ProductName = workStep.ProductName;
                 selection.SchemeStep.StepName = workStep.StepName;
                 selection.SchemeStep.OperationSummary = workStep.OperationSummary;
                 selection.SchemeStep.LastModifiedAt = workStep.LastModifiedAt;
@@ -473,12 +429,6 @@ public sealed partial class SchemeConfigurationViewModel
                 return false;
             }
 
-            if (string.IsNullOrWhiteSpace(scheme.ProductName))
-            {
-                message = $"方案“{scheme.SchemeName}”的产品名称不能为空。";
-                return false;
-            }
-
             foreach (SchemeWorkStepItem schemeStep in scheme.Steps)
             {
                 if (!workStepById.TryGetValue(schemeStep.WorkStepId, out WorkStepProfile? workStep))
@@ -487,11 +437,6 @@ public sealed partial class SchemeConfigurationViewModel
                     return false;
                 }
 
-                if (!string.Equals(workStep.ProductName, scheme.ProductName, StringComparison.OrdinalIgnoreCase))
-                {
-                    message = $"方案“{scheme.SchemeName}”只能添加产品“{scheme.ProductName}”下的工步。";
-                    return false;
-                }
             }
         }
 
@@ -502,25 +447,12 @@ public sealed partial class SchemeConfigurationViewModel
     #endregion
 
     #region 工具方法
-
     private SchemeConfigurationPackage CreateSchemePackage(SchemeProfile scheme)
     {
         SchemeConfigurationPackage package = new()
         {
-            Scheme = scheme.Clone(),
-            Product = _catalog.Products
-                .FirstOrDefault(product => TextEquals(product.ProductName, scheme.ProductName))
-                ?.Clone()
+            Scheme = scheme.Clone()
         };
-
-        if (package.Product is null && !string.IsNullOrWhiteSpace(scheme.ProductName))
-        {
-            package.Product = new ProductProfile
-            {
-                Id = Guid.NewGuid().ToString("N"),
-                ProductName = scheme.ProductName.Trim()
-            };
-        }
 
         HashSet<string> exportedWorkStepIds = new(StringComparer.Ordinal);
         foreach (SchemeWorkStepItem schemeStep in scheme.Steps)
@@ -552,10 +484,9 @@ public sealed partial class SchemeConfigurationViewModel
             sourceWorkSteps.Add((sourceSchemeStep, sourceWorkStep));
         }
 
-        RefreshProductsAndWorkStepsFromLocalFiles();
+        RefreshWorkStepsFromLocalFiles();
         string importedSchemeName = GenerateUniqueImportedSchemeName(sourceScheme.SchemeName);
-        string productName = ResolveImportedProductName(package, importedSchemeName, out bool createdProduct);
-        SchemeProfile scheme = CreateScheme(productName, importedSchemeName);
+        SchemeProfile scheme = CreateScheme(importedSchemeName);
         List<ImportedSourceWorkStepGroup> groupedSourceWorkSteps = GroupImportedSourceWorkSteps(sourceWorkSteps);
         Dictionary<SchemeWorkStepItem, WorkStepProfile> resolvedWorkStepsBySchemeStep = new();
 
@@ -566,7 +497,6 @@ public sealed partial class SchemeConfigurationViewModel
             WorkStepProfile workStep = ResolveImportedWorkStep(
                 groupedSourceWorkStep.SourceWorkStep,
                 groupedSourceWorkStep.SourceStepName,
-                productName,
                 importedSchemeName,
                 out bool createdWorkStep);
             if (createdWorkStep)
@@ -577,7 +507,7 @@ public sealed partial class SchemeConfigurationViewModel
             {
                 reusedWorkStepCount++;
             }
-            
+
             foreach (SchemeWorkStepItem schemeStepItem in groupedSourceWorkStep.SchemeSteps)
             {
                 resolvedWorkStepsBySchemeStep[schemeStepItem] = workStep;
@@ -592,10 +522,8 @@ public sealed partial class SchemeConfigurationViewModel
 
         Schemes.Add(scheme);
         SelectCreatedScheme(scheme);
-        RefreshProductOptions();
         RefreshAvailableWorkSteps();
-        string productStatus = createdProduct ? "新建产品" : "复用产品";
-        SetPageStatus($"已导入方案，{productStatus}，复用 {reusedWorkStepCount} 个工步，新建 {createdWorkStepCount} 个工步，点击保存后生效。", SuccessBrush);
+        SetPageStatus($"已导入方案，复用 {reusedWorkStepCount} 个工步，新建 {createdWorkStepCount} 个工步，点击保存后生效。", SuccessBrush);
     }
 
     private static List<ImportedSourceWorkStepGroup> GroupImportedSourceWorkSteps(
@@ -622,20 +550,10 @@ public sealed partial class SchemeConfigurationViewModel
         return groups;
     }
 
-    private void RefreshProductsAndWorkStepsFromLocalFiles()
+    private void RefreshWorkStepsFromLocalFiles()
     {
         BusinessConfigurationCatalog latestCatalog = BusinessConfigurationStore.LoadCatalog();
-        ObservableCollection<ProductProfile> currentProducts = _catalog.Products;
         ObservableCollection<WorkStepProfile> currentWorkSteps = _catalog.WorkSteps;
-
-        _catalog.Products = latestCatalog.Products;
-        foreach (ProductProfile product in currentProducts)
-        {
-            if (!_catalog.Products.Any(localProduct => TextEquals(localProduct.ProductName, product.ProductName)))
-            {
-                _catalog.Products.Add(product);
-            }
-        }
 
         _catalog.WorkSteps = latestCatalog.WorkSteps;
         foreach (WorkStepProfile workStep in currentWorkSteps)
@@ -649,39 +567,11 @@ public sealed partial class SchemeConfigurationViewModel
         OnPropertyChanged(nameof(WorkSteps));
     }
 
-    private string ResolveImportedProductName(SchemeConfigurationPackage package, string schemeName, out bool createdProduct)
-    {
-        createdProduct = false;
-        string? productName = package.Product?.ProductName;
-        if (string.IsNullOrWhiteSpace(productName))
-        {
-            productName = package.Scheme?.ProductName;
-        }
-
-        productName = string.IsNullOrWhiteSpace(productName) ? "默认产品" : productName.Trim();
-
-        ProductProfile? existingProduct = _catalog.Products
-            .FirstOrDefault(product => TextEquals(product.ProductName, productName));
-        if (existingProduct is not null)
-        {
-            return existingProduct.ProductName;
-        }
-
-        ProductProfile createdProductProfile = package.Product?.Clone() ?? new ProductProfile();
-        createdProductProfile.Id = Guid.NewGuid().ToString("N");
-        createdProductProfile.ProductName = GenerateUniqueProductName(AppendSchemeNameSuffix(productName, schemeName));
-        createdProductProfile.MarkModified();
-        _catalog.Products.Add(createdProductProfile);
-        createdProduct = true;
-        return createdProductProfile.ProductName;
-    }
-
-    private WorkStepProfile ResolveImportedWorkStep(WorkStepProfile source, string sourceStepName, string productName, string schemeName, out bool createdWorkStep)
+    private WorkStepProfile ResolveImportedWorkStep(WorkStepProfile source, string sourceStepName, string schemeName, out bool createdWorkStep)
     {
         string normalizedSourceStepName = ResolveImportedSourceStepName(source, sourceStepName);
         WorkStepProfile? existingWorkStep = WorkSteps
             .FirstOrDefault(workStep =>
-                TextEquals(workStep.ProductName, productName) &&
                 TextEquals(workStep.StepName, normalizedSourceStepName) &&
                 HasSameOperationContent(workStep, source));
 
@@ -691,7 +581,7 @@ public sealed partial class SchemeConfigurationViewModel
             return existingWorkStep;
         }
 
-        WorkStepProfile created = CreateImportedWorkStep(source, sourceStepName, productName, schemeName);
+        WorkStepProfile created = CreateImportedWorkStep(source, sourceStepName, schemeName);
         WorkSteps.Add(created);
         createdWorkStep = true;
         return created;
@@ -704,7 +594,7 @@ public sealed partial class SchemeConfigurationViewModel
             : sourceStepName.Trim();
     }
 
-    private WorkStepProfile CreateImportedWorkStep(WorkStepProfile source, string sourceStepName, string productName, string schemeName)
+    private WorkStepProfile CreateImportedWorkStep(WorkStepProfile source, string sourceStepName, string schemeName)
     {
         string stepName = !string.IsNullOrWhiteSpace(sourceStepName)
             ? sourceStepName.Trim()
@@ -712,8 +602,7 @@ public sealed partial class SchemeConfigurationViewModel
         return new WorkStepProfile
         {
             Id = Guid.NewGuid().ToString("N"),
-            ProductName = productName,
-            StepName = GenerateUniqueWorkStepName(productName, AppendSchemeNameSuffix(stepName, schemeName)),
+            StepName = GenerateUniqueWorkStepName(AppendSchemeNameSuffix(stepName, schemeName)),
             LastModifiedAt = DateTime.Now,
             Steps = new ObservableCollection<WorkStepOperation>(
                 source.Steps.Select(operation => new WorkStepOperation
@@ -742,18 +631,13 @@ public sealed partial class SchemeConfigurationViewModel
     {
         return WorkSteps.FirstOrDefault(workStep => string.Equals(workStep.Id, schemeStep.WorkStepId, StringComparison.Ordinal)) ??
                WorkSteps.FirstOrDefault(workStep =>
-                   TextEquals(workStep.ProductName, schemeStep.ProductName) &&
                    TextEquals(workStep.StepName, schemeStep.StepName) &&
                    TextEquals(workStep.OperationSummary, schemeStep.OperationSummary)) ??
                (string.IsNullOrWhiteSpace(schemeStep.OperationSummary)
-                   ? WorkSteps.FirstOrDefault(workStep =>
-                       TextEquals(workStep.ProductName, schemeStep.ProductName) &&
-                       TextEquals(workStep.StepName, schemeStep.StepName))
+                   ? WorkSteps.FirstOrDefault(workStep => TextEquals(workStep.StepName, schemeStep.StepName))
                    : null) ??
                (string.IsNullOrWhiteSpace(schemeStep.StepName)
-                   ? WorkSteps.FirstOrDefault(workStep =>
-                       TextEquals(workStep.ProductName, schemeStep.ProductName) &&
-                       TextEquals(workStep.OperationSummary, schemeStep.OperationSummary))
+                   ? WorkSteps.FirstOrDefault(workStep => TextEquals(workStep.OperationSummary, schemeStep.OperationSummary))
                    : null);
     }
 
@@ -764,30 +648,18 @@ public sealed partial class SchemeConfigurationViewModel
                    string.Equals(workStep.Id, schemeStep.WorkStepId, StringComparison.Ordinal) &&
                    MatchesSchemeStepSnapshot(workStep, schemeStep)) ??
                packageWorkSteps.FirstOrDefault(workStep =>
-                   TextEquals(workStep.ProductName, schemeStep.ProductName) &&
                    TextEquals(workStep.StepName, schemeStep.StepName) &&
                    TextEquals(workStep.OperationSummary, schemeStep.OperationSummary)) ??
                (string.IsNullOrWhiteSpace(schemeStep.OperationSummary)
-                   ? packageWorkSteps.FirstOrDefault(workStep =>
-                       TextEquals(workStep.ProductName, schemeStep.ProductName) &&
-                       TextEquals(workStep.StepName, schemeStep.StepName))
+                   ? packageWorkSteps.FirstOrDefault(workStep => TextEquals(workStep.StepName, schemeStep.StepName))
                    : null) ??
                (string.IsNullOrWhiteSpace(schemeStep.StepName)
-                   ? packageWorkSteps.FirstOrDefault(workStep =>
-                       TextEquals(workStep.ProductName, schemeStep.ProductName) &&
-                       TextEquals(workStep.OperationSummary, schemeStep.OperationSummary))
+                   ? packageWorkSteps.FirstOrDefault(workStep => TextEquals(workStep.OperationSummary, schemeStep.OperationSummary))
                    : null);
     }
 
     private static bool MatchesSchemeStepSnapshot(WorkStepProfile workStep, SchemeWorkStepItem schemeStep)
     {
-        if (!string.IsNullOrWhiteSpace(schemeStep.ProductName) &&
-            !string.IsNullOrWhiteSpace(workStep.ProductName) &&
-            !TextEquals(workStep.ProductName, schemeStep.ProductName))
-        {
-            return false;
-        }
-
         if (!string.IsNullOrWhiteSpace(schemeStep.StepName) &&
             !string.IsNullOrWhiteSpace(workStep.StepName) &&
             !TextEquals(workStep.StepName, schemeStep.StepName))
@@ -804,30 +676,9 @@ public sealed partial class SchemeConfigurationViewModel
         return true;
     }
 
-    private string GenerateUniqueProductName(string productName)
+    private string GenerateUniqueWorkStepName(string stepName)
     {
-        HashSet<string> existingNames = new(_catalog.Products.Select(product => product.ProductName), StringComparer.OrdinalIgnoreCase);
-        string baseName = string.IsNullOrWhiteSpace(productName) ? "产品" : productName.Trim();
-        string candidate = baseName;
-        int index = 2;
-
-        while (existingNames.Contains(candidate))
-        {
-            candidate = $"{baseName} {index}";
-            index++;
-        }
-
-        return candidate;
-    }
-
-    private string GenerateUniqueWorkStepName(string productName, string stepName)
-    {
-        HashSet<string> existingNames = new(
-            WorkSteps
-                .Where(workStep => TextEquals(workStep.ProductName, productName))
-                .Select(workStep => workStep.StepName),
-            StringComparer.OrdinalIgnoreCase);
-
+        HashSet<string> existingNames = new(WorkSteps.Select(workStep => workStep.StepName), StringComparer.OrdinalIgnoreCase);
         string baseName = string.IsNullOrWhiteSpace(stepName) ? "工步" : stepName.Trim();
         string candidate = baseName;
         int index = 2;
@@ -840,7 +691,6 @@ public sealed partial class SchemeConfigurationViewModel
 
         return candidate;
     }
-
     private static bool HasSameOperationContent(WorkStepProfile left, WorkStepProfile right)
     {
         if (left.Steps.Count != right.Steps.Count)
@@ -876,12 +726,10 @@ public sealed partial class SchemeConfigurationViewModel
             ? operation.InvokeMethod
             : operation.CommandName;
     }
-
     private static bool IsSameWorkStepIdentity(WorkStepProfile left, WorkStepProfile right)
     {
         return string.Equals(left.Id, right.Id, StringComparison.Ordinal) ||
-               (TextEquals(left.ProductName, right.ProductName) &&
-                TextEquals(left.StepName, right.StepName));
+               TextEquals(left.StepName, right.StepName);
     }
 
     private static string AppendSchemeNameSuffix(string baseName, string schemeName)
@@ -920,20 +768,18 @@ public sealed partial class SchemeConfigurationViewModel
         return safeName;
     }
 
-    private SchemeProfile CreateScheme(string productName, string schemeName)
+    private SchemeProfile CreateScheme(string schemeName)
     {
         return new SchemeProfile
         {
-            ProductName = productName,
             SchemeName = schemeName
         };
     }
 
-    private SchemeWorkStepItem CreateEmptySchemeStep(string productName)
+    private SchemeWorkStepItem CreateEmptySchemeStep()
     {
         return new SchemeWorkStepItem
         {
-            ProductName = productName,
             LastModifiedAt = DateTime.Now
         };
     }
@@ -943,7 +789,6 @@ public sealed partial class SchemeConfigurationViewModel
         return new SchemeProfile
         {
             Id = Guid.NewGuid().ToString("N"),
-            ProductName = source.ProductName,
             SchemeName = GenerateCopySchemeName(source.SchemeName),
             Steps = new ObservableCollection<SchemeWorkStepItem>(
                 source.Steps.Select(step =>
@@ -960,7 +805,6 @@ public sealed partial class SchemeConfigurationViewModel
         SchemeWorkStepItem schemeStep = sourceSchemeStep.Clone();
         schemeStep.Id = Guid.NewGuid().ToString("N");
         schemeStep.WorkStepId = workStep.Id;
-        schemeStep.ProductName = workStep.ProductName;
         schemeStep.StepName = workStep.StepName;
         schemeStep.OperationSummary = workStep.OperationSummary;
         return schemeStep;
@@ -1060,7 +904,6 @@ public sealed partial class SchemeConfigurationViewModel
 
         string keyword = SearchText.Trim();
         return Contains(scheme.SchemeName, keyword) ||
-               Contains(scheme.ProductName, keyword) ||
                scheme.Steps.Any(step =>
                    Contains(step.SchemeStepName, keyword) ||
                    Contains(step.StepName, keyword) ||

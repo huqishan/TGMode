@@ -269,7 +269,7 @@ namespace Module.MES.Views
                     return true;
                 }
 
-                source = VisualTreeHelper.GetParent(source);
+                source = GetParentObject(source);
             }
 
             return false;
@@ -352,7 +352,22 @@ namespace Module.MES.Views
                     return item;
                 }
 
-                source = VisualTreeHelper.GetParent(source);
+                source = GetParentObject(source);
+            }
+
+            return null;
+        }
+
+        private static DependencyObject? GetParentObject(DependencyObject source)
+        {
+            if (source is Visual or System.Windows.Media.Media3D.Visual3D)
+            {
+                return VisualTreeHelper.GetParent(source);
+            }
+
+            if (source is FrameworkContentElement frameworkContentElement)
+            {
+                return frameworkContentElement.Parent as DependencyObject;
             }
 
             return null;

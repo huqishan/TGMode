@@ -1,4 +1,4 @@
-using Module.Business.Models;
+﻿using Module.Business.Models;
 using Module.Business.Services;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -36,7 +36,6 @@ public sealed partial class WorkStepConfigurationViewModel
     private WorkStepOperation? _selectedOperation;
     private WorkStepOperation? _drawerOperation;
     private WorkStepOperationParameter? _selectedEditingInvokeParameter;
-    private string _selectedProductName = string.Empty;
     private string _searchText = string.Empty;
     private string _pageStatusText = "等待编辑";
     private string _editingOperationObject = string.Empty;
@@ -71,8 +70,6 @@ public sealed partial class WorkStepConfigurationViewModel
 
     public ICollectionView WorkStepsView { get; private set; } = null!;
 
-    public ObservableCollection<string> ProductOptions { get; } = new();
-
     public ObservableCollection<string> OperationObjectOptions { get; } = new();
 
     public ObservableCollection<string> ProtocolOptions { get; } = new();
@@ -89,8 +86,7 @@ public sealed partial class WorkStepConfigurationViewModel
         "工步值",
         "返回值",
         "全局值",
-        "系统值",
-        "产品值"
+        "系统值"
     };
 
     public ObservableCollection<WorkStepOperationParameter> EditingInvokeParameters { get; } = new();
@@ -100,7 +96,6 @@ public sealed partial class WorkStepConfigurationViewModel
     #endregion
 
     #region 搜索与当前编辑属性
-
     public string SearchText
     {
         get => _searchText;
@@ -114,21 +109,6 @@ public sealed partial class WorkStepConfigurationViewModel
             WorkStepsView.Refresh();
             SelectFirstVisibleWorkStep();
             RefreshParameterValueOptions();
-        }
-    }
-
-    public string SelectedProductName
-    {
-        get => _selectedProductName;
-        set
-        {
-            if (!SetField(ref _selectedProductName, value ?? string.Empty))
-            {
-                return;
-            }
-
-            WorkStepsView.Refresh();
-            SelectFirstVisibleWorkStep();
         }
     }
 
@@ -389,7 +369,6 @@ public sealed partial class WorkStepConfigurationViewModel
     }
 
     public string WorkStepCountText => $"{WorkSteps.Count} 个工步";
-
     public string OperationCountText => SelectedWorkStep is null
         ? "未选择工步"
         : $"{SelectedWorkStep.OperationCount} 个步骤";
@@ -429,9 +408,6 @@ public sealed partial class WorkStepConfigurationViewModel
     public ICommand DeleteWorkStepCommand { get; private set; } = null!;
 
     public ICommand SaveWorkStepsCommand { get; private set; } = null!;
-
-    public ICommand RefreshProductsCommand { get; private set; } = null!;
-
     public ICommand AddOperationCommand { get; private set; } = null!;
 
     public ICommand CopyOperationCommand { get; private set; } = null!;
@@ -453,12 +429,10 @@ public sealed partial class WorkStepConfigurationViewModel
     #endregion
 
     #region 属性联动方法
-
     private void SelectedWorkStep_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName is nameof(WorkStepProfile.OperationCount)
             or nameof(WorkStepProfile.OperationSummary)
-            or nameof(WorkStepProfile.ProductName)
             or nameof(WorkStepProfile.StepName))
         {
             SelectedWorkStep?.MarkModified();
@@ -466,7 +440,6 @@ public sealed partial class WorkStepConfigurationViewModel
 
         if (e.PropertyName is nameof(WorkStepProfile.OperationCount)
             or nameof(WorkStepProfile.OperationSummary)
-            or nameof(WorkStepProfile.ProductName)
             or nameof(WorkStepProfile.StepName)
             or nameof(WorkStepProfile.LastModifiedAt)
             or nameof(WorkStepProfile.LastModifiedText)

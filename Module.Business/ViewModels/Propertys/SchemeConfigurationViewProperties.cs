@@ -52,8 +52,6 @@ public sealed partial class SchemeConfigurationViewModel
 
     public ObservableCollection<WorkStepProfile> AvailableWorkSteps { get; } = new();
 
-    public ObservableCollection<string> ProductOptions { get; } = new();
-
     public ObservableCollection<string> SchemeStepParameterTypeOptions { get; } = new()
     {
         "设置值",
@@ -101,7 +99,6 @@ public sealed partial class SchemeConfigurationViewModel
 
             SelectedSchemeStep = _selectedScheme?.Steps.FirstOrDefault();
             OnPropertyChanged();
-            RefreshProductOptions();
             RefreshAvailableWorkSteps();
             SynchronizeSelectedSchemeWorkStepSnapshots();
             RaisePageSummaryChanged();
@@ -222,29 +219,20 @@ public sealed partial class SchemeConfigurationViewModel
             SynchronizeSelectedSchemeWorkStepSnapshots();
         }
 
-        if (e.PropertyName == nameof(SchemeProfile.ProductName))
-        {
-            RefreshAvailableWorkSteps();
-            SynchronizeSelectedSchemeWorkStepSnapshots();
-        }
-
         if (e.PropertyName is nameof(SchemeProfile.StepCount)
-            or nameof(SchemeProfile.ProductName)
             or nameof(SchemeProfile.SchemeName))
         {
             RaisePageSummaryChanged();
         }
 
         if (e.PropertyName is nameof(SchemeProfile.StepCount)
-            or nameof(SchemeProfile.ProductName)
             or nameof(SchemeProfile.SchemeName)
             or nameof(SchemeProfile.Steps))
         {
             SchemesView.Refresh();
         }
 
-        if (e.PropertyName is nameof(SchemeProfile.ProductName)
-            or nameof(SchemeProfile.Steps))
+        if (e.PropertyName is nameof(SchemeProfile.Steps))
         {
             OnPropertyChanged(nameof(DisplayedSchemeStepParameters));
             OnPropertyChanged(nameof(SchemeStepParameterCountText));
@@ -292,7 +280,6 @@ public sealed partial class SchemeConfigurationViewModel
                 ObservableCollection<SchemeWorkStepParameter> synchronizedParameters =
                     SchemeWorkStepItem.CreateParametersFromWorkStep(workStep, schemeStep.Parameters);
                 bool needsSync =
-                    !string.Equals(schemeStep.ProductName, workStep.ProductName, StringComparison.OrdinalIgnoreCase) ||
                     !string.Equals(schemeStep.StepName, workStep.StepName, StringComparison.OrdinalIgnoreCase) ||
                     !string.Equals(schemeStep.OperationSummary, workStep.OperationSummary, StringComparison.OrdinalIgnoreCase) ||
                     schemeStep.LastModifiedAt != workStep.LastModifiedAt ||
@@ -303,7 +290,6 @@ public sealed partial class SchemeConfigurationViewModel
                     continue;
                 }
 
-                schemeStep.ProductName = workStep.ProductName;
                 schemeStep.StepName = workStep.StepName;
                 schemeStep.OperationSummary = workStep.OperationSummary;
                 schemeStep.LastModifiedAt = workStep.LastModifiedAt;
@@ -318,7 +304,7 @@ public sealed partial class SchemeConfigurationViewModel
 
     private WorkStepProfile? FindCurrentWorkStep(SchemeWorkStepItem? schemeStep)
     {
-        if (SelectedScheme is null || schemeStep is null || string.IsNullOrWhiteSpace(schemeStep.WorkStepId))
+        if (schemeStep is null || string.IsNullOrWhiteSpace(schemeStep.WorkStepId))
         {
             return null;
         }
@@ -330,9 +316,7 @@ public sealed partial class SchemeConfigurationViewModel
             return null;
         }
 
-        return string.Equals(workStep.ProductName, SelectedScheme.ProductName, StringComparison.OrdinalIgnoreCase)
-            ? workStep
-            : null;
+        return workStep;
     }
 
     private static bool HasSameSchemeStepParameters(

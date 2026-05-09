@@ -77,7 +77,7 @@
                     </DockPanel>
                     <TextBlock Margin="0,8,0,0"
                                Foreground="{DynamicResource AppMutedTextBrush}"
-                               Text="方案按产品名称筛选工步，添加工步时只显示当前产品已配置的工步。"
+                               Text="维护方案工步顺序和工步参数。"
                                TextWrapping="Wrap" />
                 </StackPanel>
 
@@ -136,7 +136,7 @@
                                 </DockPanel>
                                 <TextBlock Margin="0,8,0,0"
                                            Foreground="{DynamicResource AppMutedTextBrush}"
-                                           Text="{Binding ProductName}"
+                                           Text="{Binding StepCount, StringFormat={}{0} 个工步}"
                                            TextWrapping="Wrap" />
                             </StackPanel>
                         </DataTemplate>
@@ -189,20 +189,11 @@
                                      Style="{StaticResource BusinessInputTextBoxStyle}"
                                      Text="{Binding SelectedScheme.SchemeName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                         </StackPanel>
-                        <StackPanel Grid.Column="2">
-                            <TextBlock Style="{StaticResource FieldLabelStyle}" Text="产品名称" />
-                            <StackPanel Orientation="Horizontal">
-                                <ComboBox ItemsSource="{Binding ProductOptions}" Width="300"
-Height="{Binding ActualHeight, ElementName=SchemeNameTextBox}"
-Style="{StaticResource InputComboBoxStyle}"
-ItemContainerStyle="{StaticResource InputComboBoxItemStyle}"
-SelectedItem="{Binding SelectedScheme.ProductName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                <Button Margin="16,0,0,0"
-        Content="刷新"
-        Command="{Binding RefreshWorkStepsCommand}"
-        Style="{StaticResource ActionButtonStyle}" />
-                            </StackPanel>
-                            
+                        <StackPanel Grid.Column="2" HorizontalAlignment="Left">
+                            <TextBlock Style="{StaticResource FieldLabelStyle}" Text="工步列表" />
+                            <Button Content="刷新"
+                                    Command="{Binding RefreshWorkStepsCommand}"
+                                    Style="{StaticResource ActionButtonStyle}" />
                         </StackPanel>
                     </Grid>
                 </StackPanel>
@@ -299,7 +290,7 @@ CornerRadius="12">
                                                     </Viewbox>
                                                 </MenuItem.Icon>
                                             </MenuItem>
-                                            <Separator />
+                                            <Separator Style="{StaticResource StructureContextMenuSeparatorStyle}" />
                                             <MenuItem Header="刷新"
                                                       Command="{Binding RefreshWorkStepsCommand}"
                                                       Style="{StaticResource StructureContextMenuItemStyle}">

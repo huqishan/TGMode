@@ -40,9 +40,7 @@ public sealed partial class WorkStepConfigurationViewModel
         EditingInvokeParameters.CollectionChanged += EditingInvokeParameters_CollectionChanged;
         WorkStepsView = CollectionViewSource.GetDefaultView(WorkSteps);
         WorkStepsView.Filter = FilterWorkSteps;
-        RefreshProductOptions();
         InitializeCommands();
-        SelectedProductName = ProductOptions.FirstOrDefault() ?? string.Empty;
         SelectFirstVisibleWorkStep();
         SetPageStatus(WorkSteps.Count == 0 ? "暂无工步配置，请点击新增。" : $"已读取 {WorkSteps.Count} 个工步", NeutralBrush);
     }
@@ -56,7 +54,6 @@ public sealed partial class WorkStepConfigurationViewModel
         DuplicateWorkStepCommand = new RelayCommand(_ => DuplicateSelectedWorkStep(), _ => SelectedWorkStep is not null);
         DeleteWorkStepCommand = new RelayCommand(_ => DeleteSelectedWorkStep(), _ => SelectedWorkStep is not null);
         SaveWorkStepsCommand = new RelayCommand(_ => SaveWorkSteps());
-        RefreshProductsCommand = new RelayCommand(_ => RefreshProducts());
         AddOperationCommand = new RelayCommand(_ => OpenOperationDrawerForNew(), _ => SelectedWorkStep is not null);
         CopyOperationCommand = new RelayCommand(_ => CopySelectedOperations(), _ => CanCopyOperations());
         PasteOperationCommand = new RelayCommand(_ => PasteCopiedOperations(), _ => CanPasteOperations());
@@ -69,12 +66,8 @@ public sealed partial class WorkStepConfigurationViewModel
     }
 
     #endregion
-
     #region 工步命令方法
 
-    /// <summary>
-    /// 新增工步，默认沿用当前选中工步的产品名称。
-    /// </summary>
     private void NewWorkStep()
     {
         if (!CanRunCreateOrCopyCommand())
@@ -82,14 +75,7 @@ public sealed partial class WorkStepConfigurationViewModel
             return;
         }
 
-        string productName = ResolveDefaultProductName();
-        if (string.IsNullOrWhiteSpace(productName))
-        {
-            SetPageStatus("请先在产品配置界面新增产品，再配置工步。", WarningBrush);
-            return;
-        }
-
-        WorkStepProfile workStep = CreateWorkStep(productName, GenerateUniqueStepName(productName, "工步"));
+        WorkStepProfile workStep = CreateWorkStep(GenerateUniqueStepName("工步"));
         WorkSteps.Add(workStep);
         SelectCreatedWorkStep(workStep);
         if (workStep.Steps.FirstOrDefault() is WorkStepOperation operation)
@@ -148,30 +134,8 @@ public sealed partial class WorkStepConfigurationViewModel
             return;
         }
 
-        BusinessConfigurationCatalog latestCatalog = BusinessConfigurationStore.LoadCatalog();
-        _catalog.Products = latestCatalog.Products;
-        RefreshProductOptions();
-
         BusinessConfigurationStore.SaveCatalog(_catalog);
         SetPageStatus($"已保存 {WorkSteps.Count} 个工步。", SuccessBrush);
-    }
-
-    /// <summary>
-    /// 重新读取产品配置和工步列表。
-    /// </summary>
-    private void RefreshProducts()
-    {
-        BusinessConfigurationCatalog latestCatalog = BusinessConfigurationStore.LoadCatalog();
-        string selectedWorkStepId = SelectedWorkStep?.Id ?? string.Empty;
-
-        _catalog.Products = latestCatalog.Products;
-        ReloadWorkSteps(latestCatalog.WorkSteps);
-        RefreshProductOptions();
-        WorkStepsView.Refresh();
-        SelectVisibleWorkStep(selectedWorkStepId);
-        RaisePageSummaryChanged();
-        RaiseCommandStatesChanged();
-        SetPageStatus("已刷新产品名称和工步列表。", SuccessBrush);
     }
 
     #endregion
@@ -272,23 +236,13 @@ public sealed partial class WorkStepConfigurationViewModel
             return;
         }
 
-        if (IsProtocolCommandSelectionVisible && string.IsNullOrWhiteSpace(EditingProtocolName))
-        {
-            SetPageStatus("协议不能为空。", WarningBrush);
-            return;
-        }
-
-        if (IsProtocolCommandSelectionVisible && string.IsNullOrWhiteSpace(EditingCommandName))
-        {
-            SetPageStatus("指令不能为空。", WarningBrush);
-            return;
-        }
-
         string invokeMethod = IsLuaOperationSelected
             ? LuaOperationObjectName
             : IsSystemOrJudgeOperationSelected
                 ? EditingInvokeMethod
-                : EditingCommandName;
+                : string.IsNullOrWhiteSpace(EditingCommandName)
+                    ? EditingInvokeMethod
+                    : EditingCommandName;
         if (string.IsNullOrWhiteSpace(invokeMethod))
         {
             SetPageStatus("调用方法不能为空。", WarningBrush);
@@ -318,7 +272,7 @@ public sealed partial class WorkStepConfigurationViewModel
                     : "\u8BBE\u5907";
         _drawerOperation.OperationObject = IsLuaOperationSelected ? LuaOperationObjectName : EditingOperationObject.Trim();
         _drawerOperation.ProtocolName = IsProtocolCommandSelectionVisible ? EditingProtocolName.Trim() : string.Empty;
-        _drawerOperation.CommandName = IsProtocolCommandSelectionVisible ? EditingCommandName.Trim() : string.Empty;
+        _drawerOperation.CommandName = IsProtocolCommandSelectionVisible ? invokeMethod.Trim() : string.Empty;
         _drawerOperation.InvokeMethod = invokeMethod.Trim();
         _drawerOperation.ReturnValue = IsLuaOperationSelected ? string.Empty : EditingReturnValue.Trim();
         _drawerOperation.ShowDataToView = !IsLuaOperationSelected && EditingShowDataToView;
@@ -844,7 +798,6 @@ public sealed partial class WorkStepConfigurationViewModel
         return normalizedType switch
         {
             "返回值" => BuildReturnValueOptions(),
-            "产品值" => BuildProductValueOptions(),
             _ => Enumerable.Empty<string>()
         };
     }
@@ -867,18 +820,6 @@ public sealed partial class WorkStepConfigurationViewModel
             .OrderBy(value => value, StringComparer.OrdinalIgnoreCase);
     }
 
-    private IEnumerable<string> BuildProductValueOptions()
-    {
-        return _catalog.Products
-            .Where(product => string.Equals(product.ProductName, SelectedProductName, StringComparison.OrdinalIgnoreCase))
-            .SelectMany(product => product.KeyValues)
-            .Select(item => item.Key)
-            .Where(key => !string.IsNullOrWhiteSpace(key))
-            .Select(key => key.Trim())
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .OrderBy(key => key, StringComparer.OrdinalIgnoreCase);
-    }
-
     private static void ReplaceStringOptions(ObservableCollection<string> target, IEnumerable<string> source)
     {
         List<string> options = source
@@ -898,12 +839,10 @@ public sealed partial class WorkStepConfigurationViewModel
             target.Add(option);
         }
     }
-
-    private WorkStepProfile CreateWorkStep(string productName, string stepName)
+    private WorkStepProfile CreateWorkStep(string stepName)
     {
         WorkStepProfile workStep = new()
         {
-            ProductName = productName,
             StepName = stepName,
             LastModifiedAt = DateTime.Now
         };
@@ -929,8 +868,7 @@ public sealed partial class WorkStepConfigurationViewModel
         return new WorkStepProfile
         {
             Id = Guid.NewGuid().ToString("N"),
-            ProductName = source.ProductName,
-            StepName = GenerateCopyStepName(source.ProductName, source.StepName),
+            StepName = GenerateCopyStepName(source.StepName),
             LastModifiedAt = DateTime.Now,
             Steps = new ObservableCollection<WorkStepOperation>(
                 source.Steps.Select(operation => new WorkStepOperation
@@ -983,7 +921,6 @@ public sealed partial class WorkStepConfigurationViewModel
     private void SelectCreatedWorkStep(WorkStepProfile workStep)
     {
         SearchText = string.Empty;
-        SelectedProductName = workStep.ProductName;
         WorkStepsView.Refresh();
         SelectedWorkStep = workStep;
         WorkStepsView.MoveCurrentTo(workStep);
@@ -1000,46 +937,9 @@ public sealed partial class WorkStepConfigurationViewModel
         _lastCreateOrCopyCommandAt = now;
         return true;
     }
-
-    private void RefreshProductOptions()
+    private string GenerateUniqueStepName(string prefix)
     {
-        ProductOptions.Clear();
-
-        foreach (string productName in _catalog.Products
-                     .Select(product => product.ProductName)
-                     .Where(name => !string.IsNullOrWhiteSpace(name))
-                     .Select(name => name.Trim())
-                     .Distinct(StringComparer.OrdinalIgnoreCase)
-                     .OrderBy(name => name))
-        {
-            ProductOptions.Add(productName);
-        }
-
-        if (string.IsNullOrWhiteSpace(SelectedProductName) ||
-            !ProductOptions.Any(name => string.Equals(name, SelectedProductName, StringComparison.OrdinalIgnoreCase)))
-        {
-            SelectedProductName = ProductOptions.FirstOrDefault() ?? string.Empty;
-        }
-    }
-
-    private string ResolveDefaultProductName()
-    {
-        if (!string.IsNullOrWhiteSpace(SelectedProductName) &&
-            ProductOptions.Any(name => string.Equals(name, SelectedProductName, StringComparison.OrdinalIgnoreCase)))
-        {
-            return SelectedProductName;
-        }
-
-        return ProductOptions.FirstOrDefault() ?? string.Empty;
-    }
-
-    private string GenerateUniqueStepName(string productName, string prefix)
-    {
-        HashSet<string> existingNames = new(
-            WorkSteps
-                .Where(step => string.Equals(step.ProductName, productName, StringComparison.OrdinalIgnoreCase))
-                .Select(step => step.StepName),
-            StringComparer.OrdinalIgnoreCase);
+        HashSet<string> existingNames = new(WorkSteps.Select(step => step.StepName), StringComparer.OrdinalIgnoreCase);
 
         int index = existingNames.Count + 1;
         string candidate;
@@ -1053,13 +953,9 @@ public sealed partial class WorkStepConfigurationViewModel
         return candidate;
     }
 
-    private string GenerateCopyStepName(string productName, string baseName)
+    private string GenerateCopyStepName(string baseName)
     {
-        HashSet<string> existingNames = new(
-            WorkSteps
-                .Where(step => string.Equals(step.ProductName, productName, StringComparison.OrdinalIgnoreCase))
-                .Select(step => step.StepName),
-            StringComparer.OrdinalIgnoreCase);
+        HashSet<string> existingNames = new(WorkSteps.Select(step => step.StepName), StringComparer.OrdinalIgnoreCase);
 
         string copyName = $"{baseName.Trim()} 副本";
         if (!existingNames.Contains(copyName))
@@ -1084,25 +980,13 @@ public sealed partial class WorkStepConfigurationViewModel
             return false;
         }
 
-        if (string.IsNullOrWhiteSpace(SelectedProductName))
-        {
-            return false;
-        }
-
-        if (!string.IsNullOrWhiteSpace(SelectedProductName) &&
-            !string.Equals(workStep.ProductName, SelectedProductName, StringComparison.OrdinalIgnoreCase))
-        {
-            return false;
-        }
-
         if (string.IsNullOrWhiteSpace(SearchText))
         {
             return true;
         }
 
         string keyword = SearchText.Trim();
-        return Contains(workStep.ProductName, keyword) ||
-               Contains(workStep.StepName, keyword) ||
+        return Contains(workStep.StepName, keyword) ||
                Contains(workStep.OperationSummary, keyword) ||
                Contains(workStep.LastModifiedText, keyword);
     }
@@ -1116,29 +1000,22 @@ public sealed partial class WorkStepConfigurationViewModel
     {
         if (WorkSteps.Count == 0)
         {
-            message = "请至少新增一个工步。";
-            return false;
+            message = string.Empty;
+            return true;
         }
 
-        HashSet<string> productStepKeys = new(StringComparer.OrdinalIgnoreCase);
+        HashSet<string> stepNames = new(StringComparer.OrdinalIgnoreCase);
         foreach (WorkStepProfile workStep in WorkSteps)
         {
-            if (string.IsNullOrWhiteSpace(workStep.ProductName))
-            {
-                message = "产品名称不能为空。";
-                return false;
-            }
-
             if (string.IsNullOrWhiteSpace(workStep.StepName))
             {
                 message = "工步名称不能为空。";
                 return false;
             }
 
-            string key = $"{workStep.ProductName.Trim()}::{workStep.StepName.Trim()}";
-            if (!productStepKeys.Add(key))
+            if (!stepNames.Add(workStep.StepName.Trim()))
             {
-                message = $"同一产品下工步名称不能重复：{workStep.ProductName} / {workStep.StepName}";
+                message = $"工步名称不能重复：{workStep.StepName}";
                 return false;
             }
 
@@ -1157,15 +1034,6 @@ public sealed partial class WorkStepConfigurationViewModel
                     return false;
                 }
 
-                if (!IsSystemOperationObject(operation.OperationObject) &&
-                    !IsLuaOperationObject(operation.OperationObject) &&
-                    (string.IsNullOrWhiteSpace(operation.ProtocolName) ||
-                     string.IsNullOrWhiteSpace(operation.CommandName)))
-                {
-                    message = $"工步“{workStep.StepName}”的设备步骤需要选择协议和指令。";
-                    return false;
-                }
-
                 if (operation.DelayMilliseconds < 0)
                 {
                     message = $"工步“{workStep.StepName}”的步骤延时不能小于 0。";
@@ -1181,7 +1049,6 @@ public sealed partial class WorkStepConfigurationViewModel
     private void WorkSteps_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
         RaisePageSummaryChanged();
-        RefreshProductOptions();
         WorkStepsView.Refresh();
         SelectFirstVisibleWorkStep();
         RaiseCommandStatesChanged();

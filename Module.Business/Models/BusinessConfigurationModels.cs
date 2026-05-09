@@ -1,4 +1,4 @@
-using ControlLibrary;
+﻿using ControlLibrary;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -14,249 +14,16 @@ namespace Module.Business.Models;
 /// </summary>
 public sealed class BusinessConfigurationCatalog
 {
-    public ObservableCollection<ProductProfile> Products { get; set; } = new();
-
     public ObservableCollection<WorkStepProfile> WorkSteps { get; set; } = new();
 
     public ObservableCollection<SchemeProfile> Schemes { get; set; } = new();
 }
 
-/// <summary>
-/// 工步配置，按产品名称分类。
-/// </summary>
-public sealed class ProductProfile : ViewModelProperties
-{
-    #region 私有字段
-
-    private string _id = Guid.NewGuid().ToString("N");
-    private string _productName = "默认产品";
-    private DateTime _lastModifiedAt = DateTime.Now;
-    private ObservableCollection<ProductKeyValueItem> _keyValues = new();
-
-    #endregion
-
-    #region 构造方法
-
-    public ProductProfile()
-    {
-        AttachKeyValues(_keyValues);
-    }
-
-    #endregion
-
-    #region 绑定属性
-
-    public string Id
-    {
-        get => _id;
-        set => SetField(ref _id, string.IsNullOrWhiteSpace(value) ? Guid.NewGuid().ToString("N") : value.Trim());
-    }
-
-    public string ProductName
-    {
-        get => _productName;
-        set => SetField(ref _productName, value ?? string.Empty, true);
-    }
-
-    public DateTime LastModifiedAt
-    {
-        get => _lastModifiedAt;
-        set
-        {
-            DateTime normalizedValue = value == default ? DateTime.Now : value;
-            if (SetField(ref _lastModifiedAt, normalizedValue))
-            {
-                OnPropertyChanged(nameof(LastModifiedText));
-            }
-        }
-    }
-
-    public ObservableCollection<ProductKeyValueItem> KeyValues
-    {
-        get => _keyValues;
-        set
-        {
-            if (ReferenceEquals(_keyValues, value))
-            {
-                return;
-            }
-
-            DetachKeyValues(_keyValues);
-            _keyValues = value ?? new ObservableCollection<ProductKeyValueItem>();
-            AttachKeyValues(_keyValues);
-            OnPropertyChanged();
-            RaiseKeyValueSummaryChanged();
-        }
-    }
-
-    [JsonIgnore]
-    public int KeyValueCount => KeyValues.Count;
-
-    [JsonIgnore]
-    public string KeyValueSummary =>
-        KeyValues.Count == 0
-            ? "未配置键值对"
-            : string.Join(" / ", KeyValues.Select(item => item.DisplayText));
-
-    [JsonIgnore]
-    public string LastModifiedText => $"最后修改：{LastModifiedAt:yyyy-MM-dd HH:mm:ss}";
-
-    #endregion
-
-    #region 集合通知
-
-    private void AttachKeyValues(ObservableCollection<ProductKeyValueItem> keyValues)
-    {
-        keyValues.CollectionChanged += KeyValues_CollectionChanged;
-        foreach (ProductKeyValueItem item in keyValues)
-        {
-            item.PropertyChanged += KeyValue_PropertyChanged;
-        }
-    }
-
-    private void DetachKeyValues(ObservableCollection<ProductKeyValueItem> keyValues)
-    {
-        keyValues.CollectionChanged -= KeyValues_CollectionChanged;
-        foreach (ProductKeyValueItem item in keyValues)
-        {
-            item.PropertyChanged -= KeyValue_PropertyChanged;
-        }
-    }
-
-    private void KeyValues_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
-    {
-        if (e.NewItems is not null)
-        {
-            foreach (ProductKeyValueItem item in e.NewItems.OfType<ProductKeyValueItem>())
-            {
-                item.PropertyChanged += KeyValue_PropertyChanged;
-            }
-        }
-
-        if (e.OldItems is not null)
-        {
-            foreach (ProductKeyValueItem item in e.OldItems.OfType<ProductKeyValueItem>())
-            {
-                item.PropertyChanged -= KeyValue_PropertyChanged;
-            }
-        }
-
-        RaiseKeyValueSummaryChanged();
-    }
-
-    private void KeyValue_PropertyChanged(object? sender, PropertyChangedEventArgs e)
-    {
-        if (e.PropertyName is nameof(ProductKeyValueItem.Key)
-            or nameof(ProductKeyValueItem.Value)
-            or nameof(ProductKeyValueItem.DisplayText))
-        {
-            RaiseKeyValueSummaryChanged();
-        }
-    }
-
-    private void RaiseKeyValueSummaryChanged()
-    {
-        OnPropertyChanged(nameof(KeyValueCount));
-        OnPropertyChanged(nameof(KeyValueSummary));
-    }
-
-    #endregion
-
-    #region 复制方法
-
-    public ProductProfile Clone()
-    {
-        return new ProductProfile
-        {
-            Id = Id,
-            ProductName = ProductName,
-            LastModifiedAt = LastModifiedAt,
-            KeyValues = new ObservableCollection<ProductKeyValueItem>(KeyValues.Select(item => item.Clone()))
-        };
-    }
-
-    #endregion
-
-    #region 修改时间方法
-
-    public void MarkModified()
-    {
-        LastModifiedAt = DateTime.Now;
-    }
-
-    #endregion
-}
-
-public sealed class ProductKeyValueItem : ViewModelProperties
-{
-    #region 私有字段
-
-    private string _id = Guid.NewGuid().ToString("N");
-    private string _key = "键";
-    private string _value = "值";
-
-    #endregion
-
-    #region 绑定属性
-
-    public string Id
-    {
-        get => _id;
-        set => SetField(ref _id, string.IsNullOrWhiteSpace(value) ? Guid.NewGuid().ToString("N") : value.Trim());
-    }
-
-    public string Key
-    {
-        get => _key;
-        set
-        {
-            if (SetField(ref _key, value ?? string.Empty, true))
-            {
-                OnPropertyChanged(nameof(DisplayText));
-            }
-        }
-    }
-
-    public string Value
-    {
-        get => _value;
-        set
-        {
-            if (SetField(ref _value, value ?? string.Empty, true))
-            {
-                OnPropertyChanged(nameof(DisplayText));
-            }
-        }
-    }
-
-    [JsonIgnore]
-    public string DisplayText => $"{Key}={Value}";
-
-    #endregion
-
-    #region 复制方法
-
-    public ProductKeyValueItem Clone()
-    {
-        return new ProductKeyValueItem
-        {
-            Id = Id,
-            Key = Key,
-            Value = Value
-        };
-    }
-    #endregion
-}
-
-/// <summary>
-/// 工步配置，包含所属产品、工步名称以及该工步内按顺序执行的步骤列表。
-/// </summary>
 public sealed class WorkStepProfile : ViewModelProperties
 {
     #region 私有字段
 
     private string _id = Guid.NewGuid().ToString("N");
-    private string _productName = "默认产品";
     private string _stepName = "工步 1";
     private DateTime _lastModifiedAt = DateTime.Now;
     private ObservableCollection<WorkStepOperation> _steps = new();
@@ -278,12 +45,6 @@ public sealed class WorkStepProfile : ViewModelProperties
     {
         get => _id;
         set => SetField(ref _id, string.IsNullOrWhiteSpace(value) ? Guid.NewGuid().ToString("N") : value.Trim());
-    }
-
-    public string ProductName
-    {
-        get => _productName;
-        set => SetField(ref _productName, value ?? string.Empty, true);
     }
 
     public string StepName
@@ -446,7 +207,6 @@ public sealed class WorkStepProfile : ViewModelProperties
         WorkStepProfile clone = new()
         {
             Id = Id,
-            ProductName = ProductName,
             StepName = StepName,
             LastModifiedAt = LastModifiedAt,
             Steps = new ObservableCollection<WorkStepOperation>(Steps.Select(step => step.Clone()))
@@ -1076,7 +836,7 @@ public sealed class SchemeWorkStepParameter : ViewModelProperties
 }
 
 /// <summary>
-/// 方案配置，按产品名称筛选可添加工步。
+/// 方案配置，保存方案名称和工步引用快照。
 /// </summary>
 public sealed class SchemeProfile : ViewModelProperties
 {
@@ -1084,7 +844,6 @@ public sealed class SchemeProfile : ViewModelProperties
 
     private string _id = Guid.NewGuid().ToString("N");
     private string _schemeName = "方案 1";
-    private string _productName = "默认产品";
     private ObservableCollection<SchemeWorkStepItem> _steps = new();
 
     #endregion
@@ -1110,12 +869,6 @@ public sealed class SchemeProfile : ViewModelProperties
     {
         get => _schemeName;
         set => SetField(ref _schemeName, value ?? string.Empty, true);
-    }
-
-    public string ProductName
-    {
-        get => _productName;
-        set => SetField(ref _productName, value ?? string.Empty, true);
     }
 
     public ObservableCollection<SchemeWorkStepItem> Steps
@@ -1204,7 +957,6 @@ public sealed class SchemeProfile : ViewModelProperties
     private void Step_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName is nameof(SchemeWorkStepItem.WorkStepId)
-            or nameof(SchemeWorkStepItem.ProductName)
             or nameof(SchemeWorkStepItem.SchemeStepName)
             or nameof(SchemeWorkStepItem.OperationSummary))
         {
@@ -1230,7 +982,6 @@ public sealed class SchemeProfile : ViewModelProperties
         {
             Id = Id,
             SchemeName = SchemeName,
-            ProductName = ProductName,
             Steps = new ObservableCollection<SchemeWorkStepItem>(Steps.Select(step => step.Clone()))
         };
     }
@@ -1249,7 +1000,6 @@ public sealed class SchemeWorkStepItem : ViewModelProperties
 
     private string _id = Guid.NewGuid().ToString("N");
     private string _workStepId = string.Empty;
-    private string _productName = string.Empty;
     private string _stepName = string.Empty;
     private string _schemeStepName = string.Empty;
     private DateTime _lastModifiedAt = DateTime.Now;
@@ -1271,12 +1021,6 @@ public sealed class SchemeWorkStepItem : ViewModelProperties
     {
         get => _workStepId;
         set => SetField(ref _workStepId, value ?? string.Empty, true);
-    }
-
-    public string ProductName
-    {
-        get => _productName;
-        set => SetField(ref _productName, value ?? string.Empty, true);
     }
 
     public string StepName
@@ -1361,7 +1105,6 @@ public sealed class SchemeWorkStepItem : ViewModelProperties
         return new SchemeWorkStepItem
         {
             WorkStepId = workStep.Id,
-            ProductName = workStep.ProductName,
             StepName = workStep.StepName,
             LastModifiedAt = workStep.LastModifiedAt,
             OperationSummary = workStep.OperationSummary,
@@ -1375,7 +1118,6 @@ public sealed class SchemeWorkStepItem : ViewModelProperties
         {
             Id = Id,
             WorkStepId = WorkStepId,
-            ProductName = ProductName,
             StepName = StepName,
             OperationSummary = OperationSummary,
             SchemeStepName = _schemeStepName,
@@ -1545,25 +1287,13 @@ public sealed class SchemeWorkStepItem : ViewModelProperties
 }
 
 /// <summary>
-/// 方案导入导出包，包含方案本体、产品和完整工步内容。
+/// 方案导入导出包，包含方案本体和完整工步内容。
 /// </summary>
 public sealed class SchemeConfigurationPackage
 {
     public int Version { get; set; } = 1;
 
     public SchemeProfile? Scheme { get; set; }
-
-    public ProductProfile? Product { get; set; }
-
-    public ObservableCollection<WorkStepProfile> WorkSteps { get; set; } = new();
-}
-
-/// <summary>
-/// 单个产品下的工步配置文件。
-/// </summary>
-public sealed class ProductWorkStepConfiguration
-{
-    public string ProductName { get; set; } = string.Empty;
 
     public ObservableCollection<WorkStepProfile> WorkSteps { get; set; } = new();
 }

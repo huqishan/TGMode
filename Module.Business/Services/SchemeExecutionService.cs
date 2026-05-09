@@ -1,4 +1,4 @@
-using Module.Business.Models;
+﻿using Module.Business.Models;
 using Shared.Abstractions;
 using Shared.Infrastructure.Communication;
 using Shared.Infrastructure.Events;
@@ -164,15 +164,12 @@ public static class SchemeExecutionService
                     endTime: DateTime.Now);
             }
 
-            ProductProfile? product = catalog.Products.FirstOrDefault(item =>
-                string.Equals(item.ProductName?.Trim(), scheme.ProductName?.Trim(), StringComparison.OrdinalIgnoreCase));
-
             IReadOnlyDictionary<string, WorkStepProfile> workStepsById = catalog.WorkSteps
                 .Where(item => !string.IsNullOrWhiteSpace(item.Id))
                 .GroupBy(item => item.Id, StringComparer.Ordinal)
                 .ToDictionary(group => group.Key, group => group.First(), StringComparer.Ordinal);
 
-            return await ExecuteSchemeAsync(context, scheme.Clone(), product?.Clone(), workStepsById)
+            return await ExecuteSchemeAsync(context, scheme.Clone(), workStepsById)
                 .ConfigureAwait(false);
         }
         catch (OperationCanceledException)
@@ -299,7 +296,6 @@ public static class SchemeExecutionService
     private static async Task<SchemeExecutionResult> ExecuteSchemeAsync(
         SchemeExecutionContext context,
         SchemeProfile scheme,
-        ProductProfile? product,
         IReadOnlyDictionary<string, WorkStepProfile> workStepsById)
     {
         DateTime startTime = DateTime.Now;
@@ -311,7 +307,7 @@ public static class SchemeExecutionService
         if (beforeSchemeArgs.Cancel)
         {
             DateTime canceledAt = DateTime.Now;
-            PublishSchemeStatus(context.Key.StationNo, "已取消", scheme, product, "Scheme execution was canceled before start.", false);
+            PublishSchemeStatus(context.Key.StationNo, "已取消", scheme, "Scheme execution was canceled before start.", false);
             return SchemeExecutionResult.CreateCanceled(
                 "Scheme execution was canceled before start.",
                 context.Logs,
@@ -325,7 +321,7 @@ public static class SchemeExecutionService
             scheme,
             message: "Scheme is executing.",
             startTime: startTime));
-        PublishSchemeStatus(context.Key.StationNo, "测试中", scheme, product, $"测试方案执行中：{scheme.SchemeName}");
+        PublishSchemeStatus(context.Key.StationNo, "测试中", scheme, $"测试方案执行中：{scheme.SchemeName}");
 
         for (int workStepIndex = 0; workStepIndex < scheme.Steps.Count; workStepIndex++)
         {
@@ -345,7 +341,7 @@ public static class SchemeExecutionService
                     failureMessage,
                     startTime,
                     failedAt));
-                PublishSchemeStatus(context.Key.StationNo, "测试失败", scheme, product, failureMessage, false);
+                PublishSchemeStatus(context.Key.StationNo, "测试失败", scheme, failureMessage, false);
                 return SchemeExecutionResult.CreateFailure(failureMessage, context.Logs, startTime, failedAt);
             }
 
@@ -354,7 +350,6 @@ public static class SchemeExecutionService
                     scheme,
                     schemeStep,
                     workStep,
-                    product,
                     workStepIndex + 1)
                 .ConfigureAwait(false);
             if (!workStepResult.IsSuccess)
@@ -367,7 +362,7 @@ public static class SchemeExecutionService
                     workStepResult.Message,
                     startTime,
                     failedAt));
-                PublishSchemeStatus(context.Key.StationNo, "测试失败", scheme, product, workStepResult.Message, false);
+                PublishSchemeStatus(context.Key.StationNo, "测试失败", scheme, workStepResult.Message, false);
                 return workStepResult;
             }
         }
@@ -382,7 +377,7 @@ public static class SchemeExecutionService
             message,
             startTime,
             endTime));
-        PublishSchemeStatus(context.Key.StationNo, "测试通过", scheme, product, message, true);
+        PublishSchemeStatus(context.Key.StationNo, "测试通过", scheme, message, true);
         return SchemeExecutionResult.CreateSuccess(message, context.Logs, startTime, endTime);
     }
 
@@ -391,7 +386,6 @@ public static class SchemeExecutionService
         SchemeProfile scheme,
         SchemeWorkStepItem schemeStep,
         WorkStepProfile workStep,
-        ProductProfile? product,
         int workStepIndex)
     {
         DateTime startTime = DateTime.Now;
@@ -406,7 +400,7 @@ public static class SchemeExecutionService
         if (beforeWorkStepArgs.Cancel)
         {
             DateTime canceledAt = DateTime.Now;
-            PublishSchemeStatus(context.Key.StationNo, "已取消", scheme, product, "Work step execution was canceled before start.", false);
+            PublishSchemeStatus(context.Key.StationNo, "已取消", scheme, "Work step execution was canceled before start.", false);
             return SchemeExecutionResult.CreateCanceled(
                 "Work step execution was canceled before start.",
                 context.Logs,
@@ -427,7 +421,6 @@ public static class SchemeExecutionService
             context.Key.StationNo,
             "测试中",
             scheme,
-            product,
             $"正在执行工步 {workStepIndex}：{schemeStep.SchemeStepName}");
 
         Dictionary<string, string> returnValues = new(StringComparer.OrdinalIgnoreCase);
@@ -443,7 +436,6 @@ public static class SchemeExecutionService
                     schemeStep,
                     workStep,
                     operation,
-                    product,
                     returnValues,
                     workStepIndex,
                     stepIndex + 1)
@@ -487,7 +479,6 @@ public static class SchemeExecutionService
         SchemeWorkStepItem schemeStep,
         WorkStepProfile workStep,
         WorkStepOperation operation,
-        ProductProfile? product,
         Dictionary<string, string> returnValues,
         int workStepIndex,
         int stepIndex)
@@ -506,7 +497,7 @@ public static class SchemeExecutionService
         if (beforeStepArgs.Cancel)
         {
             DateTime canceledAt = DateTime.Now;
-            PublishSchemeStatus(context.Key.StationNo, "已取消", scheme, product, "Step execution was canceled before start.", false);
+            PublishSchemeStatus(context.Key.StationNo, "已取消", scheme, "Step execution was canceled before start.", false);
             return SchemeExecutionResult.CreateCanceled(
                 "Step execution was canceled before start.",
                 context.Logs,
@@ -529,13 +520,12 @@ public static class SchemeExecutionService
             context.Key.StationNo,
             "测试中",
             scheme,
-            product,
             $"正在执行步骤 {workStepIndex}.{stepIndex}：{operation.DisplayText}");
 
         SchemeStepExecutionOutput output;
         try
         {
-            output = await ExecuteOperationAsync(context, operation, schemeStep, product, returnValues)
+            output = await ExecuteOperationAsync(context, operation, schemeStep, returnValues)
                 .ConfigureAwait(false);
         }
         catch (OperationCanceledException)
@@ -587,7 +577,7 @@ public static class SchemeExecutionService
             endTime));
         if (!output.IsSuccess)
         {
-            PublishSchemeStatus(context.Key.StationNo, "测试失败", scheme, product, message, false);
+            PublishSchemeStatus(context.Key.StationNo, "测试失败", scheme, message, false);
         }
 
         return output.IsSuccess
@@ -608,7 +598,7 @@ public static class SchemeExecutionService
         Dictionary<string, string> returnValues)
     {
         SchemeWorkStepItem standaloneStep = CreateStandaloneSchemeStep(operation);
-        SchemeStepExecutionOutput output = await ExecuteOperationAsync(context, operation, standaloneStep, null, returnValues)
+        SchemeStepExecutionOutput output = await ExecuteOperationAsync(context, operation, standaloneStep, returnValues)
             .ConfigureAwait(false);
 
         string resultText = output.Result?.ToString() ?? string.Empty;
@@ -638,7 +628,6 @@ public static class SchemeExecutionService
         IControlledExecutionContext context,
         WorkStepOperation operation,
         SchemeWorkStepItem schemeStep,
-        ProductProfile? product,
         IReadOnlyDictionary<string, string> returnValues)
     {
         if (IsLuaOperation(operation))
@@ -648,16 +637,16 @@ public static class SchemeExecutionService
 
         if (IsJudgeOperation(operation))
         {
-            return ExecuteJudge(operation, schemeStep, product, returnValues);
+            return ExecuteJudge(operation, schemeStep, returnValues);
         }
 
         if (IsSystemOperation(operation))
         {
-            return await ExecuteSystemMethodAsync(operation, schemeStep, product, returnValues)
+            return await ExecuteSystemMethodAsync(operation, schemeStep, returnValues)
                 .ConfigureAwait(false);
         }
 
-        return await ExecuteDeviceOperationAsync(context, operation, schemeStep, product, returnValues)
+        return await ExecuteDeviceOperationAsync(context, operation, schemeStep, returnValues)
             .ConfigureAwait(false);
     }
 
@@ -676,7 +665,6 @@ public static class SchemeExecutionService
     private static async Task<SchemeStepExecutionOutput> ExecuteSystemMethodAsync(
         WorkStepOperation operation,
         SchemeWorkStepItem schemeStep,
-        ProductProfile? product,
         IReadOnlyDictionary<string, string> returnValues)
     {
         string methodName = operation.InvokeMethod?.Trim() ?? string.Empty;
@@ -693,7 +681,7 @@ public static class SchemeExecutionService
             return SchemeStepExecutionOutput.Failure($"System method '{methodName}' was not found.");
         }
 
-        object?[] args = BuildMethodArguments(method, operation, schemeStep, product, returnValues);
+        object?[] args = BuildMethodArguments(method, operation, schemeStep, returnValues);
         object? value = method.Invoke(null, args);
         if (value is Task task)
         {
@@ -709,12 +697,11 @@ public static class SchemeExecutionService
     private static SchemeStepExecutionOutput ExecuteJudge(
         WorkStepOperation operation,
         SchemeWorkStepItem schemeStep,
-        ProductProfile? product,
         IReadOnlyDictionary<string, string> returnValues)
     {
         List<string> values = operation.Parameters
             .OrderBy(parameter => parameter.Sequence)
-            .Select(parameter => ResolveParameterValue(parameter, schemeStep, product, returnValues))
+            .Select(parameter => ResolveParameterValue(parameter, schemeStep, returnValues))
             .ToList();
 
         string methodName = operation.InvokeMethod?.Trim() ?? string.Empty;
@@ -742,7 +729,6 @@ public static class SchemeExecutionService
         IControlledExecutionContext context,
         WorkStepOperation operation,
         SchemeWorkStepItem schemeStep,
-        ProductProfile? product,
         IReadOnlyDictionary<string, string> returnValues)
     {
         string communicationName = operation.OperationObject?.Trim() ?? string.Empty;
@@ -757,7 +743,7 @@ public static class SchemeExecutionService
             return SchemeStepExecutionOutput.Failure($"Communication '{communicationName}' is not running.");
         }
 
-        string message = BuildDeviceMessage(operation, schemeStep, product, returnValues);
+        string message = BuildDeviceMessage(operation, schemeStep, returnValues);
         ReadWriteModel readWriteModel = new(message);
         bool result = await communication.WriteAsync(readWriteModel).ConfigureAwait(false);
         context.ThrowIfCancellationRequested();
@@ -774,7 +760,6 @@ public static class SchemeExecutionService
     private static string BuildDeviceMessage(
         WorkStepOperation operation,
         SchemeWorkStepItem schemeStep,
-        ProductProfile? product,
         IReadOnlyDictionary<string, string> returnValues)
     {
         Dictionary<string, string> parameterValues = operation.Parameters
@@ -783,7 +768,7 @@ public static class SchemeExecutionService
             .GroupBy(parameter => parameter.ParameterName.Trim(), StringComparer.OrdinalIgnoreCase)
             .ToDictionary(
                 group => group.Key,
-                group => ResolveParameterValue(group.First(), schemeStep, product, returnValues),
+                group => ResolveParameterValue(group.First(), schemeStep, returnValues),
                 StringComparer.OrdinalIgnoreCase);
 
         if (TryResolveProtocolCommand(operation.ProtocolName, operation.CommandName, parameterValues, out string message))
@@ -910,7 +895,6 @@ public static class SchemeExecutionService
         MethodInfo method,
         WorkStepOperation operation,
         SchemeWorkStepItem schemeStep,
-        ProductProfile? product,
         IReadOnlyDictionary<string, string> returnValues)
     {
         Dictionary<string, WorkStepOperationParameter> configuredParameters = operation.Parameters
@@ -933,7 +917,7 @@ public static class SchemeExecutionService
                     : orderedParameters.ElementAtOrDefault(index);
             string value = configuredParameter is null
                 ? string.Empty
-                : ResolveParameterValue(configuredParameter, schemeStep, product, returnValues);
+                : ResolveParameterValue(configuredParameter, schemeStep, returnValues);
             args[index] = ConvertToParameterType(value, parameterInfo.ParameterType);
         }
 
@@ -943,7 +927,6 @@ public static class SchemeExecutionService
     private static string ResolveParameterValue(
         WorkStepOperationParameter parameter,
         SchemeWorkStepItem schemeStep,
-        ProductProfile? product,
         IReadOnlyDictionary<string, string> returnValues)
     {
         string type = parameter.Type?.Trim() ?? string.Empty;
@@ -953,7 +936,6 @@ public static class SchemeExecutionService
         {
             "\u5DE5\u6B65\u503C" => ResolveSchemeStepParameterValue(parameter, schemeStep),
             "\u8FD4\u56DE\u503C" => returnValues.TryGetValue(value, out string? returnValue) ? returnValue : string.Empty,
-            "\u4EA7\u54C1\u503C" => ResolveProductValue(product, value),
             "\u5168\u5C40\u503C" or "\u7CFB\u7EDF\u503C" => GlobalValues.TryGetValue(value, out string? globalValue) ? globalValue : string.Empty,
             _ => value
         };
@@ -971,17 +953,6 @@ public static class SchemeExecutionService
         return schemeParameter?.JudgeCondition?.Trim() ?? string.Empty;
     }
 
-    private static string ResolveProductValue(ProductProfile? product, string key)
-    {
-        if (product is null || string.IsNullOrWhiteSpace(key))
-        {
-            return string.Empty;
-        }
-
-        return product.KeyValues.FirstOrDefault(item =>
-            string.Equals(item.Key?.Trim(), key, StringComparison.OrdinalIgnoreCase))?.Value ?? string.Empty;
-    }
-
     #endregion
 
     #region 方案工步解析与执行控制工具
@@ -997,7 +968,6 @@ public static class SchemeExecutionService
         }
 
         return workStepsById.Values.FirstOrDefault(item =>
-            string.Equals(item.ProductName?.Trim(), schemeStep.ProductName?.Trim(), StringComparison.OrdinalIgnoreCase) &&
             string.Equals(item.StepName?.Trim(), schemeStep.StepName?.Trim(), StringComparison.OrdinalIgnoreCase))
             ?.Clone();
     }
@@ -1020,7 +990,6 @@ public static class SchemeExecutionService
     {
         return new SchemeWorkStepItem
         {
-            ProductName = string.Empty,
             StepName = "流程图节点",
             SchemeStepName = "流程图节点",
             Parameters = new ObservableCollection<SchemeWorkStepParameter>(
@@ -1087,25 +1056,22 @@ public static class SchemeExecutionService
     {
         handler?.Invoke(null, args);
     }
-
     private static void PublishSchemeStatus(
         string stationNo,
         string testStatus,
         SchemeProfile scheme,
-        ProductProfile? product,
         string message,
         bool? isSuccess = null)
     {
         PublishTestStatus(
             stationNo,
             testStatus,
-            ResolveProductBarcode(product),
+            string.Empty,
             scheme.SchemeName,
-            scheme.ProductName,
+            string.Empty,
             message,
             isSuccess);
     }
-
     private static void PublishTestStatus(
         string stationNo,
         string testStatus,
@@ -1147,38 +1113,6 @@ public static class SchemeExecutionService
             schemeName,
             string.Empty,
             message);
-    }
-
-    private static string ResolveProductBarcode(ProductProfile? product)
-    {
-        if (product is null)
-        {
-            return string.Empty;
-        }
-
-        string[] barcodeKeys =
-        {
-            "Barcode",
-            "BarCode",
-            "SN",
-            "SerialNumber",
-            "SerialNo",
-            "产品条码",
-            "条码",
-            "序列号"
-        };
-
-        foreach (string key in barcodeKeys)
-        {
-            ProductKeyValueItem? item = product.KeyValues.FirstOrDefault(value =>
-                string.Equals(value.Key?.Trim(), key, StringComparison.OrdinalIgnoreCase));
-            if (item is not null && !string.IsNullOrWhiteSpace(item.Value))
-            {
-                return item.Value.Trim();
-            }
-        }
-
-        return string.Empty;
     }
 
     private static object? ConvertToParameterType(string value, Type targetType)
@@ -1584,7 +1518,6 @@ public sealed class SchemeExecutionEventArgs : EventArgs
     private SchemeExecutionEventArgs(
         string stationNo,
         string schemeName,
-        string productName,
         string? workStepName,
         string? stepName,
         int workStepIndex,
@@ -1597,7 +1530,6 @@ public sealed class SchemeExecutionEventArgs : EventArgs
     {
         StationNo = stationNo;
         SchemeName = schemeName;
-        ProductName = productName;
         WorkStepName = workStepName ?? string.Empty;
         StepName = stepName ?? string.Empty;
         WorkStepIndex = workStepIndex;
@@ -1615,8 +1547,6 @@ public sealed class SchemeExecutionEventArgs : EventArgs
     public string StationNo { get; }
 
     public string SchemeName { get; }
-
-    public string ProductName { get; }
 
     public string WorkStepName { get; }
 
@@ -1651,7 +1581,6 @@ public sealed class SchemeExecutionEventArgs : EventArgs
         return new SchemeExecutionEventArgs(
             stationNo,
             scheme.SchemeName,
-            scheme.ProductName,
             null,
             null,
             0,
@@ -1677,7 +1606,6 @@ public sealed class SchemeExecutionEventArgs : EventArgs
         return new SchemeExecutionEventArgs(
             stationNo,
             scheme.SchemeName,
-            scheme.ProductName,
             schemeStep.SchemeStepName,
             null,
             workStepIndex,
@@ -1707,7 +1635,6 @@ public sealed class SchemeExecutionEventArgs : EventArgs
         return new SchemeExecutionEventArgs(
             stationNo,
             scheme.SchemeName,
-            scheme.ProductName,
             schemeStep.SchemeStepName,
             operation.DisplayText,
             workStepIndex,

@@ -21,7 +21,6 @@ public sealed partial class WorkStepConfigurationViewModel
         _isDecisionOperationMode = isDecisionOperationMode;
         WorkStepProfile temporaryWorkStep = new()
         {
-            ProductName = stepName,
             StepName = string.IsNullOrWhiteSpace(stepName) ? "流程图处理块" : stepName.Trim(),
             Steps = new ObservableCollection<WorkStepOperation>()
         };
