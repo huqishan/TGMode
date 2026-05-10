@@ -94,7 +94,7 @@ namespace Module.MES.ViewModels
         /// </summary>
         private void NewProfile()
         {
-            ApiInterfaceProfile profile = CreateDefaultProfile(GenerateUniqueName("MES 接口"));
+            ApiInterfaceProfile profile = CreateDefaultProfile(GenerateUniqueName("MES接口"));
             AddProfile(profile);
             SelectedProfile = profile;
             SetPageStatus("已新增接口配置。", SuccessBrush);
@@ -577,7 +577,7 @@ namespace Module.MES.ViewModels
             profile.TokenName = "accessToken";
             profile.Heads.Clear();
             profile.Heads.Add(new ApiHeaderItem { Key = "Content-Type", Value = "application/json" });
-            profile.Heads.Add(new ApiHeaderItem { Key = "Authorization", Value = "ACCESS_TOKEN" });
+            //profile.Heads.Add(new ApiHeaderItem { Key = "Authorization", Value = "ACCESS_TOKEN" });
             profile.SelectedHeader = profile.Heads.FirstOrDefault();
             return profile;
         }
@@ -603,7 +603,7 @@ namespace Module.MES.ViewModels
         {
             for (int index = 1; ; index++)
             {
-                string name = $"{prefix} {index}";
+                string name = $"{prefix}{index}";
                 if (!Profiles.Any(profile => string.Equals(profile.ApiName, name, StringComparison.OrdinalIgnoreCase)))
                 {
                     return name;

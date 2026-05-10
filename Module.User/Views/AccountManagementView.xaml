@@ -9,10 +9,6 @@
              VerticalAlignment="Stretch"
              d:DesignHeight="760"
              d:DesignWidth="1500">
-    <UserControl.DataContext>
-        <vm:AccountManagementViewModel />
-    </UserControl.DataContext>
-
     <UserControl.Resources>
         <Style x:Key="DataGridHeaderStyle" TargetType="{x:Type DataGridColumnHeader}">
             <Setter Property="Background" Value="{DynamicResource TabItemSelectedBrush}" />

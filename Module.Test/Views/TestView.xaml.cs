@@ -1,5 +1,3 @@
-using Module.Test.ViewModels;
-using System.Windows;
 using System.Windows.Controls;
 
 namespace Module.Test.Views
@@ -12,15 +10,6 @@ namespace Module.Test.Views
         public TestView()
         {
             InitializeComponent();
-            Unloaded += TestView_Unloaded;
-        }
-
-        private void TestView_Unloaded(object sender, RoutedEventArgs e)
-        {
-            if (DataContext is TestViewModel viewModel)
-            {
-                viewModel.Dispose();
-            }
         }
     }
 }

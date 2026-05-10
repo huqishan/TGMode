@@ -12,10 +12,6 @@
              VerticalAlignment="Stretch"
              d:DesignHeight="760"
              d:DesignWidth="1600">
-    <UserControl.DataContext>
-        <vm:FlowchartViewModel />
-    </UserControl.DataContext>
-
     <UserControl.Resources>
         <Style x:Key="FlowchartPaletteButtonStyle" TargetType="{x:Type Button}">
             <Setter Property="MinHeight" Value="42" />

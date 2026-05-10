@@ -20,6 +20,7 @@ namespace Module.Business.Views
         public SchemeConfigurationView()
         {
             InitializeComponent();
+            DataContext = new SchemeConfigurationViewModel();
         }
 
         private SchemeConfigurationViewModel? ViewModel => DataContext as SchemeConfigurationViewModel;

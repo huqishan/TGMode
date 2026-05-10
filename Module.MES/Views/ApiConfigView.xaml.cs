@@ -1,4 +1,5 @@
 using System;
+using Module.MES.ViewModels;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -26,6 +27,7 @@ namespace Module.MES.Views
         public ApiConfigView()
         {
             InitializeComponent();
+            DataContext = new ApiConfigViewModel();
         }
 
         #endregion

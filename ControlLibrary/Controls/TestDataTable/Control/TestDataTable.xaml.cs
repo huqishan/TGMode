@@ -82,6 +82,11 @@ public partial class TestDataTable : UserControl
     public TestDataTable()
     {
         InitializeComponent();
+        if (DesignerProperties.GetIsInDesignMode(this))
+        {
+            return;
+        }
+
         SizeChanged += TestDataTable_SizeChanged;
         BuildTable();
     }
@@ -132,6 +137,11 @@ public partial class TestDataTable : UserControl
     {
         if (dependencyObject is TestDataTable table)
         {
+            if (DesignerProperties.GetIsInDesignMode(table))
+            {
+                return;
+            }
+
             table.UnhookCollectionChanged();
             table.HookCollectionChanged(e.NewValue as INotifyCollectionChanged);
             table.BuildTable();
@@ -142,6 +152,11 @@ public partial class TestDataTable : UserControl
     {
         if (dependencyObject is TestDataTable table)
         {
+            if (DesignerProperties.GetIsInDesignMode(table))
+            {
+                return;
+            }
+
             table.BuildTable();
         }
     }
@@ -166,11 +181,21 @@ public partial class TestDataTable : UserControl
 
     private void ItemsSource_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
+        if (DesignerProperties.GetIsInDesignMode(this))
+        {
+            return;
+        }
+
         BuildTable();
     }
 
     private void TestDataTable_SizeChanged(object sender, SizeChangedEventArgs e)
     {
+        if (DesignerProperties.GetIsInDesignMode(this))
+        {
+            return;
+        }
+
         if (Math.Abs(e.NewSize.Width - _lastLayoutWidth) < 0.5)
         {
             return;
@@ -182,6 +207,11 @@ public partial class TestDataTable : UserControl
 
     private void BuildTable()
     {
+        if (DesignerProperties.GetIsInDesignMode(this))
+        {
+            return;
+        }
+
         if (HeaderHost is null || TablePanel is null)
         {
             return;

@@ -30,6 +30,7 @@ namespace Module.Communication.Views
         public ProtocolConfigView()
         {
             InitializeComponent();
+            DataContext = new ProtocolConfigViewModel();
 
             AttachViewModelEvents();
             DataContextChanged += ProtocolConfigView_DataContextChanged;

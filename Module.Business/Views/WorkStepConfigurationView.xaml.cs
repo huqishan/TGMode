@@ -26,6 +26,7 @@ namespace Module.Business.Views
         public WorkStepConfigurationView()
         {
             InitializeComponent();
+            DataContext = new WorkStepConfigurationViewModel();
             Loaded += WorkStepConfigurationView_Loaded;
             Unloaded += WorkStepConfigurationView_Unloaded;
             UpdateOperationDrawerVisual(animate: false);

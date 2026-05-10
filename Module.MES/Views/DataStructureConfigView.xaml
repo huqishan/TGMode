@@ -10,10 +10,6 @@
              VerticalAlignment="Stretch"
              d:DesignHeight="760"
              d:DesignWidth="1600">
-    <UserControl.DataContext>
-        <vm:DataStructureConfigViewModel />
-    </UserControl.DataContext>
-
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter" />
         <Style x:Key="DrawerBackdropButtonStyle" TargetType="{x:Type Button}">

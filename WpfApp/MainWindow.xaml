@@ -8,7 +8,7 @@
         xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
         mc:Ignorable="d"
         MinWidth="1450" WindowStyle="None"
-        MinHeight="600"
+        MinHeight="800"
         ResizeMode="CanResize"
         Background="{DynamicResource AppBackgroundBrush}">
     <shell:WindowChrome.WindowChrome>

@@ -10,6 +10,7 @@ public partial class PermissionConfigurationView : UserControl
     public PermissionConfigurationView()
     {
         InitializeComponent();
+        DataContext = new PermissionConfigurationViewModel();
         ApplySourceColumnVisibility();
     }
 

@@ -55,6 +55,8 @@ public sealed partial class ProtocolConfigViewModel
 
     public ObservableCollection<ProtocolOption<ProtocolPayloadFormat>> PayloadFormats { get; } = new();
 
+    public ObservableCollection<ProtocolOption<ProtocolExecutionMode>> ExecutionModes { get; } = new();
+
     public ObservableCollection<ProtocolOption<ProtocolCrcMode>> CrcModes { get; } = new();
 
     #endregion
@@ -189,10 +191,13 @@ public sealed partial class ProtocolConfigViewModel
         "模板中使用 {{Placeholder}} 形式占位；占位符值会从模板自动提取，可在表格中填写对应值。";
 
     public string ParseRuleHelpText =>
-        "\u89e3\u6790\u811a\u672c\u4f7f\u7528 Lua \u6267\u884c\uff0c\u53ea\u6ce8\u5165 data \u4e00\u4e2a\u53d8\u91cf\u8868\u793a\u5f53\u524d\u8fd4\u56de\u6570\u636e\u3002\u811a\u672c\u53ea\u9700 return \u4efb\u610f\u503c\uff0c\u4f8b\u5982 return data; \u6216 return string.sub(data, 1, 2);\u53cc\u51fb\u811a\u672c\u7f16\u8f91\u533a\u53ef\u50cf\u6d41\u7a0b\u56fe\u5904\u7406\u5757\u4e00\u6837\u5f39\u51fa\u7f16\u8f91\u754c\u9762\u3002";
+        "解析脚本使用 Lua 执行，只注入 data 一个变量表示当前返回数据。脚本只需 return 任意值，例如 return data; 或 return string.sub(data, 1, 2); 双击脚本编辑区可像流程图处理块一样弹出编辑界面。";
 
     public string WaitForResponseHelpText =>
-        "选中后显示返回示例与解析规则，并允许对返回数据执行解析。";
+        "发送指令后等待设备返回数据，并允许对返回数据执行解析。";
+
+    public string ParseOnlyHelpText =>
+        "选中后执行时不发送指令，直接接收一帧数据并按返回格式和 Lua 脚本解析。";
 
     #endregion
 

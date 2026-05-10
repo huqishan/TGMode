@@ -32,6 +32,7 @@ namespace Module.MES.Views
         public DataStructureConfigView()
         {
             InitializeComponent();
+            DataContext = new DataStructureConfigViewModel();
 
             if (ViewModel is not null)
             {

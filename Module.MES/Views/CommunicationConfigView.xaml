@@ -9,10 +9,6 @@
              VerticalAlignment="Stretch"
              d:DesignHeight="760"
              d:DesignWidth="1600">
-    <UserControl.DataContext>
-        <vm:CommunicationConfigViewModel />
-    </UserControl.DataContext>
-
     <Grid>
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="400" />

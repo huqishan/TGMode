@@ -11,10 +11,6 @@
              VerticalAlignment="Stretch"
              d:DesignHeight="760"
              d:DesignWidth="1600">
-    <UserControl.DataContext>
-        <vm:WorkStepConfigurationViewModel />
-    </UserControl.DataContext>
-
     <Grid HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="360" />

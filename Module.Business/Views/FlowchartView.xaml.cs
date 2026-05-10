@@ -24,6 +24,7 @@ namespace Module.Business.Views
         public FlowchartView()
         {
             InitializeComponent();
+            DataContext = new FlowchartViewModel();
         }
 
         private FlowchartViewModel? ViewModel => DataContext as FlowchartViewModel;

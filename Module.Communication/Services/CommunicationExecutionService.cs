@@ -301,6 +301,17 @@ namespace Module.Communication.Services
                 return DeviceExecutionActionResult.CreateFailure(message, NormalizeRequiredText(deviceName));
             }
 
+            if (command.IsParseOnly)
+            {
+                DeviceExecutionActionResult receiveResult = await ReceiveAsync(deviceName, waitTime).ConfigureAwait(false);
+                if (!receiveResult.IsSuccess || receiveResult.Result is null)
+                {
+                    return receiveResult;
+                }
+
+                return ParseProtocolResponse(command, receiveResult.Result.ToString() ?? string.Empty, receiveResult.DeviceName);
+            }
+
             if (!ProtocolPreviewEngine.TryBuildRequestPreview(command, out ProtocolRequestPreviewResult? preview, out message) ||
                 preview is null)
             {

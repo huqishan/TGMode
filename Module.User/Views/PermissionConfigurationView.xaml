@@ -10,10 +10,6 @@
              VerticalAlignment="Stretch"
              d:DesignHeight="760"
              d:DesignWidth="1800">
-    <UserControl.DataContext>
-        <vm:PermissionConfigurationViewModel />
-    </UserControl.DataContext>
-
     <UserControl.Resources>
         <Style x:Key="PermissionDataGridHeaderStyle" TargetType="{x:Type DataGridColumnHeader}">
             <Setter Property="Background" Value="{DynamicResource TabItemSelectedBrush}" />

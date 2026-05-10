@@ -1,3 +1,6 @@
+using Module.Test.ViewModels;
+using System.ComponentModel;
+using System.Windows;
 using System.Windows.Controls;
 
 namespace Module.Test.Views
@@ -10,6 +13,20 @@ namespace Module.Test.Views
         public TestMinView()
         {
             InitializeComponent();
+            if (!DesignerProperties.GetIsInDesignMode(this))
+            {
+                DataContext = new TestMinViewModel();
+            }
+
+            Unloaded += TestMinView_Unloaded;
+        }
+
+        private void TestMinView_Unloaded(object sender, RoutedEventArgs e)
+        {
+            if (DataContext is TestMinViewModel viewModel)
+            {
+                viewModel.Dispose();
+            }
         }
     }
 }

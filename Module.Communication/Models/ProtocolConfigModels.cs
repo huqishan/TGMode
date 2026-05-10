@@ -30,6 +30,19 @@ namespace Module.Communication.Models
         Crc32
     }
 
+    public enum ProtocolExecutionMode
+    {
+        SendOnly,
+        SendAndWaitForResponse,
+        ParseOnly
+    }
+
+    public enum ProtocolRequestSendMode
+    {
+        SingleFrame,
+        SplitByLine
+    }
+
     public sealed class ProtocolOption<T>
     {
         public ProtocolOption(T value, string displayName, string description)
@@ -58,7 +71,11 @@ namespace Module.Communication.Models
 
         public bool WaitForResponse { get; set; } = true;
 
+        public bool IsParseOnly { get; set; }
+
         public ProtocolCrcMode CrcMode { get; set; } = ProtocolCrcMode.None;
+
+        public ProtocolRequestSendMode RequestSendMode { get; set; } = ProtocolRequestSendMode.SingleFrame;
 
         public string? ContentTemplate { get; set; }
 
@@ -77,7 +94,9 @@ namespace Module.Communication.Models
                 ResponseFormat = command.ResponseFormat,
                 ReplyAggregationMilliseconds = command.ReplyAggregationMilliseconds,
                 WaitForResponse = command.WaitForResponse,
+                IsParseOnly = command.IsParseOnly,
                 CrcMode = command.CrcMode,
+                RequestSendMode = command.RequestSendMode,
                 ContentTemplate = command.ContentTemplate,
                 PlaceholderValuesText = command.PlaceholderValuesText,
                 SampleResponseText = command.SampleResponseText,
@@ -96,7 +115,9 @@ namespace Module.Communication.Models
                     ? "200"
                     : ReplyAggregationMilliseconds.Trim(),
                 WaitForResponse = WaitForResponse,
+                IsParseOnly = IsParseOnly,
                 CrcMode = CrcMode,
+                RequestSendMode = RequestSendMode,
                 ContentTemplate = ContentTemplate ?? string.Empty,
                 PlaceholderValuesText = PlaceholderValuesText ?? string.Empty,
                 SampleResponseText = SampleResponseText ?? string.Empty,
@@ -122,7 +143,11 @@ namespace Module.Communication.Models
 
         public bool WaitForResponse { get; set; } = true;
 
+        public bool IsParseOnly { get; set; }
+
         public ProtocolCrcMode CrcMode { get; set; } = ProtocolCrcMode.None;
+
+        public ProtocolRequestSendMode RequestSendMode { get; set; } = ProtocolRequestSendMode.SingleFrame;
 
         public string? ContentTemplate { get; set; }
 
@@ -143,7 +168,9 @@ namespace Module.Communication.Models
                 ResponseFormat = command.ResponseFormat,
                 ReplyAggregationMilliseconds = command.ReplyAggregationMilliseconds,
                 WaitForResponse = command.WaitForResponse,
+                IsParseOnly = command.IsParseOnly,
                 CrcMode = command.CrcMode,
+                RequestSendMode = command.RequestSendMode,
                 ContentTemplate = command.ContentTemplate,
                 PlaceholderValuesText = command.PlaceholderValuesText,
                 SampleResponseText = command.SampleResponseText,
@@ -177,7 +204,9 @@ namespace Module.Communication.Models
                         ? "200"
                         : ReplyAggregationMilliseconds.Trim(),
                     WaitForResponse = WaitForResponse,
+                    IsParseOnly = IsParseOnly,
                     CrcMode = CrcMode,
+                    RequestSendMode = RequestSendMode,
                     ContentTemplate = ContentTemplate ?? string.Empty,
                     PlaceholderValuesText = PlaceholderValuesText ?? string.Empty,
                     SampleResponseText = SampleResponseText ?? string.Empty,
@@ -232,7 +261,9 @@ namespace Module.Communication.Models
         private ProtocolPayloadFormat _responseFormat = ProtocolPayloadFormat.Hex;
         private string _replyAggregationMilliseconds = "200";
         private bool _waitForResponse = true;
+        private bool _isParseOnly;
         private ProtocolCrcMode _crcMode = ProtocolCrcMode.None;
+        private ProtocolRequestSendMode _requestSendMode = ProtocolRequestSendMode.SingleFrame;
         private string _contentTemplate = "AA {{Address}} {{Command}}";
         private string _placeholderValuesText = "Address=01\r\nCommand=03";
         private string _sampleResponseText = "AA 01 03";
@@ -279,10 +310,58 @@ namespace Module.Communication.Models
             set => SetField(ref _waitForResponse, value);
         }
 
+        public bool IsParseOnly
+        {
+            get => _isParseOnly;
+            set => SetField(ref _isParseOnly, value);
+        }
+
+        public ProtocolExecutionMode ExecutionMode
+        {
+            get
+            {
+                if (IsParseOnly)
+                {
+                    return ProtocolExecutionMode.ParseOnly;
+                }
+
+                return WaitForResponse
+                    ? ProtocolExecutionMode.SendAndWaitForResponse
+                    : ProtocolExecutionMode.SendOnly;
+            }
+            set
+            {
+                switch (value)
+                {
+                    case ProtocolExecutionMode.ParseOnly:
+                        IsParseOnly = true;
+                        WaitForResponse = false;
+                        break;
+                    case ProtocolExecutionMode.SendAndWaitForResponse:
+                        IsParseOnly = false;
+                        WaitForResponse = true;
+                        break;
+                    default:
+                        IsParseOnly = false;
+                        WaitForResponse = false;
+                        break;
+                }
+
+                OnPropertyChanged();
+                RaiseStateChanged();
+            }
+        }
+
         public ProtocolCrcMode CrcMode
         {
             get => _crcMode;
             set => SetField(ref _crcMode, value);
+        }
+
+        public ProtocolRequestSendMode RequestSendMode
+        {
+            get => _requestSendMode;
+            set => SetField(ref _requestSendMode, value);
         }
 
         public string ContentTemplate
@@ -327,8 +406,14 @@ namespace Module.Communication.Models
 
         public string CrcDisplayName => ProtocolDisplayNames.GetCrcDisplayName(CrcMode);
 
+        public string RequestSendModeDisplayName => ProtocolDisplayNames.GetRequestSendModeDisplayName(RequestSendMode);
+
+        public string ExecutionModeDisplayName => IsParseOnly ? "仅解析" : "发送";
+
         public string Summary =>
-            $"{RequestFormatDisplayName} -> {ResponseFormatDisplayName} / {CrcDisplayName} / 拼接等待 {ReplyAggregationMilliseconds} ms";
+            IsParseOnly
+                ? $"{ExecutionModeDisplayName} / 返回 {ResponseFormatDisplayName} / 拼接等待 {ReplyAggregationMilliseconds} ms"
+                : $"{RequestFormatDisplayName} -> {ResponseFormatDisplayName} / {RequestSendModeDisplayName} / {CrcDisplayName} / 拼接等待 {ReplyAggregationMilliseconds} ms";
 
         public ProtocolCommandConfig Clone(string name)
         {
@@ -339,7 +424,9 @@ namespace Module.Communication.Models
                 ResponseFormat = ResponseFormat,
                 ReplyAggregationMilliseconds = ReplyAggregationMilliseconds,
                 WaitForResponse = WaitForResponse,
+                IsParseOnly = IsParseOnly,
                 CrcMode = CrcMode,
+                RequestSendMode = RequestSendMode,
                 ContentTemplate = ContentTemplate,
                 PlaceholderValuesText = PlaceholderValuesText,
                 SampleResponseText = SampleResponseText,
@@ -525,6 +612,9 @@ namespace Module.Communication.Models
             OnPropertyChanged(nameof(RequestFormatDisplayName));
             OnPropertyChanged(nameof(ResponseFormatDisplayName));
             OnPropertyChanged(nameof(CrcDisplayName));
+            OnPropertyChanged(nameof(RequestSendModeDisplayName));
+            OnPropertyChanged(nameof(ExecutionModeDisplayName));
+            OnPropertyChanged(nameof(ExecutionMode));
             OnPropertyChanged(nameof(Summary));
         }
 
@@ -630,6 +720,33 @@ namespace Module.Communication.Models
             {
                 CurrentCommand.WaitForResponse = value;
                 OnPropertyChanged();
+                OnPropertyChanged(nameof(IsResponseParserVisible));
+            }
+        }
+
+        public bool IsParseOnly
+        {
+            get => CurrentCommand.IsParseOnly;
+            set
+            {
+                CurrentCommand.IsParseOnly = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(IsResponseParserVisible));
+                OnPropertyChanged(nameof(IsProtocolTemplateVisible));
+            }
+        }
+
+        public ProtocolExecutionMode ExecutionMode
+        {
+            get => CurrentCommand.ExecutionMode;
+            set
+            {
+                CurrentCommand.ExecutionMode = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(WaitForResponse));
+                OnPropertyChanged(nameof(IsParseOnly));
+                OnPropertyChanged(nameof(IsResponseParserVisible));
+                OnPropertyChanged(nameof(IsProtocolTemplateVisible));
             }
         }
 
@@ -639,6 +756,16 @@ namespace Module.Communication.Models
             set
             {
                 CurrentCommand.CrcMode = value;
+                OnPropertyChanged();
+            }
+        }
+
+        public ProtocolRequestSendMode RequestSendMode
+        {
+            get => CurrentCommand.RequestSendMode;
+            set
+            {
+                CurrentCommand.RequestSendMode = value;
                 OnPropertyChanged();
             }
         }
@@ -690,6 +817,12 @@ namespace Module.Communication.Models
         public string ResponseFormatDisplayName => CurrentCommand.ResponseFormatDisplayName;
 
         public string CrcDisplayName => CurrentCommand.CrcDisplayName;
+
+        public string RequestSendModeDisplayName => CurrentCommand.RequestSendModeDisplayName;
+
+        public bool IsResponseParserVisible => CurrentCommand.WaitForResponse || CurrentCommand.IsParseOnly;
+
+        public bool IsProtocolTemplateVisible => !CurrentCommand.IsParseOnly;
 
         public string Summary
         {
@@ -794,7 +927,12 @@ namespace Module.Communication.Models
             OnPropertyChanged(nameof(ResponseFormat));
             OnPropertyChanged(nameof(ReplyAggregationMilliseconds));
             OnPropertyChanged(nameof(WaitForResponse));
+            OnPropertyChanged(nameof(IsParseOnly));
+            OnPropertyChanged(nameof(ExecutionMode));
+            OnPropertyChanged(nameof(IsResponseParserVisible));
+            OnPropertyChanged(nameof(IsProtocolTemplateVisible));
             OnPropertyChanged(nameof(CrcMode));
+            OnPropertyChanged(nameof(RequestSendMode));
             OnPropertyChanged(nameof(ContentTemplate));
             OnPropertyChanged(nameof(PlaceholderValuesText));
             OnPropertyChanged(nameof(PlaceholderValues));
@@ -803,6 +941,7 @@ namespace Module.Communication.Models
             OnPropertyChanged(nameof(RequestFormatDisplayName));
             OnPropertyChanged(nameof(ResponseFormatDisplayName));
             OnPropertyChanged(nameof(CrcDisplayName));
+            OnPropertyChanged(nameof(RequestSendModeDisplayName));
             OnPropertyChanged(nameof(Summary));
         }
 
@@ -836,11 +975,21 @@ namespace Module.Communication.Models
                 _ => crcMode.ToString()
             };
         }
+
+        public static string GetRequestSendModeDisplayName(ProtocolRequestSendMode sendMode)
+        {
+            return sendMode switch
+            {
+                ProtocolRequestSendMode.SingleFrame => "一条报文发送",
+                ProtocolRequestSendMode.SplitByLine => "换行分开发送",
+                _ => sendMode.ToString()
+            };
+        }
     }
 
-    public sealed class ProtocolRequestPreviewResult
+    public sealed class ProtocolRequestFramePreview
     {
-        public ProtocolRequestPreviewResult(string renderedTemplate, string requestHex, string requestAscii)
+        public ProtocolRequestFramePreview(string renderedTemplate, string requestHex, string requestAscii)
         {
             RenderedTemplate = renderedTemplate;
             RequestHex = requestHex;
@@ -852,6 +1001,41 @@ namespace Module.Communication.Models
         public string RequestHex { get; }
 
         public string RequestAscii { get; }
+    }
+
+    public sealed class ProtocolRequestPreviewResult
+    {
+        public ProtocolRequestPreviewResult(
+            string renderedTemplate,
+            string requestHex,
+            string requestAscii,
+            IReadOnlyList<ProtocolRequestFramePreview>? frames = null)
+        {
+            RenderedTemplate = renderedTemplate;
+            RequestHex = requestHex;
+            RequestAscii = requestAscii;
+            Frames = frames ?? CreateDefaultFrames(renderedTemplate, requestHex, requestAscii);
+        }
+
+        public string RenderedTemplate { get; }
+
+        public string RequestHex { get; }
+
+        public string RequestAscii { get; }
+
+        public IReadOnlyList<ProtocolRequestFramePreview> Frames { get; }
+
+        private static IReadOnlyList<ProtocolRequestFramePreview> CreateDefaultFrames(
+            string renderedTemplate,
+            string requestHex,
+            string requestAscii)
+        {
+            return string.IsNullOrEmpty(renderedTemplate) &&
+                   string.IsNullOrEmpty(requestHex) &&
+                   string.IsNullOrEmpty(requestAscii)
+                ? Array.Empty<ProtocolRequestFramePreview>()
+                : new[] { new ProtocolRequestFramePreview(renderedTemplate, requestHex, requestAscii) };
+        }
     }
 
     public sealed class ProtocolResponsePreviewResult
@@ -897,6 +1081,13 @@ namespace Module.Communication.Models
             out string message)
         {
             result = null;
+            if (command.IsParseOnly)
+            {
+                result = new ProtocolRequestPreviewResult(string.Empty, string.Empty, string.Empty);
+                message = "当前指令为仅解析模式，不生成发送帧。";
+                return true;
+            }
+
             if (string.IsNullOrWhiteSpace(command.ContentTemplate))
             {
                 message = "协议内容不能为空。";
@@ -961,7 +1152,7 @@ namespace Module.Communication.Models
             if (string.IsNullOrWhiteSpace(command.ParseRulesText))
             {
                 parsedValue = CreateDefaultParsedValues(responseBytes, normalizedResponse, command.ResponseFormat);
-                message = "\u5df2\u751f\u6210\u8fd4\u56de\u9884\u89c8\uff0c\u672a\u586b\u5199 Lua \u89e3\u6790\u811a\u672c\u3002";
+                message = "已生成返回预览，未填写 Lua 解析脚本。";
             }
             else
             {
@@ -974,7 +1165,7 @@ namespace Module.Communication.Models
                     return false;
                 }
 
-                message = "\u8fd4\u56de\u6570\u636e Lua \u89e3\u6790\u9884\u89c8\u5df2\u751f\u6210\u3002";
+                message = "返回数据 Lua 解析预览已生成。";
             }
 
             result = new ProtocolResponsePreviewResult(
@@ -1131,7 +1322,7 @@ namespace Module.Communication.Models
             prefixScript = string.Empty;
             if (string.IsNullOrWhiteSpace(command.SampleResponseText))
             {
-                message = "\u8bf7\u5148\u586b\u5199\u793a\u4f8b\u8fd4\u56de\u6570\u636e\u3002";
+                message = "请先填写示例返回数据。";
                 return false;
             }
 
@@ -1174,7 +1365,7 @@ namespace Module.Communication.Models
             }
             catch (Exception ex)
             {
-                message = $"\u89e3\u6790 Lua \u811a\u672c\u6267\u884c\u5931\u8d25\uff1a{ex.Message}";
+                message = $"解析 Lua 脚本执行失败：{ex.Message}";
                 return false;
             }
         }

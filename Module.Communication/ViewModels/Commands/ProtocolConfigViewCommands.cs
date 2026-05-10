@@ -26,6 +26,10 @@ public sealed partial class ProtocolConfigViewModel
         PayloadFormats.Add(new ProtocolOption<ProtocolPayloadFormat>(ProtocolPayloadFormat.Hex, "Hex", "按十六进制字节内容构建报文。"));
         PayloadFormats.Add(new ProtocolOption<ProtocolPayloadFormat>(ProtocolPayloadFormat.Ascii, "ASCII", "按 ASCII 文本内容构建报文。"));
 
+        ExecutionModes.Add(new ProtocolOption<ProtocolExecutionMode>(ProtocolExecutionMode.SendOnly, "发送不等待返回", "只发送指令，不解析返回数据。"));
+        ExecutionModes.Add(new ProtocolOption<ProtocolExecutionMode>(ProtocolExecutionMode.SendAndWaitForResponse, "发送等待数据返回", "发送指令后等待设备返回数据，并执行解析。"));
+        ExecutionModes.Add(new ProtocolOption<ProtocolExecutionMode>(ProtocolExecutionMode.ParseOnly, "仅解析", "不发送指令，直接接收一帧数据并执行解析。"));
+
         CrcModes.Add(new ProtocolOption<ProtocolCrcMode>(ProtocolCrcMode.None, "无校验", "不自动追加 CRC。"));
         CrcModes.Add(new ProtocolOption<ProtocolCrcMode>(ProtocolCrcMode.ModbusCrc16, "Modbus CRC16", "低字节在前，高字节在后。"));
         CrcModes.Add(new ProtocolOption<ProtocolCrcMode>(ProtocolCrcMode.Crc16Ibm, "CRC16-IBM", "IBM 反射模式，低字节在前。"));
@@ -257,7 +261,7 @@ public sealed partial class ProtocolConfigViewModel
             return;
         }
 
-        if (!selectedCommand.WaitForResponse)
+        if (!selectedCommand.WaitForResponse && !selectedCommand.IsParseOnly)
         {
             ParsedResultText = string.Empty;
             SetPageStatus("当前指令未启用等待数据返回。", WarningBrush);

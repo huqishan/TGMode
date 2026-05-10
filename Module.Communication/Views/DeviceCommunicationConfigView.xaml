@@ -1,23 +1,20 @@
-﻿<UserControl x:Class="Module.Communication.Views.DeviceCommunicationConfigView"
+<UserControl x:Class="Module.Communication.Views.DeviceCommunicationConfigView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:convert="clr-namespace:ControlLibrary.Converts;assembly=ControlLibrary"
-             xmlns:vm="clr-namespace:Module.Communication.ViewModels"
+             xmlns:searchBox="clr-namespace:ControlLibrary.Controls.SearchBox.Control;assembly=ControlLibrary"
              mc:Ignorable="d"
              HorizontalAlignment="Stretch"
              VerticalAlignment="Stretch"
              d:DesignHeight="760"
              d:DesignWidth="1800">
-    <UserControl.DataContext>
-        <vm:DeviceCommunicationConfigViewModel />
-    </UserControl.DataContext>
-
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter" />
-        <convert:ComparisonToVisibilityConvert x:Key="ComparisonToVisibilityConvert"/>
-<DataTemplate x:Key="CommunicationTypeItemTemplate">
+        <convert:ComparisonToVisibilityConvert x:Key="ComparisonToVisibilityConvert" />
+
+        <DataTemplate x:Key="CommunicationTypeItemTemplate">
             <TextBlock Foreground="{DynamicResource AppContentTextBrush}" Text="{Binding DisplayName}" />
         </DataTemplate>
 
@@ -49,6 +46,17 @@
                        FontWeight="SemiBold"
                        Text="{Binding DisplayName}" />
         </DataTemplate>
+
+        <Style x:Key="ProtocolPathButtonStyle" TargetType="Button">
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Margin" Value="0" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="HorizontalContentAlignment" Value="Left" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="Foreground" Value="{DynamicResource AppContentTextBrush}" />
+            <Setter Property="Cursor" Value="Hand" />
+        </Style>
     </UserControl.Resources>
 
     <Grid HorizontalAlignment="Stretch"
@@ -56,12 +64,13 @@
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="400" />
             <ColumnDefinition Width="16" />
-            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
 
         <Border Grid.Column="0" Style="{StaticResource CardBorderStyle}">
             <Grid>
                 <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="*" />
@@ -71,12 +80,17 @@
                     <TextBlock Style="{StaticResource SectionTitleStyle}" Text="设备通信配置" />
                     <TextBlock Margin="0,8,0,0"
                                Foreground="{DynamicResource AppMutedTextBrush}"
-                               Text="集中维护设备连接参数，支持 TCP Client、TCP Server、UDP 和 COM 通信方式。"
+                               Text="维护 TCP 客户端、TCP 服务端、UDP、串口和 PLC 设备的通信连接参数。"
                                TextWrapping="Wrap" />
                 </StackPanel>
 
-                <UniformGrid Grid.Row="1" Columns="4" Margin="0,18,0,16">
-                    <Button Content="新建"
+                <searchBox:SearchBox Grid.Row="1"
+                                     Margin="0,16,0,0"
+                                     PlaceholderText="搜索设备通信配置..."
+                                     Text="{Binding SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+
+                <UniformGrid Grid.Row="2" Columns="4" Margin="0,16,0,16">
+                    <Button Content="新增"
                             Style="{StaticResource PrimaryActionButtonStyle}"
                             Command="{Binding NewProfileCommand}" />
                     <Button Content="复制"
@@ -90,27 +104,29 @@
                             Command="{Binding SaveProfilesCommand}" />
                 </UniformGrid>
 
-                <ListBox Grid.Row="2"
-                         ItemsSource="{Binding Profiles}"
+                <ListBox Grid.Row="3"
+                         ItemsSource="{Binding ProfilesView}"
                          SelectedItem="{Binding SelectedProfile, Mode=TwoWay}"
                          BorderThickness="0"
                          Background="Transparent"
                          ItemContainerStyle="{StaticResource ListBoxItemStyle}">
                     <ListBox.ItemTemplate>
                         <DataTemplate>
-                            <StackPanel>
+                            <StackPanel Width="320">
                                 <DockPanel LastChildFill="True">
                                     <TextBlock FontSize="15"
                                                FontWeight="SemiBold"
                                                Text="{Binding LocalName}" />
-                                    <Border Width="100" HorizontalAlignment="Right"
+                                    <Border Width="100"
+                                            HorizontalAlignment="Right"
                                             Margin="10,0,0,0"
                                             Padding="8,2"
                                             Background="{DynamicResource PrimaryButtonBrush}"
                                             BorderBrush="{DynamicResource SecondaryButtonBorderBrush}"
                                             BorderThickness="1"
                                             CornerRadius="999">
-                                        <TextBlock FontSize="11" HorizontalAlignment="Center"
+                                        <TextBlock FontSize="11"
+                                                   HorizontalAlignment="Center"
                                                    Foreground="{DynamicResource AppContentTextBrush}"
                                                    Text="{Binding TypeDisplayName}" />
                                     </Border>
@@ -120,19 +136,26 @@
                                            Foreground="{DynamicResource AppMutedTextBrush}"
                                            Text="{Binding Summary}"
                                            TextWrapping="Wrap" />
+                                <TextBlock Margin="0,6,0,0"
+                                           Foreground="{DynamicResource AppMutedTextBrush}"
+                                           Text="{Binding SupportedProtocolsDisplayText}"
+                                           TextWrapping="NoWrap"
+                                           TextTrimming="CharacterEllipsis" />
                             </StackPanel>
                         </DataTemplate>
                     </ListBox.ItemTemplate>
                 </ListBox>
             </Grid>
         </Border>
+
         <Grid Grid.Column="2"
               HorizontalAlignment="Stretch"
               VerticalAlignment="Stretch">
             <Grid.RowDefinitions>
-                <RowDefinition Height="0.45*"/>
-                <RowDefinition Height="3*"/>
+                <RowDefinition Height="0.45*" />
+                <RowDefinition Height="3*" />
             </Grid.RowDefinitions>
+
             <Border Grid.Row="0"
                     HorizontalAlignment="Stretch"
                     VerticalAlignment="Stretch"
@@ -141,16 +164,20 @@
                             VerticalAlignment="Stretch">
                     <TextBlock Style="{StaticResource SectionTitleStyle}" Text="当前配置" />
                     <TextBlock Margin="0,8,0,0"
-                   Foreground="{DynamicResource AppMutedTextBrush}"
-                   Text="{Binding SelectedProfile.TypeDescription}"
-                   TextWrapping="Wrap" />
+                               Foreground="{DynamicResource AppMutedTextBrush}"
+                               Text="{Binding SelectedProfile.TypeDescription}"
+                               TextWrapping="Wrap" />
                     <TextBlock Margin="0,12,0,0"
-                   FontWeight="SemiBold"
-                   Text="{Binding SelectedProfile.Summary}"
-                   TextWrapping="Wrap" />
+                               FontWeight="SemiBold"
+                               Text="{Binding SelectedProfile.Summary}"
+                               TextWrapping="Wrap" />
+                    <TextBlock Margin="0,8,0,0"
+                               Foreground="{DynamicResource AppMutedTextBrush}"
+                               Text="{Binding SelectedProfile.SupportedProtocolsDisplayText}"
+                               TextWrapping="NoWrap"
+                               TextTrimming="CharacterEllipsis" />
                 </StackPanel>
             </Border>
-
 
             <Grid Grid.Row="1"
                   Margin="0,16,0,0"
@@ -170,280 +197,519 @@
 
                         <TextBlock Style="{StaticResource FieldLabelStyle}" Text="配置名称" />
                         <TextBox Style="{StaticResource InputTextBoxStyle}"
-                     Text="{Binding SelectedProfile.LocalName, UpdateSourceTrigger=PropertyChanged}" />
+                                 Text="{Binding SelectedProfile.LocalName, UpdateSourceTrigger=PropertyChanged}" />
 
-                        <TextBlock Style="{StaticResource FieldLabelStyle}" Text="通信方式" />
-                        <ComboBox Style="{StaticResource InputComboBoxStyle}" ItemContainerStyle="{StaticResource InputComboBoxItemStyle}" x:Name="communicationType"
-                      ItemsSource="{Binding CommunicationTypes}"
-                      ItemTemplate="{StaticResource CommunicationTypeItemTemplate}"
-                      SelectedValue="{Binding SelectedProfile.Type, Mode=TwoWay}"
-                      SelectedValuePath="Value" />
-
+                        <TextBlock Style="{StaticResource FieldLabelStyle}" Text="通信类型" />
+                        <ComboBox x:Name="communicationType"
+                                  Style="{StaticResource InputComboBoxStyle}"
+                                  ItemContainerStyle="{StaticResource InputComboBoxItemStyle}"
+                                  ItemsSource="{Binding CommunicationTypes}"
+                                  ItemTemplate="{StaticResource CommunicationTypeItemTemplate}"
+                                  SelectedValue="{Binding SelectedProfile.Type, Mode=TwoWay}"
+                                  SelectedValuePath="Value" />
 
                         <StackPanel Visibility="{Binding ElementName=communicationType, Path=SelectedItem.Value, Converter={StaticResource ComparisonToVisibilityConvert}, ConverterParameter='TCPClient|TCPServer'}">
                             <TextBlock Style="{StaticResource FieldLabelStyle}" Text="本地 IP 地址" />
                             <TextBox Style="{StaticResource InputTextBoxStyle}"
-                         Text="{Binding SelectedProfile.LocalIPAddress, UpdateSourceTrigger=PropertyChanged}" />
+                                     Text="{Binding SelectedProfile.LocalIPAddress, UpdateSourceTrigger=PropertyChanged}" />
 
                             <TextBlock Style="{StaticResource FieldLabelStyle}" Text="本地端口" />
                             <TextBox Style="{StaticResource InputTextBoxStyle}"
-                         Text="{Binding SelectedProfile.LocalPort, UpdateSourceTrigger=PropertyChanged}" />
+                                     Text="{Binding SelectedProfile.LocalPort, UpdateSourceTrigger=PropertyChanged}" />
                         </StackPanel>
-                        <StackPanel Visibility="{Binding ElementName=communicationType, Path=SelectedItem.Value, Converter={StaticResource ComparisonToVisibilityConvert}, ConverterParameter='PLC'}">
-                            <TextBlock Style="{StaticResource FieldLabelStyle}" Text="PLC类型" />
-                            <ComboBox Style="{StaticResource InputComboBoxStyle}" ItemContainerStyle="{StaticResource InputComboBoxItemStyle}"
-ItemsSource="{Binding PLCTypes}"
-ItemTemplate="{StaticResource CommunicationTypeItemTemplate}"
-SelectedValue="{Binding SelectedProfile.PLCType, Mode=TwoWay}"
-SelectedValuePath="Value" />
-                        </StackPanel>
-                        <StackPanel Visibility="{Binding ElementName=communicationType, Path=SelectedItem.Value, Converter={StaticResource ComparisonToVisibilityConvert}, ConverterParameter='TCPClient|UDP|PLC'}">
-                            <TextBlock Style="{StaticResource FieldLabelStyle}" Text="远程 IP 地址" />
-                            <TextBox Style="{StaticResource InputTextBoxStyle}"
-                         Text="{Binding SelectedProfile.RemoteIPAddress, UpdateSourceTrigger=PropertyChanged}" />
 
-                            <TextBlock Style="{StaticResource FieldLabelStyle}" Text="远程端口" />
-                            <TextBox Style="{StaticResource InputTextBoxStyle}"
-                         Text="{Binding SelectedProfile.RemotePort, UpdateSourceTrigger=PropertyChanged}" />
+                        <StackPanel Visibility="{Binding ElementName=communicationType, Path=SelectedItem.Value, Converter={StaticResource ComparisonToVisibilityConvert}, ConverterParameter='PLC'}">
+                            <TextBlock Style="{StaticResource FieldLabelStyle}" Text="PLC 类型" />
+                            <ComboBox Style="{StaticResource InputComboBoxStyle}"
+                                      ItemContainerStyle="{StaticResource InputComboBoxItemStyle}"
+                                      ItemsSource="{Binding PLCTypes}"
+                                      ItemTemplate="{StaticResource CommunicationTypeItemTemplate}"
+                                      SelectedValue="{Binding SelectedProfile.PLCType, Mode=TwoWay}"
+                                      SelectedValuePath="Value" />
                         </StackPanel>
-                        
+
+                        <StackPanel Visibility="{Binding ElementName=communicationType, Path=SelectedItem.Value, Converter={StaticResource ComparisonToVisibilityConvert}, ConverterParameter='TCPClient|UDP|PLC'}">
+                            <TextBlock Style="{StaticResource FieldLabelStyle}" Text="远端 IP 地址" />
+                            <TextBox Style="{StaticResource InputTextBoxStyle}"
+                                     Text="{Binding SelectedProfile.RemoteIPAddress, UpdateSourceTrigger=PropertyChanged}" />
+
+                            <TextBlock Style="{StaticResource FieldLabelStyle}" Text="远端端口" />
+                            <TextBox Style="{StaticResource InputTextBoxStyle}"
+                                     Text="{Binding SelectedProfile.RemotePort, UpdateSourceTrigger=PropertyChanged}" />
+                        </StackPanel>
+
                         <StackPanel Visibility="{Binding ElementName=communicationType, Path=SelectedItem.Value, Converter={StaticResource ComparisonToVisibilityConvert}, ConverterParameter='COM'}">
                             <DockPanel Margin="0,14,0,6">
                                 <TextBlock VerticalAlignment="Center"
                                            Margin="0"
                                            Style="{StaticResource FieldLabelStyle}"
-                                           Text="串口名称" />
-                                <Button DockPanel.Dock="Right" HorizontalAlignment="Right"
+                                           Text="端口名称" />
+                                <Button DockPanel.Dock="Right"
+                                        HorizontalAlignment="Right"
                                         Content="刷新串口"
                                         Style="{StaticResource PrimaryActionButtonStyle}"
                                         Command="{Binding RefreshPortsCommand}" />
                             </DockPanel>
+
                             <ComboBox Style="{StaticResource InputComboBoxStyle}"
-                          IsEditable="True"
-                          ItemsSource="{Binding PortNameOptions}"
-                          ItemTemplate="{StaticResource PortNameItemTemplate}"
-                          ItemContainerStyle="{StaticResource InputComboBoxItemStyle}"
-                          Text="{Binding SelectedProfile.PortName, UpdateSourceTrigger=PropertyChanged}" />
+                                      IsEditable="True"
+                                      ItemsSource="{Binding PortNameOptions}"
+                                      ItemTemplate="{StaticResource PortNameItemTemplate}"
+                                      ItemContainerStyle="{StaticResource InputComboBoxItemStyle}"
+                                      Text="{Binding SelectedProfile.PortName, UpdateSourceTrigger=PropertyChanged}" />
 
                             <TextBlock Style="{StaticResource FieldLabelStyle}" Text="波特率" />
                             <ComboBox Style="{StaticResource InputComboBoxStyle}"
-                          ItemsSource="{Binding BaudRateOptions}"
-                          ItemTemplate="{StaticResource SelectionOptionItemTemplate}"
-                          ItemContainerStyle="{StaticResource InputComboBoxItemStyle}"
-                          SelectedValue="{Binding SelectedProfile.BaudRate, Mode=TwoWay}"
-                          SelectedValuePath="Value" />
+                                      ItemsSource="{Binding BaudRateOptions}"
+                                      ItemTemplate="{StaticResource SelectionOptionItemTemplate}"
+                                      ItemContainerStyle="{StaticResource InputComboBoxItemStyle}"
+                                      SelectedValue="{Binding SelectedProfile.BaudRate, Mode=TwoWay}"
+                                      SelectedValuePath="Value" />
 
                             <TextBlock Style="{StaticResource FieldLabelStyle}" Text="校验位" />
                             <ComboBox Style="{StaticResource InputComboBoxStyle}"
-                          ItemsSource="{Binding ParityOptions}"
-                          ItemTemplate="{StaticResource SelectionOptionItemTemplate}"
-                          ItemContainerStyle="{StaticResource InputComboBoxItemStyle}"
-                          SelectedValue="{Binding SelectedProfile.Parity, Mode=TwoWay}"
-                          SelectedValuePath="Value" />
+                                      ItemsSource="{Binding ParityOptions}"
+                                      ItemTemplate="{StaticResource SelectionOptionItemTemplate}"
+                                      ItemContainerStyle="{StaticResource InputComboBoxItemStyle}"
+                                      SelectedValue="{Binding SelectedProfile.Parity, Mode=TwoWay}"
+                                      SelectedValuePath="Value" />
 
                             <TextBlock Style="{StaticResource FieldLabelStyle}" Text="数据位" />
                             <ComboBox Style="{StaticResource InputComboBoxStyle}"
-                          ItemsSource="{Binding DataBitOptions}"
-                          ItemTemplate="{StaticResource SelectionOptionItemTemplate}"
-                          ItemContainerStyle="{StaticResource InputComboBoxItemStyle}"
-                          SelectedValue="{Binding SelectedProfile.DataBits, Mode=TwoWay}"
-                          SelectedValuePath="Value" />
+                                      ItemsSource="{Binding DataBitOptions}"
+                                      ItemTemplate="{StaticResource SelectionOptionItemTemplate}"
+                                      ItemContainerStyle="{StaticResource InputComboBoxItemStyle}"
+                                      SelectedValue="{Binding SelectedProfile.DataBits, Mode=TwoWay}"
+                                      SelectedValuePath="Value" />
 
                             <TextBlock Style="{StaticResource FieldLabelStyle}" Text="停止位" />
                             <ComboBox Style="{StaticResource InputComboBoxStyle}"
-                          ItemsSource="{Binding StopBitOptions}"
-                          ItemTemplate="{StaticResource SelectionOptionItemTemplate}"
-                          ItemContainerStyle="{StaticResource InputComboBoxItemStyle}"
-                          SelectedValue="{Binding SelectedProfile.StopBits, Mode=TwoWay}"
-                          SelectedValuePath="Value" />
+                                      ItemsSource="{Binding StopBitOptions}"
+                                      ItemTemplate="{StaticResource SelectionOptionItemTemplate}"
+                                      ItemContainerStyle="{StaticResource InputComboBoxItemStyle}"
+                                      SelectedValue="{Binding SelectedProfile.StopBits, Mode=TwoWay}"
+                                      SelectedValuePath="Value" />
                         </StackPanel>
                     </StackPanel>
                 </Border>
 
-                <Border Grid.Column="2"
-                        HorizontalAlignment="Stretch"
-                        VerticalAlignment="Stretch"
-                        MinHeight="360"
-                        Style="{StaticResource CardBorderStyle}">
-                    <Grid HorizontalAlignment="Stretch"
-                          VerticalAlignment="Stretch">
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="120"/>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="*" MinHeight="180"/>
-                        </Grid.RowDefinitions>
-                        <DockPanel LastChildFill="False"
-                                   HorizontalAlignment="Stretch">
-                            <TextBlock Style="{StaticResource SectionTitleStyle}" Text="通信测试" />
-                            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-                                <Border Margin="0,0,10,0"
-Padding="10,5"
-Background="{DynamicResource TabCardBackgroundBrush}"
-BorderBrush="{DynamicResource TabItemBorderBrush}"
-BorderThickness="1"
-CornerRadius="999">
-                                    <TextBlock FontWeight="SemiBold" VerticalAlignment="Center"
-       Foreground="{Binding ConnectionStatusBrush}"
-       Text="{Binding ConnectionStatusText}" />
-                                </Border>
-                                <Button Content="测试连接"
-Style="{StaticResource PrimaryActionButtonStyle}"
-Command="{Binding TestConnectionCommand}" />
-                                <Button Content="断开"
-Style="{StaticResource ActionButtonStyle}"
-Command="{Binding CloseConnectionCommand}" />
-                            </StackPanel>
-                        </DockPanel>
+                <Grid Grid.Column="2">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="16" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
 
-                        <TextBlock Margin="0,8,0,0" Grid.Row="1"
-Foreground="{DynamicResource AppMutedTextBrush}"
- Text="测试会按当前配置创建通信对象；TCP Server 可选择客户端发送，PLC 可使用下方读取或写入测试。"
-TextWrapping="Wrap" />
-                        <StackPanel Grid.Row="2"
-                                     Visibility="{Binding ElementName=communicationType, Path=SelectedItem.Value, Converter={StaticResource ComparisonToVisibilityConvert}, ConverterParameter='TCPServer'}">
-                            <DockPanel Margin="0,14,0,6"
-                                       LastChildFill="False">
-                                <TextBlock Margin="0"
-                                           Style="{StaticResource FieldLabelStyle}"
-                                            Text="当前已连接客户端" />
-                                <TextBlock DockPanel.Dock="Right"
-                                           VerticalAlignment="Center"
-                                           Foreground="{DynamicResource AppMutedTextBrush}"
-                                           Text="{Binding ConnectedServerClientStatusText}" />
-                            </DockPanel>
-                            <ComboBox Style="{StaticResource ConnectedClientComboBoxStyle}"
-                                      ItemsSource="{Binding ConnectedServerClients}"
-                                      ItemTemplate="{StaticResource ConnectedClientItemTemplate}"
-                                      ItemContainerStyle="{StaticResource ConnectedClientComboBoxItemStyle}"
-                                      SelectedItem="{Binding SelectedServerClient, Mode=TwoWay}" />
-                        </StackPanel>
-                        <TextBlock Grid.Row="3"
-                                   Visibility="{Binding IsGenericSendTestVisible, Converter={StaticResource BoolToVisibilityConverter}}"
-                                   Style="{StaticResource FieldLabelStyle}"
-                                   Text="发送内容" />
-                        <Grid Grid.Row="4"
-                              Visibility="{Binding IsGenericSendTestVisible, Converter={StaticResource BoolToVisibilityConverter}}"
-                              HorizontalAlignment="Stretch"
-                              VerticalAlignment="Stretch">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="96" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <TextBox Grid.Column="0"
- Margin="0,0,10,0"
- Style="{StaticResource InputTextBoxStyle}"
- AcceptsReturn="True"
- HorizontalAlignment="Stretch"
- VerticalAlignment="Stretch"
- VerticalScrollBarVisibility="Auto"
- Text="{Binding SendText, UpdateSourceTrigger=PropertyChanged}" />
-                            <Button Grid.Column="1"
- Content="发送"
-Style="{StaticResource PrimaryActionButtonStyle}"
-Command="{Binding SendCommand}" />
-                            <Button Grid.Column="2"
- Content="全部发送"
-Style="{StaticResource ActionButtonStyle}"
- Visibility="{Binding ElementName=communicationType, Path=SelectedItem.Value, Converter={StaticResource ComparisonToVisibilityConvert}, ConverterParameter='TCPServer'}"
-Command="{Binding SendAllCommand}" />
-                        </Grid>
-
-                        <Grid Grid.Row="3"
-                              Grid.RowSpan="2"
-                              Visibility="{Binding ElementName=communicationType, Path=SelectedItem.Value, Converter={StaticResource ComparisonToVisibilityConvert}, ConverterParameter='PLC'}">
+                    <Border Grid.Row="0"
+                            MinHeight="240"
+                            Style="{StaticResource CardBorderStyle}">
+                        <Grid>
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
                             </Grid.RowDefinitions>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="1.2*" />
-                                <ColumnDefinition Width="12" />
-                                <ColumnDefinition Width="0.8*" />
-                                <ColumnDefinition Width="12" />
-                                <ColumnDefinition Width="0.8*" />
-                                <ColumnDefinition Width="12" />
-                                <ColumnDefinition Width="1.2*" />
-                                <ColumnDefinition Width="12" />
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="8" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
 
-                            <StackPanel Grid.Column="0">
-                                <TextBlock Style="{StaticResource FieldLabelStyle}" Text="PLC 地址" />
-                                <TextBox Style="{StaticResource InputTextBoxStyle}"
-                                         Text="{Binding PlcAddress, UpdateSourceTrigger=PropertyChanged}" />
-                            </StackPanel>
+                            <DockPanel LastChildFill="False">
+                                <TextBlock Style="{StaticResource SectionTitleStyle}" Text="协议配置" />
+                                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                                    <Button Content="添加"
+                                            Style="{StaticResource PrimaryActionButtonStyle}"
+                                            Command="{Binding AddSupportedProtocolCommand}" />
+                                </StackPanel>
+                            </DockPanel>
 
-                            <StackPanel Grid.Column="2">
-                                <TextBlock Style="{StaticResource FieldLabelStyle}" Text="长度" />
-                                <TextBox Style="{StaticResource InputTextBoxStyle}"
-                                         Text="{Binding PlcLength, UpdateSourceTrigger=PropertyChanged}" />
-                            </StackPanel>
+                            <TextBlock Grid.Row="1"
+                                       Margin="0,8,0,10"
+                                       Foreground="{DynamicResource AppMutedTextBrush}"
+                                       Text="一个设备可关联多个协议。点击“添加”后会在下方通信测试区域弹出协议列表，支持将协议拖入表格，也可点击协议路径直接导入协议文件。"
+                                       TextWrapping="Wrap" />
 
-                            <StackPanel Grid.Column="4">
-                                <TextBlock Style="{StaticResource FieldLabelStyle}" Text="数据类型" />
-                                <ComboBox Style="{StaticResource InputComboBoxStyle}"
-                                          ItemsSource="{Binding PlcDataTypeOptions}"
-                                          ItemTemplate="{StaticResource SelectionOptionItemTemplate}"
-                                          ItemContainerStyle="{StaticResource InputComboBoxItemStyle}"
-                                          SelectedValue="{Binding SelectedPlcDataType, Mode=TwoWay}"
-                                          SelectedValuePath="Value" />
-                            </StackPanel>
+                            <DataGrid x:Name="SupportedProtocolsDataGrid" Height="140"
+                                      Grid.Row="2"
+                                      Style="{StaticResource ColumnsDataGridStyle}"
+                                      ItemsSource="{Binding SelectedProfile.SupportedProtocols}"
+                                      IsReadOnly="True" HorizontalScrollBarVisibility="Disabled"
+                                      HeadersVisibility="Column"
+                                      CanUserResizeRows="False"
+                                      CanUserSortColumns="False"
+                                      GridLinesVisibility="Horizontal"
+                                      AllowDrop="True"
+                                      DragOver="SupportedProtocolsDataGrid_DragOver"
+                                      Drop="SupportedProtocolsDataGrid_Drop">
+                                <DataGrid.Columns>
+                                    <DataGridTemplateColumn Header="协议名称" Width="180">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Style="{StaticResource CellTextBlockStyle}"
+                                                           Text="{Binding DisplayProtocolName}" />
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
 
-                            <StackPanel Grid.Column="6">
-                                <TextBlock Style="{StaticResource FieldLabelStyle}" Text="写入值" />
-                                <TextBox Style="{StaticResource InputTextBoxStyle}"
-                                         Text="{Binding PlcWriteValue, UpdateSourceTrigger=PropertyChanged}" />
-                            </StackPanel>
+                                    <DataGridTemplateColumn Header="协议文件路径" Width="*">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <Button Style="{StaticResource ProtocolPathButtonStyle}"
+                                                        Command="{Binding DataContext.LoadSupportedProtocolFileCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                                        CommandParameter="{Binding}"
+                                                        ToolTip="{Binding ProtocolFilePath}">
+                                                    <TextBlock Text="{Binding DisplayProtocolFilePath}"
+                                                               TextTrimming="CharacterEllipsis" />
+                                                </Button>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
 
-                            <Button Grid.Column="8" Margin="0"
-                                    VerticalAlignment="Bottom"
-                                    Content="读取"
-                                    Style="{StaticResource PrimaryActionButtonStyle}"
-                                    Command="{Binding ReadPlcCommand}" />
-                            <Button Grid.Column="10" Margin="0"
-                                    VerticalAlignment="Bottom"
-                                    Content="写入"
-                                    Style="{StaticResource ActionButtonStyle}"
-                                    Command="{Binding WritePlcCommand}" />
+                                    <DataGridTemplateColumn Header="操作" Width="96">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <Button Content="删除"
+                                                        Style="{StaticResource ActionButtonStyle}"
+                                                        Command="{Binding DataContext.DeleteSupportedProtocolCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                                        CommandParameter="{Binding}" />
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+                                </DataGrid.Columns>
+                            </DataGrid>
                         </Grid>
-                        <DockPanel Margin="0,14,0,6" LastChildFill="False" Grid.Row="5" >
-                            <TextBlock DockPanel.Dock="Left" VerticalAlignment="Bottom"
-   Style="{StaticResource FieldLabelStyle}"
-   Margin="0"
-   Text="接收 / 日志" />
-                            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-                                <Button
-Content="清空"
-Style="{StaticResource ActionButtonStyle}"
-Command="{Binding ClearReceiveCommand}" />
+                    </Border>
+
+                    <Border Grid.Row="2" x:Name="communicationTestBorder"
+                            Style="{StaticResource CardBorderStyle}">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="100" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+
+                            <DockPanel LastChildFill="False"
+                                       HorizontalAlignment="Stretch">
+                                <TextBlock Style="{StaticResource SectionTitleStyle}" Text="通信测试" />
+                                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                                    <Border Margin="0,0,10,0"
+                                            Padding="10,5"
+                                            Background="{DynamicResource TabCardBackgroundBrush}"
+                                            BorderBrush="{DynamicResource TabItemBorderBrush}"
+                                            BorderThickness="1"
+                                            CornerRadius="999">
+                                        <TextBlock FontWeight="SemiBold"
+                                                   VerticalAlignment="Center"
+                                                   Foreground="{Binding ConnectionStatusBrush}"
+                                                   Text="{Binding ConnectionStatusText}" />
+                                    </Border>
+                                    <Button Content="测试连接"
+                                            Style="{StaticResource PrimaryActionButtonStyle}"
+                                            Command="{Binding TestConnectionCommand}" />
+                                    <Button Content="关闭"
+                                            Style="{StaticResource ActionButtonStyle}"
+                                            Command="{Binding CloseConnectionCommand}" />
+                                </StackPanel>
+                            </DockPanel>
+
+                            <TextBlock Grid.Row="1"
+                                       Margin="0,8,0,0"
+                                       Foreground="{DynamicResource AppMutedTextBrush}"
+                                       Text="测试区域会根据当前配置创建通信对象。TCP 服务端模式下可对指定客户端发送报文，PLC 模式下支持下方读写测试。"
+                                       TextWrapping="Wrap" />
+
+                            <StackPanel Grid.Row="2"
+                                        Visibility="{Binding ElementName=communicationType, Path=SelectedItem.Value, Converter={StaticResource ComparisonToVisibilityConvert}, ConverterParameter='TCPServer'}">
+                                <DockPanel Margin="0,14,0,6"
+                                           LastChildFill="False">
+                                    <TextBlock Margin="0"
+                                               Style="{StaticResource FieldLabelStyle}"
+                                               Text="已连接客户端" />
+                                    <TextBlock DockPanel.Dock="Right"
+                                               VerticalAlignment="Center"
+                                               Foreground="{DynamicResource AppMutedTextBrush}"
+                                               Text="{Binding ConnectedServerClientStatusText}" />
+                                </DockPanel>
+                                <ComboBox Style="{StaticResource ConnectedClientComboBoxStyle}"
+                                          ItemsSource="{Binding ConnectedServerClients}"
+                                          ItemTemplate="{StaticResource ConnectedClientItemTemplate}"
+                                          ItemContainerStyle="{StaticResource ConnectedClientComboBoxItemStyle}"
+                                          SelectedItem="{Binding SelectedServerClient, Mode=TwoWay}" />
                             </StackPanel>
+
+                            <DockPanel Grid.Row="3"
+                                       LastChildFill="False"
+                                       Visibility="{Binding ElementName=communicationType, Path=SelectedItem.Value, Converter={StaticResource ComparisonToVisibilityConvert}, ConverterParameter='TCPServer|TCPClient|COM|UDP'}">
+                                <TextBlock Style="{StaticResource FieldLabelStyle}" Text="报文" />
+                                <TextBlock Foreground="{DynamicResource PrimaryButtonBrush}" Margin="14,14,0,6">
+                                    <Hyperlink Command="{Binding OpenProtocolCommandLibraryCommand}">填充指令</Hyperlink>
+                                </TextBlock>
+                            </DockPanel>
+
+                            <Grid Grid.Row="4"
+                                  Visibility="{Binding ElementName=communicationType, Path=SelectedItem.Value, Converter={StaticResource ComparisonToVisibilityConvert}, ConverterParameter='TCPServer|TCPClient|COM|UDP'}"
+                                  HorizontalAlignment="Stretch"
+                                  VerticalAlignment="Stretch">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="96" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+
+                                <TextBox Grid.Column="0"
+                                         Margin="0,0,10,0"
+                                         Style="{StaticResource InputTextBoxStyle}"
+                                         AcceptsReturn="True"
+                                         HorizontalAlignment="Stretch"
+                                         VerticalAlignment="Stretch"
+                                         VerticalScrollBarVisibility="Auto"
+                                         Text="{Binding SendText, UpdateSourceTrigger=PropertyChanged}" />
+                                <Button Grid.Column="1"
+                                        Content="发送"
+                                        Style="{StaticResource PrimaryActionButtonStyle}"
+                                        Command="{Binding SendCommand}" />
+                                <Button Grid.Column="2"
+                                        Content="全部发送"
+                                        Style="{StaticResource ActionButtonStyle}"
+                                        Visibility="{Binding ElementName=communicationType, Path=SelectedItem.Value, Converter={StaticResource ComparisonToVisibilityConvert}, ConverterParameter='TCPServer'}"
+                                        Command="{Binding SendAllCommand}" />
+                            </Grid>
+
+                            <Grid Grid.Row="3"
+                                  Grid.RowSpan="2"
+                                  Visibility="{Binding ElementName=communicationType, Path=SelectedItem.Value, Converter={StaticResource ComparisonToVisibilityConvert}, ConverterParameter='PLC'}">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="1.2*" />
+                                    <ColumnDefinition Width="12" />
+                                    <ColumnDefinition Width="0.8*" />
+                                    <ColumnDefinition Width="12" />
+                                    <ColumnDefinition Width="0.8*" />
+                                    <ColumnDefinition Width="12" />
+                                    <ColumnDefinition Width="1.2*" />
+                                    <ColumnDefinition Width="12" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="8" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="PLC 地址" />
+                                    <TextBox Style="{StaticResource InputTextBoxStyle}"
+                                             Text="{Binding PlcAddress, UpdateSourceTrigger=PropertyChanged}" />
+                                </StackPanel>
+
+                                <StackPanel Grid.Column="2">
+                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="长度" />
+                                    <TextBox Style="{StaticResource InputTextBoxStyle}"
+                                             Text="{Binding PlcLength, UpdateSourceTrigger=PropertyChanged}" />
+                                </StackPanel>
+
+                                <StackPanel Grid.Column="4">
+                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="数据类型" />
+                                    <ComboBox Style="{StaticResource InputComboBoxStyle}"
+                                              ItemsSource="{Binding PlcDataTypeOptions}"
+                                              ItemTemplate="{StaticResource SelectionOptionItemTemplate}"
+                                              ItemContainerStyle="{StaticResource InputComboBoxItemStyle}"
+                                              SelectedValue="{Binding SelectedPlcDataType, Mode=TwoWay}"
+                                              SelectedValuePath="Value" />
+                                </StackPanel>
+
+                                <StackPanel Grid.Column="6">
+                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="写入值" />
+                                    <TextBox Style="{StaticResource InputTextBoxStyle}"
+                                             Text="{Binding PlcWriteValue, UpdateSourceTrigger=PropertyChanged}" />
+                                </StackPanel>
+
+                                <Button Grid.Column="8"
+                                        Margin="0"
+                                        VerticalAlignment="Bottom"
+                                        Content="读取"
+                                        Style="{StaticResource PrimaryActionButtonStyle}"
+                                        Command="{Binding ReadPlcCommand}" />
+                                <Button Grid.Column="10"
+                                        Margin="0"
+                                        VerticalAlignment="Bottom"
+                                        Content="写入"
+                                        Style="{StaticResource ActionButtonStyle}"
+                                        Command="{Binding WritePlcCommand}" />
+                            </Grid>
+
+                            <DockPanel Grid.Row="5"
+                                       Margin="0,14,0,6"
+                                       LastChildFill="False">
+                                <TextBlock DockPanel.Dock="Left"
+                                           VerticalAlignment="Bottom"
+                                           Style="{StaticResource FieldLabelStyle}"
+                                           Margin="0"
+                                           Text="接收 / 日志" />
+                                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                                    <Button Content="清空"
+                                            Style="{StaticResource ActionButtonStyle}"
+                                            Command="{Binding ClearReceiveCommand}" />
+                                </StackPanel>
+                            </DockPanel>
+
+                            <TextBox Grid.Row="6"
+                                     Padding="12"
+                                     AcceptsReturn="True"
+                                     IsReadOnly="True"
+                                     HorizontalAlignment="Stretch"
+                                     VerticalAlignment="Stretch"
+                                     VerticalScrollBarVisibility="Auto"
+                                     HorizontalScrollBarVisibility="Auto"
+                                     FontFamily="Consolas"
+                                     FontSize="13"
+                                     Background="{DynamicResource TabCardBackgroundBrush}"
+                                     BorderBrush="{DynamicResource TabItemBorderBrush}"
+                                     BorderThickness="1"
+                                     Foreground="{DynamicResource AppContentTextBrush}"
+                                     Text="{Binding ReceiveText, Mode=OneWay}" />
+
                             
-                        </DockPanel>
-                        <TextBox Grid.Row="6"
-Padding="12"
-AcceptsReturn="True"
-IsReadOnly="True"
-MinHeight="180"
-HorizontalAlignment="Stretch"
-VerticalAlignment="Stretch"
-VerticalScrollBarVisibility="Auto"
-HorizontalScrollBarVisibility="Auto"
-FontFamily="Consolas"
-FontSize="13"
-Background="{DynamicResource TabCardBackgroundBrush}"
-BorderBrush="{DynamicResource TabItemBorderBrush}"
-BorderThickness="1"
-Foreground="{DynamicResource AppContentTextBrush}"
-Text="{Binding ReceiveText, Mode=OneWay}" />
+                        </Grid>
+                    </Border>
+                    <Grid x:Name="ProtocolLibraryHost"
+                          Grid.Row="2"
+                          Grid.RowSpan="7"
+                          Panel.ZIndex="10"
+                          Opacity="0"
+                          IsHitTestVisible="False">
+                        <Border Background="#3A000000"
+                                MouseLeftButtonDown="ProtocolLibraryBackdrop_MouseLeftButtonDown" />
+
+                        <Border x:Name="ProtocolLibrarySheet"
+                                Margin="0,56,0,0"
+                                MaxHeight="{Binding ActualHeight, ElementName=communicationTestBorder}"
+                                VerticalAlignment="Bottom"
+                                Style="{StaticResource DrawerBorderStyle}">
+                            <Border.RenderTransform>
+                                <TranslateTransform x:Name="ProtocolLibraryTranslateTransform" Y="56" />
+                            </Border.RenderTransform>
+
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="*" />
+                                </Grid.RowDefinitions>
+
+                                <DockPanel LastChildFill="False">
+                                    <TextBlock Style="{StaticResource SectionTitleStyle}" Text="协议列表" />
+                                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                                        <Button Content="关闭"
+                                                Style="{StaticResource ActionButtonStyle}"
+                                                Command="{Binding CloseProtocolLibraryCommand}" />
+                                    </StackPanel>
+                                </DockPanel>
+
+                                <TextBlock Grid.Row="1"
+                                           Margin="0,8,0,10"
+                                           Foreground="{DynamicResource AppMutedTextBrush}"
+                                           Text="双击可直接添加协议，也可以拖动到上方支持协议表格中。"
+                                           TextWrapping="Wrap" />
+
+                                <ListBox x:Name="ProtocolLibraryListBox"
+                                         Grid.Row="2"
+                                         BorderThickness="0"
+                                         Background="Transparent"
+                                         ItemsSource="{Binding AvailableProtocols}"
+                                         ItemContainerStyle="{StaticResource ListBoxItemStyle}"
+                                         PreviewMouseLeftButtonDown="ProtocolLibraryListBox_PreviewMouseLeftButtonDown"
+                                         PreviewMouseMove="ProtocolLibraryListBox_PreviewMouseMove"
+                                         MouseDoubleClick="ProtocolLibraryListBox_MouseDoubleClick">
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <StackPanel>
+                                                <TextBlock FontSize="14"
+                                                           FontWeight="SemiBold"
+                                                           Text="{Binding Name}" />
+                                                <TextBlock Margin="0,6,0,0"
+                                                           Foreground="{DynamicResource AppMutedTextBrush}"
+                                                           Text="{Binding FilePath}"
+                                                           TextWrapping="NoWrap"
+                                                           TextTrimming="CharacterEllipsis" />
+                                                <!--<TextBlock Margin="0,6,0,0"
+                                                           Foreground="{DynamicResource AppMutedTextBrush}"
+                                                           Text="{Binding Summary}"
+                                                           TextWrapping="Wrap" />-->
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+                            </Grid>
+                        </Border>
                     </Grid>
-                </Border>
+                    <Grid x:Name="ProtocolCommandLibraryHost"
+                          Grid.Row="2"
+                          Grid.RowSpan="7"
+                          Panel.ZIndex="11"
+                          Opacity="0"
+                          IsHitTestVisible="False">
+                        <Border Background="#3A000000"
+                                MouseLeftButtonDown="ProtocolCommandLibraryBackdrop_MouseLeftButtonDown" />
+
+                        <Border x:Name="ProtocolCommandLibrarySheet"
+                                Margin="0,56,0,0"
+                                MaxHeight="{Binding ActualHeight, ElementName=communicationTestBorder}"
+                                Style="{StaticResource DrawerBorderStyle}">
+                            <Border.RenderTransform>
+                                <TranslateTransform x:Name="ProtocolCommandLibraryTranslateTransform" Y="56" />
+                            </Border.RenderTransform>
+
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="*" />
+                                </Grid.RowDefinitions>
+
+                                <DockPanel LastChildFill="False">
+                                    <TextBlock Style="{StaticResource SectionTitleStyle}" Text="指令列表" />
+                                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                                        <Button Content="关闭"
+                                                Style="{StaticResource ActionButtonStyle}"
+                                                Command="{Binding CloseProtocolCommandLibraryCommand}" />
+                                    </StackPanel>
+                                </DockPanel>
+
+                                <TextBlock Grid.Row="1"
+                                           Margin="0,8,0,10"
+                                           Foreground="{DynamicResource AppMutedTextBrush}"
+                                           Text="显示当前支持协议中的全部指令。双击后会直接生成并填充报文到下方文本框。"
+                                           TextWrapping="Wrap" />
+
+                                <ListBox x:Name="ProtocolCommandLibraryListBox"
+                                         Grid.Row="2"
+                                         BorderThickness="0"
+                                         Background="Transparent"
+                                         ItemsSource="{Binding SupportedProtocolCommands}"
+                                         ItemContainerStyle="{StaticResource ListBoxItemStyle}"
+                                         MouseDoubleClick="ProtocolCommandLibraryListBox_MouseDoubleClick">
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <StackPanel>
+                                                <DockPanel LastChildFill="True">
+                                                    <TextBlock FontSize="14"
+                                                               FontWeight="SemiBold"
+                                                               Text="{Binding DisplayName}" />
+                                                </DockPanel>
+                                                <TextBlock Margin="0,6,0,0"
+                                                           FontFamily="Consolas"
+                                                           Text="{Binding PreviewMessage}"
+                                                           TextWrapping="Wrap" />
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+                            </Grid>
+                        </Border>
+                    </Grid>
+                </Grid>
             </Grid>
         </Grid>
     </Grid>

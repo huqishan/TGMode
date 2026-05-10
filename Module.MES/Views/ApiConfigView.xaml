@@ -13,10 +13,6 @@
              VerticalAlignment="Stretch"
              d:DesignHeight="900"
              d:DesignWidth="1800">
-    <UserControl.DataContext>
-        <vm:ApiConfigViewModel />
-    </UserControl.DataContext>
-
     <UserControl.Resources>
         <ResourceDictionary>
             <converts:ComparisonToVisibilityConvert x:Key="Comp2Vis" />

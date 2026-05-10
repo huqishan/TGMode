@@ -10,10 +10,6 @@
              VerticalAlignment="Stretch"
              d:DesignHeight="760"
              d:DesignWidth="1800">
-    <UserControl.DataContext>
-        <vm:SchemeConfigurationViewModel />
-    </UserControl.DataContext>
-
     <UserControl.Resources>
         <Style x:Key="BusinessInputTextBoxStyle" TargetType="{x:Type TextBox}">
             <Setter Property="MinHeight" Value="38" />

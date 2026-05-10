@@ -7,18 +7,15 @@
              xmlns:vm="clr-namespace:Module.Communication.ViewModels"
              xmlns:luaScript="clr-namespace:ControlLibrary.Controls.LuaScripEditor.Control;assembly=ControlLibrary"
              xmlns:luaCompiler="clr-namespace:ControlLibrary.ControlViews.LuaScrip;assembly=ControlLibrary"
+             xmlns:converts="clr-namespace:ControlLibrary.Converts;assembly=ControlLibrary"
              mc:Ignorable="d"
              HorizontalAlignment="Stretch"
              VerticalAlignment="Stretch"
              d:DesignHeight="760"
              d:DesignWidth="1800">
-    <UserControl.DataContext>
-        <vm:ProtocolConfigViewModel />
-    </UserControl.DataContext>
-
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter" />
-
+        <converts:ComparisonToVisibilityConvert x:Key="comp2vis"/>
         <DataTemplate x:Key="ProtocolOptionItemTemplate">
             <TextBlock Foreground="{DynamicResource AppContentTextBrush}" Text="{Binding DisplayName}" />
         </DataTemplate>
@@ -160,7 +157,7 @@ CornerRadius="999">
                         <TextBlock Grid.Row="1"
                                    Margin="0,8,0,10"
                                    Foreground="{DynamicResource AppMutedTextBrush}"
-                                   Text="&#x70b9;&#x51fb;&#x67d0;&#x6761;&#x8bbe;&#x5907;&#x6307;&#x4ee4;&#x540e;&#xff0c;&#x4f1a;&#x4ece;&#x4e0b;&#x4fa7;&#x6ed1;&#x51fa;&#x5f39;&#x7a97;&#xff0c;&#x663e;&#x793a;&#x57fa;&#x7840;&#x8bbe;&#x7f6e;&#x3001;&#x6267;&#x884c;&#x884c;&#x4e3a;&#x3001;&#x534f;&#x8bae;&#x6a21;&#x677f;&#x4e0e;&#x5360;&#x4f4d;&#x7b26;&#x3001;&#x8fd4;&#x56de;&#x793a;&#x4f8b;&#x4e0e; Lua &#x89e3;&#x6790;&#x811a;&#x672c;&#x3002;"
+                                   Text="点击某条设备指令后，会从下侧滑出弹窗，显示基础设置、执行行为、协议模板与占位符、返回示例与 Lua 解析脚本。"
                                    TextWrapping="Wrap" />
 
                         <ListBox Grid.Row="2"
@@ -240,25 +237,65 @@ CornerRadius="999">
                                                 <TextBox Style="{StaticResource InputTextBoxStyle}"
                                                          Text="{Binding SelectedProfile.CommandName, UpdateSourceTrigger=PropertyChanged}" />
 
-                                                <TextBlock Style="{StaticResource FieldLabelStyle}" Text="发送格式" />
-                                                <ComboBox Style="{StaticResource InputComboBoxStyle}"
-                                                          ItemContainerStyle="{StaticResource InputComboBoxItemStyle}"
-                                                          ItemTemplate="{StaticResource ProtocolOptionItemTemplate}"
-                                                          ItemsSource="{Binding PayloadFormats}"
-                                                          SelectedValue="{Binding SelectedProfile.RequestFormat, Mode=TwoWay}"
-                                                          SelectedValuePath="Value" />
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="16" />
+                                                        <ColumnDefinition Width="*" />
+                                                    </Grid.ColumnDefinitions>
 
-                                                <TextBlock Style="{StaticResource FieldLabelStyle}" Text="返回格式" />
-                                                <ComboBox Style="{StaticResource InputComboBoxStyle}"
-                                                          ItemContainerStyle="{StaticResource InputComboBoxItemStyle}"
-                                                          ItemTemplate="{StaticResource ProtocolOptionItemTemplate}"
-                                                          ItemsSource="{Binding PayloadFormats}"
-                                                          SelectedValue="{Binding SelectedProfile.ResponseFormat, Mode=TwoWay}"
-                                                          SelectedValuePath="Value" />
+                                                    <StackPanel Grid.Column="0">
+                                                        <TextBlock Style="{StaticResource FieldLabelStyle}" Text="发送格式" />
+                                                        <ComboBox Style="{StaticResource InputComboBoxStyle}"
+                                                                  ItemContainerStyle="{StaticResource InputComboBoxItemStyle}"
+                                                                  ItemTemplate="{StaticResource ProtocolOptionItemTemplate}"
+                                                                  ItemsSource="{Binding PayloadFormats}"
+                                                                  SelectedValue="{Binding SelectedProfile.RequestFormat, Mode=TwoWay}"
+                                                                  SelectedValuePath="Value" />
+                                                    </StackPanel>
+
+                                                    <StackPanel Grid.Column="2">
+                                                        <TextBlock Style="{StaticResource FieldLabelStyle}" Text="返回格式" />
+                                                        <ComboBox Style="{StaticResource InputComboBoxStyle}"
+                                                                  ItemContainerStyle="{StaticResource InputComboBoxItemStyle}"
+                                                                  ItemTemplate="{StaticResource ProtocolOptionItemTemplate}"
+                                                                  ItemsSource="{Binding PayloadFormats}"
+                                                                  SelectedValue="{Binding SelectedProfile.ResponseFormat, Mode=TwoWay}"
+                                                                  SelectedValuePath="Value" />
+                                                    </StackPanel>
+                                                </Grid>
                                             </StackPanel>
 
                                             <StackPanel Grid.Column="2">
                                                 <TextBlock Style="{StaticResource SectionTitleStyle}" Text="执行行为" />
+
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="16" />
+                                                        <ColumnDefinition Width="*" />
+                                                    </Grid.ColumnDefinitions>
+
+                                                    <StackPanel Grid.Column="0">
+                                                        <TextBlock Style="{StaticResource FieldLabelStyle}" Text="执行模式" />
+                                                        <ComboBox Style="{StaticResource InputComboBoxStyle}" x:Name="ExecutionMode"
+                                                                  ItemContainerStyle="{StaticResource InputComboBoxItemStyle}"
+                                                                  ItemTemplate="{StaticResource ProtocolOptionItemTemplate}"
+                                                                  ItemsSource="{Binding ExecutionModes}"
+                                                                  SelectedValue="{Binding SelectedProfile.ExecutionMode, Mode=TwoWay}"
+                                                                  SelectedValuePath="Value" />
+                                                    </StackPanel>
+
+                                                    <StackPanel Grid.Column="2">
+                                                        <TextBlock Style="{StaticResource FieldLabelStyle}" Text="CRC校验" />
+                                                        <ComboBox Style="{StaticResource InputComboBoxStyle}"
+                                                                  ItemContainerStyle="{StaticResource InputComboBoxItemStyle}"
+                                                                  ItemTemplate="{StaticResource ProtocolOptionItemTemplate}"
+                                                                  ItemsSource="{Binding CrcModes}"
+                                                                  SelectedValue="{Binding SelectedProfile.CrcMode, Mode=TwoWay}"
+                                                                  SelectedValuePath="Value" />
+                                                    </StackPanel>
+                                                </Grid>
 
                                                 <TextBlock Style="{StaticResource FieldLabelStyle}" Text="强制等待拼接时长(ms)" />
                                                 <TextBox Style="{StaticResource InputTextBoxStyle}"
@@ -267,32 +304,13 @@ CornerRadius="999">
                                                            Foreground="{DynamicResource AppMutedTextBrush}"
                                                            Text="{Binding ReplyWaitHelpText}"
                                                            TextWrapping="Wrap" />
-
-                                                <CheckBox Margin="0,14,0,0"
-                                                          Foreground="{DynamicResource AppContentTextBrush}"
-                                                          Content="等待数据返回"
-                                                          IsChecked="{Binding SelectedProfile.WaitForResponse, Mode=TwoWay}" />
-                                                <TextBlock Margin="0,6,0,0"
-                                                           Foreground="{DynamicResource AppMutedTextBrush}"
-                                                           Text="{Binding WaitForResponseHelpText}"
-                                                           TextWrapping="Wrap" />
-
-                                                <TextBlock Style="{StaticResource FieldLabelStyle}" Text="CRC校验" />
-                                                <ComboBox Style="{StaticResource InputComboBoxStyle}"
-                                                          ItemContainerStyle="{StaticResource InputComboBoxItemStyle}"
-                                                          ItemTemplate="{StaticResource ProtocolOptionItemTemplate}"
-                                                          ItemsSource="{Binding CrcModes}"
-                                                          SelectedValue="{Binding SelectedProfile.CrcMode, Mode=TwoWay}"
-                                                          SelectedValuePath="Value" />
-                                                <TextBlock Margin="0,6,0,0"
-                                                           Foreground="{DynamicResource AppMutedTextBrush}"
-                                                           Text="{Binding CrcHelpText}"
-                                                           TextWrapping="Wrap" />
                                             </StackPanel>
                                         </Grid>
                                     </Border>
 
-                                    <Border Margin="0,16,0,0" Style="{StaticResource CardBorderStyle}">
+                                    <Border Margin="0,16,0,0"
+                                            Style="{StaticResource CardBorderStyle}"
+                                            Visibility="{Binding ElementName=ExecutionMode, Path=SelectedValue, Converter={StaticResource comp2vis}, ConverterParameter='SendOnly|SendAndWaitForResponse'}">
                                         <Grid>
                                             <Grid.RowDefinitions>
                                                 <RowDefinition Height="Auto" />
@@ -380,7 +398,7 @@ CornerRadius="999">
 
                                     <Border Margin="0,16,0,0"
                                             Style="{StaticResource CardBorderStyle}"
-                                            Visibility="{Binding SelectedProfile.WaitForResponse, Converter={StaticResource BoolToVisibilityConverter}}">
+                                            Visibility="{Binding ElementName=ExecutionMode, Path=SelectedValue, Converter={StaticResource comp2vis}, ConverterParameter='ParseOnly|SendAndWaitForResponse'}">
                                         <Grid>
                                             <Grid.RowDefinitions>
                                                 <RowDefinition Height="Auto" />
@@ -393,7 +411,7 @@ CornerRadius="999">
 
                                             <TextBlock Grid.Row="0"
                                                        Style="{StaticResource SectionTitleStyle}"
-                                                       Text="&#x8fd4;&#x56de;&#x793a;&#x4f8b;&#x4e0e; Lua &#x89e3;&#x6790;&#x811a;&#x672c;" />
+                                                       Text="返回示例与 Lua 解析脚本" />
                                             <TextBlock Grid.Row="1"
                                                        Grid.ColumnSpan="3"
                                                        Margin="0,8,0,0"
@@ -425,19 +443,11 @@ CornerRadius="999">
                                                     <ColumnDefinition Width="110" />
                                                     <ColumnDefinition Width="*" />
                                                 </Grid.ColumnDefinitions>
-                                                <TextBlock Style="{StaticResource FieldLabelStyle}" Text="Lua &#x89e3;&#x6790;&#x811a;&#x672c;" />
+                                                <TextBlock Style="{StaticResource FieldLabelStyle}" Text="Lua 解析脚本" />
                                                 <luaScript:LuaScriptEditor x:Name="ParseRulesLuaEditor"
                                                                            Grid.Row="1"
                                                                            PreviewMouseDoubleClick="ParseRulesLuaEditor_PreviewMouseDoubleClick"
                                                                            ScriptText="{Binding SelectedProfile.ParseRulesText, UpdateSourceTrigger=PropertyChanged}" />
-                                                <!--<TextBox Grid.Row="1"
-      Style="{StaticResource InputTextBoxStyle}"
-      AcceptsReturn="True"
-      FontFamily="Consolas"
-      VerticalAlignment="Stretch"
-      VerticalScrollBarVisibility="Auto"
-      Text="{Binding SelectedProfile.ParseRulesText, UpdateSourceTrigger=PropertyChanged}" />-->
-
                                                 <Button Grid.Row="1"
         Grid.Column="1" Grid.RowSpan="2"
         Content=">>" FontSize="20"
@@ -490,10 +500,10 @@ Text="{Binding ParsedResultText, Mode=OneWay}" />
                     <DockPanel LastChildFill="False">
                         <StackPanel DockPanel.Dock="Left">
                             <TextBlock Style="{StaticResource SectionTitleStyle}"
-                                       Text="Lua &#x89e3;&#x6790;&#x811a;&#x672c;" />
+                                       Text="Lua 解析脚本" />
                             <TextBlock Margin="0,8,0,0"
                                        Foreground="{DynamicResource AppMutedTextBrush}"
-                                       Text="data &#x8868;&#x793a;&#x5f53;&#x524d;&#x8fd4;&#x56de;&#x6570;&#x636e;&#xff0c;&#x811a;&#x672c;&#x53ea;&#x9700; return &#x4efb;&#x610f;&#x503c;&#x3002;" />
+                                       Text="data 表示当前返回数据，脚本只需 return 任意值。" />
                         </StackPanel>
                         <TextBlock DockPanel.Dock="Right"
                                    VerticalAlignment="Center"
@@ -509,10 +519,10 @@ Text="{Binding ParsedResultText, Mode=OneWay}" />
                                 Margin="0,18,0,0"
                                 HorizontalAlignment="Right"
                                 Orientation="Horizontal">
-                        <Button Content="&#x53d6;&#x6d88;"
+                        <Button Content="取消"
                                 Click="ParseRuleEditorCancelButton_Click"
                                 Style="{StaticResource ActionButtonStyle}" />
-                        <Button Content="&#x4fdd;&#x5b58;"
+                        <Button Content="保存"
                                 Click="ParseRuleEditorSaveButton_Click"
                                 Style="{StaticResource PrimaryActionButtonStyle}" />
                     </StackPanel>

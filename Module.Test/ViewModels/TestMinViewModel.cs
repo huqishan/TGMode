@@ -64,7 +64,7 @@ public sealed class TestMinViewModel : ViewModelProperties, IDisposable
             _schemeName = _selectedProfile.WorkStepName;
         }
 
-        for (int i = 0; i < 100; i++)
+        for (int i = 0; i < 10; i++)
         {
             TestData.Add(new()
             {
