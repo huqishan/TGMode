@@ -1,4 +1,3 @@
-using ControlLibrary.Controls.LuaScripEditor.Control;
 using Shared.Infrastructure.Lua;
 using System;
 using System.Collections;
@@ -32,10 +31,6 @@ namespace ControlLibrary.ControlViews.LuaScrip
         public LuaScriptCompilerView()
         {
             InitializeComponent();
-
-            DependencyPropertyDescriptor
-                .FromProperty(LuaScriptEditor.ScriptTextProperty, typeof(LuaScriptEditor))
-                .AddValueChanged(LuaScriptEditorControl, LuaScriptEditorControl_ScriptTextChanged);
         }
 
         public event PropertyChangedEventHandler? PropertyChanged;
@@ -82,7 +77,7 @@ namespace ControlLibrary.ControlViews.LuaScrip
 
         private void CompileLuaButton_Click(object sender, RoutedEventArgs e)
         {
-            string script = NormalizeLuaLineEndings(LuaScriptEditorControl.ScriptText);
+            string script = NormalizeLuaLineEndings(LuaScriptEditorControl.Text);
             UpdateScriptTextProperty(script);
             string executionScript = string.IsNullOrWhiteSpace(ExecutionPrefixScript)
                 ? script
@@ -103,11 +98,6 @@ namespace ControlLibrary.ControlViews.LuaScrip
         private void SetLuaEditorFeedback(Brush brush)
         {
             LuaEditorStatusBrush = brush;
-        }
-
-        private void LuaScriptEditorControl_ScriptTextChanged(object? sender, EventArgs e)
-        {
-            UpdateScriptTextProperty(LuaScriptEditorControl.ScriptText);
         }
 
         private void UpdateScriptTextProperty(string text)

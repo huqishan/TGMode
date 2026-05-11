@@ -152,31 +152,103 @@
               HorizontalAlignment="Stretch"
               VerticalAlignment="Stretch">
             <Grid.RowDefinitions>
-                <RowDefinition Height="0.45*" />
+                <RowDefinition Height="Auto" />
                 <RowDefinition Height="3*" />
             </Grid.RowDefinitions>
 
             <Border Grid.Row="0"
-                    HorizontalAlignment="Stretch"
-                    VerticalAlignment="Stretch"
                     Style="{StaticResource CardBorderStyle}">
-                <StackPanel HorizontalAlignment="Stretch"
-                            VerticalAlignment="Stretch">
-                    <TextBlock Style="{StaticResource SectionTitleStyle}" Text="当前配置" />
-                    <TextBlock Margin="0,8,0,0"
-                               Foreground="{DynamicResource AppMutedTextBrush}"
-                               Text="{Binding SelectedProfile.TypeDescription}"
-                               TextWrapping="Wrap" />
-                    <TextBlock Margin="0,12,0,0"
-                               FontWeight="SemiBold"
-                               Text="{Binding SelectedProfile.Summary}"
-                               TextWrapping="Wrap" />
-                    <TextBlock Margin="0,8,0,0"
-                               Foreground="{DynamicResource AppMutedTextBrush}"
-                               Text="{Binding SelectedProfile.SupportedProtocolsDisplayText}"
-                               TextWrapping="NoWrap"
-                               TextTrimming="CharacterEllipsis" />
+                <StackPanel>
+                    <!--<StackPanel HorizontalAlignment="Stretch"
+            VerticalAlignment="Stretch">
+                        <TextBlock Style="{StaticResource SectionTitleStyle}" Text="当前配置" />
+                        <TextBlock Margin="0,8,0,0"
+               Foreground="{DynamicResource AppMutedTextBrush}"
+               Text="{Binding SelectedProfile.TypeDescription}"
+               TextWrapping="Wrap" />
+                        <TextBlock Margin="0,12,0,0"
+               FontWeight="SemiBold"
+               Text="{Binding SelectedProfile.Summary}"
+               TextWrapping="Wrap" />
+                        <TextBlock Margin="0,8,0,0"
+               Foreground="{DynamicResource AppMutedTextBrush}"
+               Text="{Binding SelectedProfile.SupportedProtocolsDisplayText}"
+               TextWrapping="NoWrap"
+               TextTrimming="CharacterEllipsis" />
+                    </StackPanel>-->
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+
+                        <DockPanel LastChildFill="False">
+                            <TextBlock Style="{StaticResource SectionTitleStyle}" Text="协议配置" />
+                            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                                <Button Content="添加"
+      Style="{StaticResource PrimaryActionButtonStyle}"
+      Command="{Binding AddSupportedProtocolCommand}" />
+                            </StackPanel>
+                        </DockPanel>
+
+                        <TextBlock Grid.Row="1"
+ Margin="0,8,0,10"
+ Foreground="{DynamicResource AppMutedTextBrush}"
+ Text="一个设备可关联多个协议。点击“添加”后会在下方通信测试区域弹出协议列表，支持将协议拖入表格，也可点击协议路径直接导入协议文件。"
+ TextWrapping="Wrap" />
+
+                        <DataGrid x:Name="SupportedProtocolsDataGrid" Height="140"
+Grid.Row="2"
+Style="{StaticResource ColumnsDataGridStyle}"
+ItemsSource="{Binding SelectedProfile.SupportedProtocols}"
+IsReadOnly="True" HorizontalScrollBarVisibility="Disabled"
+HeadersVisibility="Column"
+CanUserResizeRows="False"
+CanUserSortColumns="False"
+GridLinesVisibility="Horizontal"
+AllowDrop="True"
+DragOver="SupportedProtocolsDataGrid_DragOver"
+Drop="SupportedProtocolsDataGrid_Drop">
+                            <DataGrid.Columns>
+                                <DataGridTemplateColumn Header="协议名称" Width="180">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Style="{StaticResource CellTextBlockStyle}"
+                     Text="{Binding DisplayProtocolName}" />
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+
+                                <DataGridTemplateColumn Header="协议文件路径" Width="*">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <Button Style="{StaticResource ProtocolPathButtonStyle}"
+                  Command="{Binding DataContext.LoadSupportedProtocolFileCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                  CommandParameter="{Binding}"
+                  ToolTip="{Binding ProtocolFilePath}">
+                                                <TextBlock Text="{Binding DisplayProtocolFilePath}"
+                         TextTrimming="CharacterEllipsis" />
+                                            </Button>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+
+                                <DataGridTemplateColumn Header="操作" Width="96">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <Button Content="删除"
+                  Style="{StaticResource ActionButtonStyle}"
+                  Command="{Binding DataContext.DeleteSupportedProtocolCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                  CommandParameter="{Binding}" />
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </Grid>
                 </StackPanel>
+                
             </Border>
 
             <Grid Grid.Row="1"
@@ -294,88 +366,6 @@
                 </Border>
 
                 <Grid Grid.Column="2">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="16" />
-                        <RowDefinition Height="*" />
-                    </Grid.RowDefinitions>
-
-                    <Border Grid.Row="0"
-                            MinHeight="240"
-                            Style="{StaticResource CardBorderStyle}">
-                        <Grid>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="*" />
-                            </Grid.RowDefinitions>
-
-                            <DockPanel LastChildFill="False">
-                                <TextBlock Style="{StaticResource SectionTitleStyle}" Text="协议配置" />
-                                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-                                    <Button Content="添加"
-                                            Style="{StaticResource PrimaryActionButtonStyle}"
-                                            Command="{Binding AddSupportedProtocolCommand}" />
-                                </StackPanel>
-                            </DockPanel>
-
-                            <TextBlock Grid.Row="1"
-                                       Margin="0,8,0,10"
-                                       Foreground="{DynamicResource AppMutedTextBrush}"
-                                       Text="一个设备可关联多个协议。点击“添加”后会在下方通信测试区域弹出协议列表，支持将协议拖入表格，也可点击协议路径直接导入协议文件。"
-                                       TextWrapping="Wrap" />
-
-                            <DataGrid x:Name="SupportedProtocolsDataGrid" Height="140"
-                                      Grid.Row="2"
-                                      Style="{StaticResource ColumnsDataGridStyle}"
-                                      ItemsSource="{Binding SelectedProfile.SupportedProtocols}"
-                                      IsReadOnly="True" HorizontalScrollBarVisibility="Disabled"
-                                      HeadersVisibility="Column"
-                                      CanUserResizeRows="False"
-                                      CanUserSortColumns="False"
-                                      GridLinesVisibility="Horizontal"
-                                      AllowDrop="True"
-                                      DragOver="SupportedProtocolsDataGrid_DragOver"
-                                      Drop="SupportedProtocolsDataGrid_Drop">
-                                <DataGrid.Columns>
-                                    <DataGridTemplateColumn Header="协议名称" Width="180">
-                                        <DataGridTemplateColumn.CellTemplate>
-                                            <DataTemplate>
-                                                <TextBlock Style="{StaticResource CellTextBlockStyle}"
-                                                           Text="{Binding DisplayProtocolName}" />
-                                            </DataTemplate>
-                                        </DataGridTemplateColumn.CellTemplate>
-                                    </DataGridTemplateColumn>
-
-                                    <DataGridTemplateColumn Header="协议文件路径" Width="*">
-                                        <DataGridTemplateColumn.CellTemplate>
-                                            <DataTemplate>
-                                                <Button Style="{StaticResource ProtocolPathButtonStyle}"
-                                                        Command="{Binding DataContext.LoadSupportedProtocolFileCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
-                                                        CommandParameter="{Binding}"
-                                                        ToolTip="{Binding ProtocolFilePath}">
-                                                    <TextBlock Text="{Binding DisplayProtocolFilePath}"
-                                                               TextTrimming="CharacterEllipsis" />
-                                                </Button>
-                                            </DataTemplate>
-                                        </DataGridTemplateColumn.CellTemplate>
-                                    </DataGridTemplateColumn>
-
-                                    <DataGridTemplateColumn Header="操作" Width="96">
-                                        <DataGridTemplateColumn.CellTemplate>
-                                            <DataTemplate>
-                                                <Button Content="删除"
-                                                        Style="{StaticResource ActionButtonStyle}"
-                                                        Command="{Binding DataContext.DeleteSupportedProtocolCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
-                                                        CommandParameter="{Binding}" />
-                                            </DataTemplate>
-                                        </DataGridTemplateColumn.CellTemplate>
-                                    </DataGridTemplateColumn>
-                                </DataGrid.Columns>
-                            </DataGrid>
-                        </Grid>
-                    </Border>
-
                     <Border Grid.Row="2" x:Name="communicationTestBorder"
                             Style="{StaticResource CardBorderStyle}">
                         <Grid>
@@ -540,6 +530,18 @@
                             </Grid>
 
                             <DockPanel Grid.Row="5"
+                                       Visibility="Collapsed"
+                                       Margin="0,14,0,6"
+                                       LastChildFill="False">
+                                <TextBlock DockPanel.Dock="Left"
+                                           VerticalAlignment="Bottom"
+                                           Style="{StaticResource FieldLabelStyle}"
+                                           Margin="0"
+                                           Text="解析结果" />
+                            </DockPanel>
+
+
+                            <DockPanel Grid.Row="5"
                                        Margin="0,14,0,6"
                                        LastChildFill="False">
                                 <TextBlock DockPanel.Dock="Left"
@@ -573,142 +575,150 @@
                             
                         </Grid>
                     </Border>
-                    <Grid x:Name="ProtocolLibraryHost"
-                          Grid.Row="2"
-                          Grid.RowSpan="7"
-                          Panel.ZIndex="10"
-                          Opacity="0"
-                          IsHitTestVisible="False">
-                        <Border Background="#3A000000"
-                                MouseLeftButtonDown="ProtocolLibraryBackdrop_MouseLeftButtonDown" />
+                    
+                </Grid>
+                <Grid x:Name="ProtocolLibraryHost"
+      Grid.Row="0"
+      Grid.ColumnSpan="3"
+      Panel.ZIndex="10"
+      Opacity="0"
+      IsHitTestVisible="False">
+                    <Border Background="#3A000000"
+            MouseLeftButtonDown="ProtocolLibraryBackdrop_MouseLeftButtonDown" />
 
-                        <Border x:Name="ProtocolLibrarySheet"
-                                Margin="0,56,0,0"
-                                MaxHeight="{Binding ActualHeight, ElementName=communicationTestBorder}"
-                                VerticalAlignment="Bottom"
-                                Style="{StaticResource DrawerBorderStyle}">
-                            <Border.RenderTransform>
-                                <TranslateTransform x:Name="ProtocolLibraryTranslateTransform" Y="56" />
-                            </Border.RenderTransform>
+                    <Border x:Name="ProtocolLibrarySheet"
+            Margin="0,56,0,0"
+            MaxHeight="{Binding ActualHeight, ElementName=communicationTestBorder}"
+            Style="{StaticResource DrawerBorderStyle}">
+                        <Border.RenderTransform>
+                            <TranslateTransform x:Name="ProtocolLibraryTranslateTransform" Y="56" />
+                        </Border.RenderTransform>
 
-                            <Grid>
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="Auto" />
-                                    <RowDefinition Height="Auto" />
-                                    <RowDefinition Height="*" />
-                                </Grid.RowDefinitions>
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
 
-                                <DockPanel LastChildFill="False">
+                            <DockPanel LastChildFill="False">
+                                <StackPanel>
                                     <TextBlock Style="{StaticResource SectionTitleStyle}" Text="协议列表" />
-                                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-                                        <Button Content="关闭"
-                                                Style="{StaticResource ActionButtonStyle}"
-                                                Command="{Binding CloseProtocolLibraryCommand}" />
-                                    </StackPanel>
-                                </DockPanel>
-
-                                <TextBlock Grid.Row="1"
-                                           Margin="0,8,0,10"
-                                           Foreground="{DynamicResource AppMutedTextBrush}"
-                                           Text="双击可直接添加协议，也可以拖动到上方支持协议表格中。"
-                                           TextWrapping="Wrap" />
-
+                                    <TextBlock Margin="0,8,0,10"
+Foreground="{DynamicResource AppMutedTextBrush}"
+Text="双击可直接添加协议，也可以拖动到上方支持协议表格中。"
+TextWrapping="Wrap" />
+                                </StackPanel>
+                                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Margin="16,0,0,10">
+                                    <Button HorizontalAlignment="Right" Content="关闭" Style="{StaticResource ActionButtonStyle}" Command="{Binding CloseProtocolLibraryCommand}" />
+                                </StackPanel>
+                                <searchBox:SearchBox DockPanel.Dock="Right" Width="300" Margin="16,0,0,10" PlaceholderText="搜索协议..." Text="{Binding AvailableProtocolSearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            </DockPanel>
+                            <Grid Grid.Row="2">
                                 <ListBox x:Name="ProtocolLibraryListBox"
-                                         Grid.Row="2"
-                                         BorderThickness="0"
-                                         Background="Transparent"
-                                         ItemsSource="{Binding AvailableProtocols}"
-                                         ItemContainerStyle="{StaticResource ListBoxItemStyle}"
-                                         PreviewMouseLeftButtonDown="ProtocolLibraryListBox_PreviewMouseLeftButtonDown"
-                                         PreviewMouseMove="ProtocolLibraryListBox_PreviewMouseMove"
-                                         MouseDoubleClick="ProtocolLibraryListBox_MouseDoubleClick">
+                     Grid.Row="1"
+                     BorderThickness="0"
+                     Background="Transparent"
+                     ItemsSource="{Binding AvailableProtocolsView}"
+                     ItemContainerStyle="{StaticResource ListBoxItemStyle}"
+                     PreviewMouseLeftButtonDown="ProtocolLibraryListBox_PreviewMouseLeftButtonDown"
+                     PreviewMouseMove="ProtocolLibraryListBox_PreviewMouseMove"
+                     MouseDoubleClick="ProtocolLibraryListBox_MouseDoubleClick">
                                     <ListBox.ItemTemplate>
                                         <DataTemplate>
                                             <StackPanel>
                                                 <TextBlock FontSize="14"
-                                                           FontWeight="SemiBold"
-                                                           Text="{Binding Name}" />
-                                                <TextBlock Margin="0,6,0,0"
-                                                           Foreground="{DynamicResource AppMutedTextBrush}"
-                                                           Text="{Binding FilePath}"
-                                                           TextWrapping="NoWrap"
-                                                           TextTrimming="CharacterEllipsis" />
+                                       FontWeight="SemiBold"
+                                       Text="{Binding Name}" />
                                                 <!--<TextBlock Margin="0,6,0,0"
-                                                           Foreground="{DynamicResource AppMutedTextBrush}"
-                                                           Text="{Binding Summary}"
-                                                           TextWrapping="Wrap" />-->
+                                       Foreground="{DynamicResource AppMutedTextBrush}"
+                                       Text="{Binding FilePath}"
+                                       TextWrapping="NoWrap"
+                                       TextTrimming="CharacterEllipsis" />-->
+                                                <!--<TextBlock Margin="0,6,0,0"
+                                       Foreground="{DynamicResource AppMutedTextBrush}"
+                                       Text="{Binding Summary}"
+                                       TextWrapping="Wrap" />-->
                                             </StackPanel>
                                         </DataTemplate>
                                     </ListBox.ItemTemplate>
                                 </ListBox>
                             </Grid>
-                        </Border>
-                    </Grid>
-                    <Grid x:Name="ProtocolCommandLibraryHost"
-                          Grid.Row="2"
-                          Grid.RowSpan="7"
-                          Panel.ZIndex="11"
-                          Opacity="0"
-                          IsHitTestVisible="False">
-                        <Border Background="#3A000000"
-                                MouseLeftButtonDown="ProtocolCommandLibraryBackdrop_MouseLeftButtonDown" />
+                        </Grid>
+                    </Border>
+                </Grid>
+                <Grid x:Name="ProtocolCommandLibraryHost"
+      Grid.Row="0"
+      Grid.ColumnSpan="3"
+      Panel.ZIndex="11"
+      Opacity="0"
+      IsHitTestVisible="False">
+                    <Border Background="#3A000000"
+            MouseLeftButtonDown="ProtocolCommandLibraryBackdrop_MouseLeftButtonDown" />
 
-                        <Border x:Name="ProtocolCommandLibrarySheet"
-                                Margin="0,56,0,0"
-                                MaxHeight="{Binding ActualHeight, ElementName=communicationTestBorder}"
-                                Style="{StaticResource DrawerBorderStyle}">
-                            <Border.RenderTransform>
-                                <TranslateTransform x:Name="ProtocolCommandLibraryTranslateTransform" Y="56" />
-                            </Border.RenderTransform>
+                    <Border x:Name="ProtocolCommandLibrarySheet"
+            Margin="0,56,0,0"
+            MaxHeight="{Binding ActualHeight, ElementName=communicationTestBorder}"
+            Style="{StaticResource DrawerBorderStyle}">
+                        <Border.RenderTransform>
+                            <TranslateTransform x:Name="ProtocolCommandLibraryTranslateTransform" Y="56" />
+                        </Border.RenderTransform>
 
-                            <Grid>
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+
+                            <DockPanel LastChildFill="False">
+                                <StackPanel>
+                                    <TextBlock Style="{StaticResource SectionTitleStyle}" Text="指令列表" />
+                                    <TextBlock Margin="0,8,0,10" Foreground="{DynamicResource AppMutedTextBrush}" Text="显示当前支持协议中的全部指令。双击后会直接生成并填充报文到下方文本框。" TextWrapping="Wrap" />
+                                </StackPanel>
+
+                                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Margin="16,0,0,10">
+                                    <Button Content="关闭"
+                            Style="{StaticResource ActionButtonStyle}"
+                            Command="{Binding CloseProtocolCommandLibraryCommand}" />
+                                </StackPanel>
+                                <searchBox:SearchBox Width="300" Margin="16,0,0,10" PlaceholderText="搜索指令..." Text="{Binding SupportedProtocolCommandSearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" DockPanel.Dock="Right"/>
+                            </DockPanel>
+
+                            
+                            <Grid Grid.Row="2">
                                 <Grid.RowDefinitions>
-                                    <RowDefinition Height="Auto" />
                                     <RowDefinition Height="Auto" />
                                     <RowDefinition Height="*" />
                                 </Grid.RowDefinitions>
 
-                                <DockPanel LastChildFill="False">
-                                    <TextBlock Style="{StaticResource SectionTitleStyle}" Text="指令列表" />
-                                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-                                        <Button Content="关闭"
-                                                Style="{StaticResource ActionButtonStyle}"
-                                                Command="{Binding CloseProtocolCommandLibraryCommand}" />
-                                    </StackPanel>
-                                </DockPanel>
-
-                                <TextBlock Grid.Row="1"
-                                           Margin="0,8,0,10"
-                                           Foreground="{DynamicResource AppMutedTextBrush}"
-                                           Text="显示当前支持协议中的全部指令。双击后会直接生成并填充报文到下方文本框。"
-                                           TextWrapping="Wrap" />
+                                
 
                                 <ListBox x:Name="ProtocolCommandLibraryListBox"
-                                         Grid.Row="2"
-                                         BorderThickness="0"
-                                         Background="Transparent"
-                                         ItemsSource="{Binding SupportedProtocolCommands}"
-                                         ItemContainerStyle="{StaticResource ListBoxItemStyle}"
-                                         MouseDoubleClick="ProtocolCommandLibraryListBox_MouseDoubleClick">
+                     Grid.Row="1"
+                     BorderThickness="0"
+                     Background="Transparent"
+                     ItemsSource="{Binding SupportedProtocolCommandsView}"
+                     ItemContainerStyle="{StaticResource ListBoxItemStyle}"
+                     MouseDoubleClick="ProtocolCommandLibraryListBox_MouseDoubleClick">
                                     <ListBox.ItemTemplate>
                                         <DataTemplate>
                                             <StackPanel>
                                                 <DockPanel LastChildFill="True">
                                                     <TextBlock FontSize="14"
-                                                               FontWeight="SemiBold"
-                                                               Text="{Binding DisplayName}" />
+                                           FontWeight="SemiBold"
+                                           Text="{Binding DisplayName}" />
                                                 </DockPanel>
                                                 <TextBlock Margin="0,6,0,0"
-                                                           FontFamily="Consolas"
-                                                           Text="{Binding PreviewMessage}"
-                                                           TextWrapping="Wrap" />
+                                       FontFamily="Consolas"
+                                       Text="{Binding PreviewMessage}"
+                                       TextWrapping="Wrap" />
                                             </StackPanel>
                                         </DataTemplate>
                                     </ListBox.ItemTemplate>
                                 </ListBox>
                             </Grid>
-                        </Border>
-                    </Grid>
+                        </Grid>
+                    </Border>
                 </Grid>
             </Grid>
         </Grid>

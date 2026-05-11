@@ -1,6 +1,8 @@
 using System;
 using System.Threading.Tasks;
+using System.Windows;
 using System.Windows.Input;
+using System.Windows.Threading;
 
 namespace ControlLibrary
 {
@@ -11,11 +13,13 @@ namespace ControlLibrary
     {
         private readonly Action<object?> _execute;
         private readonly Predicate<object?>? _canExecute;
+        private readonly Dispatcher? _dispatcher;
 
         public RelayCommand(Action<object?> execute, Predicate<object?>? canExecute = null)
         {
             _execute = execute ?? throw new ArgumentNullException(nameof(execute));
             _canExecute = canExecute;
+            _dispatcher = CommandThreadingHelper.ResolveDispatcher();
         }
 
         public event EventHandler? CanExecuteChanged;
@@ -32,7 +36,7 @@ namespace ControlLibrary
 
         public void RaiseCanExecuteChanged()
         {
-            CanExecuteChanged?.Invoke(this, EventArgs.Empty);
+            CommandThreadingHelper.RaiseCanExecuteChangedCore(CanExecuteChanged, _dispatcher, this);
         }
     }
 
@@ -43,12 +47,14 @@ namespace ControlLibrary
     {
         private readonly Func<object?, Task> _executeAsync;
         private readonly Predicate<object?>? _canExecute;
+        private readonly Dispatcher? _dispatcher;
         private bool _isExecuting;
 
         public AsyncRelayCommand(Func<object?, Task> executeAsync, Predicate<object?>? canExecute = null)
         {
             _executeAsync = executeAsync ?? throw new ArgumentNullException(nameof(executeAsync));
             _canExecute = canExecute;
+            _dispatcher = CommandThreadingHelper.ResolveDispatcher();
         }
 
         public event EventHandler? CanExecuteChanged;
@@ -80,7 +86,35 @@ namespace ControlLibrary
 
         public void RaiseCanExecuteChanged()
         {
-            CanExecuteChanged?.Invoke(this, EventArgs.Empty);
+            CommandThreadingHelper.RaiseCanExecuteChangedCore(CanExecuteChanged, _dispatcher, this);
+        }
+    }
+
+    internal static class CommandThreadingHelper
+    {
+        internal static Dispatcher? ResolveDispatcher()
+        {
+            return Application.Current?.Dispatcher
+                   ?? Dispatcher.FromThread(System.Threading.Thread.CurrentThread)
+                   ?? Dispatcher.CurrentDispatcher;
+        }
+
+        internal static void RaiseCanExecuteChangedCore(EventHandler? handler, Dispatcher? dispatcher, object sender)
+        {
+            if (handler is null)
+            {
+                return;
+            }
+
+            if (dispatcher is null || dispatcher.HasShutdownStarted || dispatcher.HasShutdownFinished || dispatcher.CheckAccess())
+            {
+                handler(sender, EventArgs.Empty);
+                return;
+            }
+
+            _ = dispatcher.BeginInvoke(
+                DispatcherPriority.DataBind,
+                new Action(() => handler(sender, EventArgs.Empty)));
         }
     }
 }

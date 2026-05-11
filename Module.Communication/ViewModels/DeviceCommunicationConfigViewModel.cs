@@ -13,6 +13,10 @@ public sealed partial class DeviceCommunicationConfigViewModel : ViewModelProper
 
         ProfilesView = CollectionViewSource.GetDefaultView(Profiles);
         ProfilesView.Filter = FilterProfiles;
+        AvailableProtocolsView = CollectionViewSource.GetDefaultView(AvailableProtocols);
+        AvailableProtocolsView.Filter = FilterAvailableProtocols;
+        SupportedProtocolCommandsView = CollectionViewSource.GetDefaultView(SupportedProtocolCommands);
+        SupportedProtocolCommandsView.Filter = FilterSupportedProtocolCommands;
 
         int loadedProfileCount = LoadProfilesFromDisk();
         if (loadedProfileCount == 0)

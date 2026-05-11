@@ -14,6 +14,7 @@ using System.IO;
 using System.IO.Ports;
 using System.Linq;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
@@ -217,6 +218,12 @@ public sealed partial class DeviceCommunicationConfigViewModel
             return;
         }
 
+        if (!IsProtocolConfigurationEditable)
+        {
+            AppendReceiveLine("当前测试连接已建立，关闭连接后才能修改绑定协议。");
+            return;
+        }
+
         OpenProtocolLibrary();
         AppendReceiveLine("已打开协议列表。");
     }
@@ -230,6 +237,12 @@ public sealed partial class DeviceCommunicationConfigViewModel
     {
         if (SelectedProfile is null || option is null)
         {
+            return false;
+        }
+
+        if (!IsProtocolConfigurationEditable)
+        {
+            AppendReceiveLine("当前测试连接已建立，关闭连接后才能修改绑定协议。");
             return false;
         }
 
@@ -248,6 +261,12 @@ public sealed partial class DeviceCommunicationConfigViewModel
             return;
         }
 
+        if (!IsProtocolConfigurationEditable)
+        {
+            AppendReceiveLine("当前测试连接已建立，关闭连接后才能修改绑定协议。");
+            return;
+        }
+
         SelectedProfile.SupportedProtocols.Remove(protocol);
         RefreshSupportedProtocolCommands();
         AppendReceiveLine(string.IsNullOrWhiteSpace(protocol.ProtocolName)
@@ -259,6 +278,12 @@ public sealed partial class DeviceCommunicationConfigViewModel
     {
         if (SelectedProfile is null || targetProtocol is null)
         {
+            return;
+        }
+
+        if (!IsProtocolConfigurationEditable)
+        {
+            AppendReceiveLine("当前测试连接已建立，关闭连接后才能修改绑定协议。");
             return;
         }
 
@@ -375,6 +400,8 @@ public sealed partial class DeviceCommunicationConfigViewModel
         {
             SupportedProtocolCommands.Add(command);
         }
+
+        SupportedProtocolCommandsView?.Refresh();
 
         if (IsProtocolCommandLibraryOpen && SupportedProtocolCommands.Count == 0)
         {
@@ -508,6 +535,7 @@ public sealed partial class DeviceCommunicationConfigViewModel
             _activeCommunication = communication;
             _activeProfileName = config.LocalName;
             _activeCommunicationType = config.Type;
+            RefreshActiveParseOnlyCommands(SelectedProfile);
 
             RaiseCommunicationVisibilityChanged();
             RefreshConnectedServerClients(Array.Empty<CommunicationClientInfo>());
@@ -517,6 +545,7 @@ public sealed partial class DeviceCommunicationConfigViewModel
             AppendReceiveLine($"开始测试连接：{config.LocalName}（{config.Type}）。");
 
             bool started = communication.Start();
+            SetConnectionEstablished(started && communication.IsConnected == ConnectState.Connected);
             SetConnectionStatus(
                 started ? $"{config.LocalName} 已启动" : $"{config.LocalName} 启动失败",
                 started ? SuccessBrush : WarningBrush);
@@ -731,6 +760,8 @@ public sealed partial class DeviceCommunicationConfigViewModel
         {
             AvailableProtocols.Add(option);
         }
+
+        AvailableProtocolsView?.Refresh();
     }
 
     private List<AvailableProtocolOption> LoadAvailableProtocolsFromDisk()
@@ -1123,6 +1154,8 @@ public sealed partial class DeviceCommunicationConfigViewModel
             _activeCommunication = null;
             _activeProfileName = null;
             _activeCommunicationType = null;
+            _activeParseOnlyCommands.Clear();
+            SetConnectionEstablished(false);
             RefreshConnectedServerClients(Array.Empty<CommunicationClientInfo>());
             RaiseCommunicationVisibilityChanged();
         }
@@ -1145,6 +1178,8 @@ public sealed partial class DeviceCommunicationConfigViewModel
         }
 
         AppendReceiveLine($"收到{endpointText}：{FormatMessage(message)}");
+        string rawMessage = BuildRawProtocolData(message);
+        TryParseIncomingProtocolMessage(message, rawMessage);
         return string.Empty;
     }
 
@@ -1152,6 +1187,7 @@ public sealed partial class DeviceCommunicationConfigViewModel
     {
         string stateText = connectState == ConnectState.Connected ? "已连接" : "已断开";
         Brush stateBrush = connectState == ConnectState.Connected ? SuccessBrush : WarningBrush;
+        SetConnectionEstablished(connectState == ConnectState.Connected);
         SetConnectionStatus($"{localName} {stateText}", stateBrush);
         AppendReceiveLine($"状态变化：{localName} {stateText}。");
         RaiseCommandStatesChanged();
@@ -1268,6 +1304,161 @@ public sealed partial class DeviceCommunicationConfigViewModel
 
     #region 视图与辅助方法
 
+    private void SetConnectionEstablished(bool isConnected)
+    {
+        if (_isConnectionEstablished == isConnected)
+        {
+            return;
+        }
+
+        _isConnectionEstablished = isConnected;
+        if (isConnected && IsProtocolLibraryOpen)
+        {
+            CloseProtocolLibrary();
+        }
+
+        OnPropertyChanged(nameof(IsProtocolConfigurationEditable));
+        OnPropertyChanged(nameof(ProtocolConfigurationEditHint));
+        RaiseCommandStatesChanged();
+    }
+
+    private void RefreshActiveParseOnlyCommands(DeviceCommunicationProfile? profile)
+    {
+        _activeParseOnlyCommands.Clear();
+        if (profile is null)
+        {
+            return;
+        }
+
+        IEnumerable<DeviceSupportedProtocol> supportedProtocols = profile.SupportedProtocols
+            .Where(protocol =>
+                !string.IsNullOrWhiteSpace(protocol.ProtocolName) &&
+                !string.IsNullOrWhiteSpace(protocol.ProtocolFilePath))
+            .GroupBy(
+                protocol => $"{protocol.ProtocolName}|{protocol.ProtocolFilePath}",
+                StringComparer.OrdinalIgnoreCase)
+            .Select(group => group.First());
+
+        foreach (DeviceSupportedProtocol supportedProtocol in supportedProtocols)
+        {
+            if (!TryReadProtocolProfileFromFile(
+                    supportedProtocol.ProtocolFilePath,
+                    out ProtocolConfigProfile? protocolProfile,
+                    out _) ||
+                protocolProfile is null)
+            {
+                continue;
+            }
+
+            foreach (ProtocolCommandConfig command in protocolProfile.Commands.Where(item => item.IsParseOnly))
+            {
+                _activeParseOnlyCommands.Add(new BoundParseOnlyCommand(
+                    protocolProfile.Name,
+                    command.Name,
+                    command.Clone(command.Name)));
+            }
+        }
+    }
+
+    private void TryParseIncomingProtocolMessage(object message, string rawMessage)
+    {
+        if (_activeParseOnlyCommands.Count == 0)
+        {
+            return;
+        }
+
+        foreach (BoundParseOnlyCommand parseCommand in _activeParseOnlyCommands)
+        {
+            string responseText = BuildProtocolResponseText(message, rawMessage, parseCommand.Command.ResponseFormat);
+            if (string.IsNullOrWhiteSpace(responseText))
+            {
+                continue;
+            }
+
+            ProtocolCommandConfig command = parseCommand.Command.Clone(parseCommand.CommandName);
+            command.SampleResponseText = responseText;
+            if (!ProtocolPreviewEngine.TryBuildResponsePreview(
+                    command,
+                    out ProtocolResponsePreviewResult? previewResult,
+                    out string parseMessage) ||
+                previewResult is null)
+            {
+                AppendReceiveLine($"协议解析失败：{parseCommand.ProtocolName}/{parseCommand.CommandName}，原因：{(string.IsNullOrWhiteSpace(parseMessage) ? "未返回可用解析结果。" : parseMessage)}");
+                continue;
+            }
+
+            AppendParsedProtocolResults(previewResult.ParsedJson, rawMessage);
+        }
+    }
+
+    private void AppendParsedProtocolResults(string parsedJson, string rawMessage)
+    {
+        if (string.IsNullOrWhiteSpace(parsedJson))
+        {
+            return;
+        }
+
+        try
+        {
+            using JsonDocument document = JsonDocument.Parse(parsedJson);
+            if (document.RootElement.ValueKind == JsonValueKind.Object)
+            {
+                foreach (JsonProperty property in document.RootElement.EnumerateObject())
+                {
+                    AppendParsedProtocolResultLog(property.Name, FormatJsonValue(property.Value), rawMessage);
+                }
+
+                return;
+            }
+
+            AppendParsedProtocolResultLog("Data", FormatJsonValue(document.RootElement), rawMessage);
+        }
+        catch (JsonException)
+        {
+            AppendParsedProtocolResultLog("Data", parsedJson, rawMessage);
+        }
+    }
+
+    private void AppendParsedProtocolResultLog(string key, string value, string rawMessage)
+    {
+        AppendReceiveLine($"解析结果：Key={key ?? string.Empty}，Value={value ?? string.Empty}，Data={rawMessage ?? string.Empty}");
+    }
+
+    private static string BuildRawProtocolData(object? message)
+    {
+        return message switch
+        {
+            null => string.Empty,
+            byte[] bytes => BitConverter.ToString(bytes).Replace("-", string.Empty, StringComparison.Ordinal),
+            _ => message.ToString() ?? string.Empty
+        };
+    }
+
+    private static string BuildProtocolResponseText(object? message, string rawMessage, ProtocolPayloadFormat responseFormat)
+    {
+        if (message is byte[] bytes)
+        {
+            return responseFormat == ProtocolPayloadFormat.Hex
+                ? BitConverter.ToString(bytes).Replace("-", string.Empty, StringComparison.Ordinal)
+                : Encoding.UTF8.GetString(bytes);
+        }
+
+        return rawMessage;
+    }
+
+    private static string FormatJsonValue(JsonElement value)
+    {
+        return value.ValueKind switch
+        {
+            JsonValueKind.String => value.GetString() ?? string.Empty,
+            JsonValueKind.Number => value.GetRawText(),
+            JsonValueKind.True => bool.TrueString,
+            JsonValueKind.False => bool.FalseString,
+            JsonValueKind.Null => string.Empty,
+            _ => value.GetRawText()
+        };
+    }
+
     private bool FilterProfiles(object item)
     {
         if (item is not DeviceCommunicationProfile profile)
@@ -1287,6 +1478,44 @@ public sealed partial class DeviceCommunicationConfigViewModel
                profile.SupportedProtocols.Any(protocol =>
                    Contains(protocol.ProtocolName, keyword) ||
                    Contains(protocol.ProtocolFilePath, keyword));
+    }
+
+    private bool FilterAvailableProtocols(object item)
+    {
+        if (item is not AvailableProtocolOption option)
+        {
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(AvailableProtocolSearchText))
+        {
+            return true;
+        }
+
+        string keyword = AvailableProtocolSearchText.Trim();
+        return Contains(option.Name, keyword) ||
+               Contains(option.FilePath, keyword) ||
+               Contains(option.Summary, keyword);
+    }
+
+    private bool FilterSupportedProtocolCommands(object item)
+    {
+        if (item is not SupportedProtocolCommandOption option)
+        {
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(SupportedProtocolCommandSearchText))
+        {
+            return true;
+        }
+
+        string keyword = SupportedProtocolCommandSearchText.Trim();
+        return Contains(option.ProtocolName, keyword) ||
+               Contains(option.CommandName, keyword) ||
+               Contains(option.DisplayName, keyword) ||
+               Contains(option.Summary, keyword) ||
+               Contains(option.PreviewMessage, keyword);
     }
 
     private static bool Contains(string? source, string keyword)

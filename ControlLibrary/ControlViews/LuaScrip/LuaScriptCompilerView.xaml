@@ -4,7 +4,8 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-             xmlns:luaEditor="clr-namespace:ControlLibrary.Controls.LuaScripEditor.Control"
+             xmlns:avalonEdit="http://icsharpcode.net/sharpdevelop/avalonedit"
+             xmlns:avalonBinding="clr-namespace:ControlLibrary.AvalonEdit"
              mc:Ignorable="d"
              d:DesignHeight="450"
              d:DesignWidth="800">
@@ -34,9 +35,18 @@
                             Style="{StaticResource PrimaryActionButtonStyle}" />
                 </DockPanel>
 
-                <luaEditor:LuaScriptEditor x:Name="LuaScriptEditorControl"
-                                           Grid.Row="2"
-                                           ScriptText="{Binding ScriptText, ElementName=Root, Mode=OneWay}" />
+                <avalonEdit:TextEditor x:Name="LuaScriptEditorControl"
+                                       Grid.Row="2"
+                                       Background="Transparent"
+                                       BorderThickness="0"
+                                       FontFamily="Consolas"
+                                       FontSize="20"
+                                       Foreground="{DynamicResource LuaEditorPlainTextBrush}"
+                                       ShowLineNumbers="True"
+                                       HorizontalScrollBarVisibility="Auto"
+                                       VerticalScrollBarVisibility="Auto"
+                                       avalonBinding:AvalonEditTextBinding.UseLuaHighlighting="True"
+                                       avalonBinding:AvalonEditTextBinding.BindableText="{Binding ScriptText, ElementName=Root, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
             </Grid>
         </Border>
 

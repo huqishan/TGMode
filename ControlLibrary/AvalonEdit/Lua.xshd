@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<SyntaxDefinition name="Lua"
+                  extensions=".lua"
+                  xmlns="http://icsharpcode.net/sharpdevelop/syntaxdefinition/2008">
+  <Color name="Comment" foreground="#6B7280" />
+  <Color name="String" foreground="#059669" />
+  <Color name="Number" foreground="#D97706" />
+  <Color name="Keyword" foreground="#2563EB" fontWeight="bold" />
+  <Color name="Function" foreground="#7C3AED" />
+
+  <RuleSet ignoreCase="false">
+    <Span color="Comment" multiline="true" begin="--\[\[" end="\]\]" />
+    <Span color="Comment" begin="--" end="$" />
+    <Span color="String" multiline="true" begin="\[\[" end="\]\]" />
+    <Span color="String" begin="&quot;" end="&quot;" />
+    <Span color="String" begin="'" end="'" />
+
+    <Keywords color="Keyword">
+      <Word>and</Word>
+      <Word>break</Word>
+      <Word>do</Word>
+      <Word>else</Word>
+      <Word>elseif</Word>
+      <Word>end</Word>
+      <Word>false</Word>
+      <Word>for</Word>
+      <Word>function</Word>
+      <Word>goto</Word>
+      <Word>if</Word>
+      <Word>in</Word>
+      <Word>local</Word>
+      <Word>nil</Word>
+      <Word>not</Word>
+      <Word>or</Word>
+      <Word>repeat</Word>
+      <Word>return</Word>
+      <Word>then</Word>
+      <Word>true</Word>
+      <Word>until</Word>
+      <Word>while</Word>
+    </Keywords>
+
+    <Rule color="Number">\b(?:0x[0-9A-Fa-f]+|\d+(?:\.\d+)?)\b</Rule>
+    <Rule color="Function">\b[A-Za-z_][A-Za-z0-9_]*(?=\s*\()</Rule>
+  </RuleSet>
+</SyntaxDefinition>

@@ -12,6 +12,16 @@ public sealed partial class ProtocolConfigViewModel : ViewModelProperties
     #region 构造方法
     public ProtocolConfigViewModel()
     {
+        _previewUpdateDebounceTimer = new System.Windows.Threading.DispatcherTimer
+        {
+            Interval = PreviewUpdateDebounceInterval
+        };
+        _previewUpdateDebounceTimer.Tick += (_, _) =>
+        {
+            _previewUpdateDebounceTimer.Stop();
+            UpdatePreviews();
+        };
+
         InitializeOptionCollections();
         InitializeCommands();
 

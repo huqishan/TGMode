@@ -54,6 +54,13 @@ public sealed partial class DeviceCommunicationConfigViewModel
     private static readonly Brush NeutralBrush =
         new SolidColorBrush((Color)ColorConverter.ConvertFromString("#64748B"));
 
+    public bool IsProtocolConfigurationEditable => !_isConnectionEstablished;
+
+    public string ProtocolConfigurationEditHint =>
+        IsProtocolConfigurationEditable
+            ? "Protocols can be edited."
+            : "Close the active test connection before editing protocols.";
+
     #endregion
 
     #region 私有字段
@@ -137,6 +144,8 @@ public sealed partial class DeviceCommunicationConfigViewModel
     /// 左侧配置列表搜索关键字。
     /// </summary>
     private string _searchText = string.Empty;
+    private string _availableProtocolSearchText = string.Empty;
+    private string _supportedProtocolCommandSearchText = string.Empty;
 
     /// <summary>
     /// 协议列表抽屉是否处于打开状态。
@@ -147,6 +156,8 @@ public sealed partial class DeviceCommunicationConfigViewModel
     /// 指令列表抽屉是否处于打开状态。
     /// </summary>
     private bool _isProtocolCommandLibraryOpen;
+    private bool _isConnectionEstablished;
+    private readonly List<BoundParseOnlyCommand> _activeParseOnlyCommands = new();
 
     #endregion
 
@@ -161,6 +172,10 @@ public sealed partial class DeviceCommunicationConfigViewModel
     /// 通信配置列表视图，支持搜索过滤。
     /// </summary>
     public ICollectionView ProfilesView { get; private set; } = null!;
+
+    public ICollectionView AvailableProtocolsView { get; private set; } = null!;
+
+    public ICollectionView SupportedProtocolCommandsView { get; private set; } = null!;
 
     /// <summary>
     /// 通信类型下拉选项集合。
@@ -278,6 +293,34 @@ public sealed partial class DeviceCommunicationConfigViewModel
             }
 
             ProfilesView?.Refresh();
+        }
+    }
+
+    public string AvailableProtocolSearchText
+    {
+        get => _availableProtocolSearchText;
+        set
+        {
+            if (!SetField(ref _availableProtocolSearchText, value ?? string.Empty))
+            {
+                return;
+            }
+
+            AvailableProtocolsView?.Refresh();
+        }
+    }
+
+    public string SupportedProtocolCommandSearchText
+    {
+        get => _supportedProtocolCommandSearchText;
+        set
+        {
+            if (!SetField(ref _supportedProtocolCommandSearchText, value ?? string.Empty))
+            {
+                return;
+            }
+
+            SupportedProtocolCommandsView?.Refresh();
         }
     }
 
@@ -551,6 +594,11 @@ public sealed partial class DeviceCommunicationConfigViewModel
         OnPropertyChanged(nameof(IsPlcTestVisible));
         OnPropertyChanged(nameof(IsGenericSendTestVisible));
     }
+
+    private sealed record BoundParseOnlyCommand(
+        string ProtocolName,
+        string CommandName,
+        ProtocolCommandConfig Command);
 
     #endregion
 }

@@ -5,8 +5,9 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:searchBox="clr-namespace:ControlLibrary.Controls.SearchBox.Control;assembly=ControlLibrary"
              xmlns:vm="clr-namespace:Module.Communication.ViewModels"
-             xmlns:luaScript="clr-namespace:ControlLibrary.Controls.LuaScripEditor.Control;assembly=ControlLibrary"
              xmlns:luaCompiler="clr-namespace:ControlLibrary.ControlViews.LuaScrip;assembly=ControlLibrary"
+             xmlns:avalonEdit="http://icsharpcode.net/sharpdevelop/avalonedit"
+             xmlns:avalonBinding="clr-namespace:ControlLibrary.AvalonEdit;assembly=ControlLibrary"
              xmlns:converts="clr-namespace:ControlLibrary.Converts;assembly=ControlLibrary"
              mc:Ignorable="d"
              HorizontalAlignment="Stretch"
@@ -444,10 +445,20 @@ CornerRadius="999">
                                                     <ColumnDefinition Width="*" />
                                                 </Grid.ColumnDefinitions>
                                                 <TextBlock Style="{StaticResource FieldLabelStyle}" Text="Lua 解析脚本" />
-                                                <luaScript:LuaScriptEditor x:Name="ParseRulesLuaEditor"
-                                                                           Grid.Row="1"
-                                                                           PreviewMouseDoubleClick="ParseRulesLuaEditor_PreviewMouseDoubleClick"
-                                                                           ScriptText="{Binding SelectedProfile.ParseRulesText, UpdateSourceTrigger=PropertyChanged}" />
+                                                <avalonEdit:TextEditor x:Name="ParseRulesLuaEditor"
+                                                                       Grid.Row="1"
+                                                                       Background="{DynamicResource TabCardBackgroundBrush}"
+                                                                       BorderBrush="{DynamicResource TabItemSelectedBorderBrush}"
+                                                                       BorderThickness="1"
+                                                                       FontFamily="Consolas"
+                                                                       FontSize="20"
+                                                                       Foreground="{DynamicResource LuaEditorPlainTextBrush}"
+                                                                       ShowLineNumbers="True"
+                                                                       HorizontalScrollBarVisibility="Auto"
+                                                                       VerticalScrollBarVisibility="Auto"
+                                                                       PreviewMouseDoubleClick="ParseRulesLuaEditor_PreviewMouseDoubleClick"
+                                                                       avalonBinding:AvalonEditTextBinding.UseLuaHighlighting="True"
+                                                                       avalonBinding:AvalonEditTextBinding.BindableText="{Binding SelectedProfile.ParseRulesText, UpdateSourceTrigger=PropertyChanged}" />
                                                 <Button Grid.Row="1"
         Grid.Column="1" Grid.RowSpan="2"
         Content=">>" FontSize="20"

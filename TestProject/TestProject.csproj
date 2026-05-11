@@ -19,6 +19,8 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\ControlLibrary\ControlLibrary.csproj" />
+    <ProjectReference Include="..\Module.Communication\Module.Communication.csproj" />
     <ProjectReference Include="..\Shared\Shared.csproj" />
     <ProjectReference Include="..\Module.Business\Module.Business.csproj" />
   </ItemGroup>

@@ -12,9 +12,17 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="AvalonEdit" Version="6.3.1.120" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Compile Update="Controls\Navigation\Control\ModernNavigationBarNew.xaml.cs">
       <SubType>Code</SubType>
     </Compile>
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="AvalonEdit\Lua.xshd" />
   </ItemGroup>
 
 </Project>

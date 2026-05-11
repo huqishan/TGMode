@@ -63,9 +63,9 @@ namespace Module.Communication.Models
     {
         public string? Name { get; set; }
 
-        public ProtocolPayloadFormat RequestFormat { get; set; } = ProtocolPayloadFormat.Hex;
+        public ProtocolPayloadFormat RequestFormat { get; set; } = ProtocolPayloadFormat.Ascii;
 
-        public ProtocolPayloadFormat ResponseFormat { get; set; } = ProtocolPayloadFormat.Hex;
+        public ProtocolPayloadFormat ResponseFormat { get; set; } = ProtocolPayloadFormat.Ascii;
 
         public string? ReplyAggregationMilliseconds { get; set; }
 
@@ -135,9 +135,9 @@ namespace Module.Communication.Models
         public List<ProtocolCommandConfigDocument>? Commands { get; set; }
 
         // Legacy single-command fields, kept so existing JSON can still load.
-        public ProtocolPayloadFormat RequestFormat { get; set; } = ProtocolPayloadFormat.Hex;
+        public ProtocolPayloadFormat RequestFormat { get; set; } = ProtocolPayloadFormat.Ascii;
 
-        public ProtocolPayloadFormat ResponseFormat { get; set; } = ProtocolPayloadFormat.Hex;
+        public ProtocolPayloadFormat ResponseFormat { get; set; } = ProtocolPayloadFormat.Ascii;
 
         public string? ReplyAggregationMilliseconds { get; set; }
 
@@ -257,8 +257,8 @@ namespace Module.Communication.Models
             new Regex(@"\{\{\s*(?<name>[^{}\r\n]+?)\s*\}\}", RegexOptions.Compiled);
 
         private string _name = "指令 1";
-        private ProtocolPayloadFormat _requestFormat = ProtocolPayloadFormat.Hex;
-        private ProtocolPayloadFormat _responseFormat = ProtocolPayloadFormat.Hex;
+        private ProtocolPayloadFormat _requestFormat = ProtocolPayloadFormat.Ascii;
+        private ProtocolPayloadFormat _responseFormat = ProtocolPayloadFormat.Ascii;
         private string _replyAggregationMilliseconds = "200";
         private bool _waitForResponse = true;
         private bool _isParseOnly;
@@ -391,13 +391,13 @@ namespace Module.Communication.Models
         public string SampleResponseText
         {
             get => _sampleResponseText;
-            set => SetField(ref _sampleResponseText, value);
+            set => SetField(ref _sampleResponseText, value, raiseStateChanges: false);
         }
 
         public string ParseRulesText
         {
             get => _parseRulesText;
-            set => SetField(ref _parseRulesText, value);
+            set => SetField(ref _parseRulesText, value, raiseStateChanges: false);
         }
 
         public string RequestFormatDisplayName => ProtocolDisplayNames.GetPayloadFormatDisplayName(RequestFormat);
@@ -434,7 +434,7 @@ namespace Module.Communication.Models
             };
         }
 
-        private bool SetField<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
+        private bool SetField<T>(ref T field, T value, bool raiseStateChanges = true, [CallerMemberName] string? propertyName = null)
         {
             if (Equals(field, value))
             {
@@ -443,7 +443,11 @@ namespace Module.Communication.Models
 
             field = value;
             OnPropertyChanged(propertyName);
-            RaiseStateChanged();
+            if (raiseStateChanges)
+            {
+                RaiseStateChanged();
+            }
+
             return true;
         }
 
@@ -894,12 +898,41 @@ namespace Module.Communication.Models
 
         private void SelectedCommand_PropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
-            RaiseCommandStateChanged();
+            if (string.IsNullOrWhiteSpace(e.PropertyName))
+            {
+                RaiseCommandStateChanged();
+                return;
+            }
+
+            switch (e.PropertyName)
+            {
+                case nameof(ProtocolCommandConfig.ContentTemplate):
+                case nameof(ProtocolCommandConfig.PlaceholderValuesText):
+                case nameof(ProtocolCommandConfig.PlaceholderValues):
+                case nameof(ProtocolCommandConfig.SampleResponseText):
+                case nameof(ProtocolCommandConfig.ParseRulesText):
+                    OnPropertyChanged(e.PropertyName);
+                    return;
+                default:
+                    RaiseCommandStateChanged();
+                    return;
+            }
         }
 
         private void Command_PropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
-            OnPropertyChanged(nameof(Summary));
+            if (string.IsNullOrWhiteSpace(e.PropertyName) ||
+                e.PropertyName is nameof(ProtocolCommandConfig.Name)
+                    or nameof(ProtocolCommandConfig.RequestFormat)
+                    or nameof(ProtocolCommandConfig.ResponseFormat)
+                    or nameof(ProtocolCommandConfig.ReplyAggregationMilliseconds)
+                    or nameof(ProtocolCommandConfig.WaitForResponse)
+                    or nameof(ProtocolCommandConfig.IsParseOnly)
+                    or nameof(ProtocolCommandConfig.CrcMode)
+                    or nameof(ProtocolCommandConfig.RequestSendMode))
+            {
+                OnPropertyChanged(nameof(Summary));
+            }
         }
 
         private bool SetField<T>(ref T field, T value, bool raiseStateChanges, [CallerMemberName] string? propertyName = null)
@@ -1409,15 +1442,26 @@ namespace Module.Communication.Models
 
         private static string FormatParsedValue(object? value)
         {
-            return value switch
+            if (value is null)
             {
-                null => "nil",
-                string text => text,
-                bool boolValue => boolValue ? "true" : "false",
-                byte or sbyte or short or ushort or int or uint or long or ulong or float or double or decimal =>
-                    Convert.ToString(value, CultureInfo.InvariantCulture) ?? string.Empty,
-                _ => JsonSerializer.Serialize(value, ParsedJsonOptions)
+                return string.Empty;
+            }
+
+            if (value is IReadOnlyDictionary<string, object?> readOnlyDictionary)
+            {
+                return JsonSerializer.Serialize(readOnlyDictionary, ParsedJsonOptions);
+            }
+
+            if (value is IDictionary<string, object?> dictionary)
+            {
+                return JsonSerializer.Serialize(dictionary, ParsedJsonOptions);
+            }
+
+            Dictionary<string, object?> wrappedValue = new(StringComparer.OrdinalIgnoreCase)
+            {
+                ["Data"] = value
             };
+            return JsonSerializer.Serialize(wrappedValue, ParsedJsonOptions);
         }
 
         private static string ToLuaStringLiteral(string value)

@@ -7,6 +7,7 @@ using System.IO;
 using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Threading;
 
 namespace Module.Communication.ViewModels;
 
@@ -27,6 +28,7 @@ public sealed partial class ProtocolConfigViewModel
 
     private static readonly Brush NeutralBrush =
         new SolidColorBrush((Color)ColorConverter.ConvertFromString("#64748B"));
+    private static readonly TimeSpan PreviewUpdateDebounceInterval = TimeSpan.FromMilliseconds(300);
 
     #endregion
 
@@ -45,6 +47,7 @@ public sealed partial class ProtocolConfigViewModel
     private string _parsedResultText = string.Empty;
     private string _searchText = string.Empty;
     private bool _isCommandDrawerOpen;
+    private readonly DispatcherTimer _previewUpdateDebounceTimer;
 
     #endregion
 
@@ -78,6 +81,7 @@ public sealed partial class ProtocolConfigViewModel
             }
 
             _selectedProfile = value;
+            _previewUpdateDebounceTimer.Stop();
 
             if (_selectedProfile is not null)
             {
@@ -246,8 +250,31 @@ public sealed partial class ProtocolConfigViewModel
             }
         }
 
-        UpdatePreviews();
+        if (ShouldDebouncePreviewUpdate(e.PropertyName))
+        {
+            SchedulePreviewUpdate();
+        }
+        else
+        {
+            _previewUpdateDebounceTimer.Stop();
+            UpdatePreviews();
+        }
+
         RaiseCommandStatesChanged();
+    }
+
+    private void SchedulePreviewUpdate()
+    {
+        _previewUpdateDebounceTimer.Stop();
+        _previewUpdateDebounceTimer.Start();
+    }
+
+    private static bool ShouldDebouncePreviewUpdate(string? propertyName)
+    {
+        return propertyName is nameof(ProtocolConfigProfile.ContentTemplate)
+            or nameof(ProtocolConfigProfile.PlaceholderValuesText)
+            or nameof(ProtocolConfigProfile.SampleResponseText)
+            or nameof(ProtocolConfigProfile.ParseRulesText);
     }
 
     #endregion
