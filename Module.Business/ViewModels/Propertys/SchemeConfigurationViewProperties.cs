@@ -1,21 +1,22 @@
 using Module.Business.Models;
 using Module.Business.Services;
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
-using System.Windows.Input;
 using System.Windows.Data;
+using System.Windows.Input;
 using System.Windows.Media;
 
 namespace Module.Business.ViewModels;
 
 /// <summary>
-/// 方案配置界面的属性集中声明。
+/// 方案配置界面属性定义。
 /// </summary>
 public sealed partial class SchemeConfigurationViewModel
 {
-    #region 状态颜色字段
+    #region 状态颜色
 
     private static readonly Brush SuccessBrush =
         new SolidColorBrush((Color)ColorConverter.ConvertFromString("#16A34A"));
@@ -28,17 +29,33 @@ public sealed partial class SchemeConfigurationViewModel
 
     #endregion
 
-    #region 私有状态字段
+    #region 私有字段
 
     private BusinessConfigurationCatalog _catalog = BusinessConfigurationStore.LoadCatalog();
     private SchemeProfile? _selectedScheme;
     private SchemeWorkStepItem? _selectedSchemeStep;
-    private WorkStepProfile? _selectedAvailableWorkStep;
+    private WorkStepProfile? _schemeStepEditorHostWorkStep;
+    private readonly List<RemovedSchemeStepUndoItem> _removedSchemeStepUndoItems = [];
     private string _searchText = string.Empty;
     private string _pageStatusText = "等待编辑";
     private Brush _pageStatusBrush = NeutralBrush;
     private DateTime _lastCreateOrCopyCommandAt = DateTime.MinValue;
-    private bool _isSynchronizingSchemeStepSnapshots;
+
+    #endregion
+
+    #region 撤回记录
+
+    /// <summary>
+    /// 方案工步删除后的撤回记录。
+    /// </summary>
+    private sealed class RemovedSchemeStepUndoItem
+    {
+        public string SchemeId { get; init; } = string.Empty;
+
+        public int StepIndex { get; init; }
+
+        public SchemeWorkStepItem SchemeStep { get; init; } = new();
+    }
 
     #endregion
 
@@ -48,18 +65,14 @@ public sealed partial class SchemeConfigurationViewModel
 
     public ICollectionView SchemesView { get; private set; } = null!;
 
-    public ObservableCollection<WorkStepProfile> WorkSteps => _catalog.WorkSteps;
+    /// <summary>
+    /// 复用工步配置页的步骤编辑能力。
+    /// </summary>
+    public WorkStepConfigurationViewModel SchemeStepEditor { get; } = new();
 
-    public ObservableCollection<WorkStepProfile> AvailableWorkSteps { get; } = new();
-
-    public ObservableCollection<string> SchemeStepParameterTypeOptions { get; } = new()
-    {
-        "设置值",
-        "判断值"
-    };
     #endregion
 
-    #region 搜索与当前编辑属性
+    #region 当前选择与搜索
 
     public string SearchText
     {
@@ -99,8 +112,6 @@ public sealed partial class SchemeConfigurationViewModel
 
             SelectedSchemeStep = _selectedScheme?.Steps.FirstOrDefault();
             OnPropertyChanged();
-            RefreshAvailableWorkSteps();
-            SynchronizeSelectedSchemeWorkStepSnapshots();
             RaisePageSummaryChanged();
             RaiseCommandStatesChanged();
         }
@@ -128,28 +139,17 @@ public sealed partial class SchemeConfigurationViewModel
                 _selectedSchemeStep.PropertyChanged += SelectedSchemeStep_PropertyChanged;
             }
 
+            BindSchemeStepEditor();
             OnPropertyChanged();
-            OnPropertyChanged(nameof(DisplayedSchemeStepParameters));
-            OnPropertyChanged(nameof(SchemeStepParameterCountText));
+            OnPropertyChanged(nameof(SchemeStepOperationCountText));
+            OnPropertyChanged(nameof(AreAllSchemeStepsStartupEnabled));
             RaiseCommandStatesChanged();
-        }
-    }
-
-    public WorkStepProfile? SelectedAvailableWorkStep
-    {
-        get => _selectedAvailableWorkStep;
-        set
-        {
-            if (SetField(ref _selectedAvailableWorkStep, value))
-            {
-                RaiseCommandStatesChanged();
-            }
         }
     }
 
     #endregion
 
-    #region 页面状态属性
+    #region 页面展示属性
 
     public string PageStatusText
     {
@@ -165,22 +165,40 @@ public sealed partial class SchemeConfigurationViewModel
 
     public string SchemeCountText => $"{Schemes.Count} 个方案";
 
-    public string AvailableWorkStepCountText => SelectedScheme is null
-        ? "未选择方案"
-        : $"{AvailableWorkSteps.Count} 个可选工步";
-
     public string SchemeStepCountText => SelectedScheme is null
         ? "未选择方案"
-        : $"{SelectedScheme.StepCount} 个方案工步";
+        : $"{SelectedScheme.StepCount} 个工步";
 
-    public string SchemeStepParameterCountText => SelectedSchemeStep is null
+    public string SchemeStepOperationCountText => SelectedSchemeStep is null
         ? "未选择工步"
-        : $"{DisplayedSchemeStepParameters.Count} 个工步参数";
+        : $"{SelectedSchemeStep.Operations.Count} 个步骤";
 
-    public ObservableCollection<SchemeWorkStepParameter> DisplayedSchemeStepParameters =>
-        FindCurrentWorkStep(SelectedSchemeStep) is null
-            ? EmptySchemeStepParameters
-            : SelectedSchemeStep?.Parameters ?? EmptySchemeStepParameters;
+    /// <summary>
+    /// 方案工步启用列头的全选状态。
+    /// </summary>
+    public bool AreAllSchemeStepsStartupEnabled
+    {
+        get => SelectedScheme is not null &&
+               SelectedScheme.Steps.Count > 0 &&
+               SelectedScheme.Steps.All(step => step.IsStartupEnabled);
+        set
+        {
+            if (SelectedScheme is null)
+            {
+                return;
+            }
+
+            foreach (SchemeWorkStepItem step in SelectedScheme.Steps
+                         .Where(step => step.IsStartupEnabled != value)
+                         .ToList())
+            {
+                step.IsStartupEnabled = value;
+            }
+
+            OnPropertyChanged();
+            RaiseCommandStatesChanged();
+        }
+    }
 
     #endregion
 
@@ -198,160 +216,109 @@ public sealed partial class SchemeConfigurationViewModel
 
     public ICommand ExportSchemeCommand { get; private set; } = null!;
 
-    public ICommand RefreshWorkStepsCommand { get; private set; } = null!;
-
     public ICommand AddWorkStepToSchemeCommand { get; private set; } = null!;
 
     public ICommand RemoveWorkStepFromSchemeCommand { get; private set; } = null!;
 
-    public ICommand MoveSchemeStepUpCommand { get; private set; } = null!;
-
-    public ICommand MoveSchemeStepDownCommand { get; private set; } = null!;
+    public ICommand UndoRemoveSchemeStepCommand { get; private set; } = null!;
 
     #endregion
 
-    #region 属性联动方法
+    #region 属性联动
 
+    /// <summary>
+    /// 方案自身属性变化时，刷新页面统计与筛选。
+    /// </summary>
     private void SelectedScheme_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(SchemeProfile.Steps))
-        {
-            SynchronizeSelectedSchemeWorkStepSnapshots();
-        }
-
         if (e.PropertyName is nameof(SchemeProfile.StepCount)
-            or nameof(SchemeProfile.SchemeName))
+            or nameof(SchemeProfile.SchemeName)
+            or nameof(SchemeProfile.LastModifiedAt)
+            or nameof(SchemeProfile.LastModifiedText))
         {
             RaisePageSummaryChanged();
         }
 
         if (e.PropertyName is nameof(SchemeProfile.StepCount)
-            or nameof(SchemeProfile.SchemeName)
             or nameof(SchemeProfile.Steps))
         {
             SchemesView.Refresh();
         }
 
-        if (e.PropertyName is nameof(SchemeProfile.Steps))
+        if (e.PropertyName == nameof(SchemeProfile.Steps))
         {
-            OnPropertyChanged(nameof(DisplayedSchemeStepParameters));
-            OnPropertyChanged(nameof(SchemeStepParameterCountText));
+            OnPropertyChanged(nameof(SchemeStepOperationCountText));
+            OnPropertyChanged(nameof(AreAllSchemeStepsStartupEnabled));
         }
     }
 
+    /// <summary>
+    /// 当前选中方案工步变化时，同步右侧步骤编辑器与统计信息。
+    /// </summary>
     private void SelectedSchemeStep_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName is nameof(SchemeWorkStepItem.WorkStepId)
-            or nameof(SchemeWorkStepItem.Parameters)
+        if (e.PropertyName == nameof(SchemeWorkStepItem.Operations))
+        {
+            BindSchemeStepEditor();
+        }
+
+        if (e.PropertyName is nameof(SchemeWorkStepItem.StepName)
             or nameof(SchemeWorkStepItem.SchemeStepName))
         {
-            OnPropertyChanged(nameof(DisplayedSchemeStepParameters));
-            OnPropertyChanged(nameof(SchemeStepParameterCountText));
+            if (_schemeStepEditorHostWorkStep is not null)
+            {
+                _schemeStepEditorHostWorkStep.StepName = SelectedSchemeStep?.SchemeStepName ?? string.Empty;
+            }
+        }
+
+        if (e.PropertyName is nameof(SchemeWorkStepItem.IsStartupEnabled)
+            or nameof(SchemeWorkStepItem.Operations)
+            or nameof(SchemeWorkStepItem.LastModifiedAt)
+            or nameof(SchemeWorkStepItem.LastModifiedText))
+        {
+            OnPropertyChanged(nameof(SchemeStepOperationCountText));
+            OnPropertyChanged(nameof(AreAllSchemeStepsStartupEnabled));
         }
     }
 
+    /// <summary>
+    /// 刷新页面顶部统计文本。
+    /// </summary>
     private void RaisePageSummaryChanged()
     {
         OnPropertyChanged(nameof(SchemeCountText));
-        OnPropertyChanged(nameof(AvailableWorkStepCountText));
         OnPropertyChanged(nameof(SchemeStepCountText));
-        OnPropertyChanged(nameof(SchemeStepParameterCountText));
+        OnPropertyChanged(nameof(SchemeStepOperationCountText));
+        OnPropertyChanged(nameof(AreAllSchemeStepsStartupEnabled));
     }
 
-    private void SynchronizeSelectedSchemeWorkStepSnapshots()
+    /// <summary>
+    /// 让方案工步直接复用工步步骤编辑器。
+    /// </summary>
+    private void BindSchemeStepEditor()
     {
-        if (_isSynchronizingSchemeStepSnapshots || SelectedScheme is null)
+        if (SchemeStepEditor.CloseOperationDrawerCommand.CanExecute(null))
         {
+            SchemeStepEditor.CloseOperationDrawerCommand.Execute(null);
+        }
+
+        if (SelectedSchemeStep is null)
+        {
+            _schemeStepEditorHostWorkStep = null;
+            SchemeStepEditor.SelectedOperation = null;
+            SchemeStepEditor.SelectedWorkStep = null;
             return;
         }
 
-        try
+        _schemeStepEditorHostWorkStep = new WorkStepProfile
         {
-            _isSynchronizingSchemeStepSnapshots = true;
+            StepName = SelectedSchemeStep.SchemeStepName,
+            Steps = SelectedSchemeStep.Operations
+        };
 
-            foreach (SchemeWorkStepItem schemeStep in SelectedScheme.Steps)
-            {
-                WorkStepProfile? workStep = FindCurrentWorkStep(schemeStep);
-                if (workStep is null)
-                {
-                    continue;
-                }
-
-                ObservableCollection<SchemeWorkStepParameter> synchronizedParameters =
-                    SchemeWorkStepItem.CreateParametersFromWorkStep(workStep, schemeStep.Parameters);
-                bool needsSync =
-                    !string.Equals(schemeStep.StepName, workStep.StepName, StringComparison.OrdinalIgnoreCase) ||
-                    !string.Equals(schemeStep.OperationSummary, workStep.OperationSummary, StringComparison.OrdinalIgnoreCase) ||
-                    schemeStep.LastModifiedAt != workStep.LastModifiedAt ||
-                    !HasSameSchemeStepParameters(schemeStep.Parameters, synchronizedParameters);
-
-                if (!needsSync)
-                {
-                    continue;
-                }
-
-                schemeStep.StepName = workStep.StepName;
-                schemeStep.OperationSummary = workStep.OperationSummary;
-                schemeStep.LastModifiedAt = workStep.LastModifiedAt;
-                schemeStep.Parameters = synchronizedParameters;
-            }
-        }
-        finally
-        {
-            _isSynchronizingSchemeStepSnapshots = false;
-        }
+        SchemeStepEditor.SelectedWorkStep = _schemeStepEditorHostWorkStep;
+        SchemeStepEditor.SelectedOperation = _schemeStepEditorHostWorkStep.Steps.FirstOrDefault();
     }
-
-    private WorkStepProfile? FindCurrentWorkStep(SchemeWorkStepItem? schemeStep)
-    {
-        if (schemeStep is null || string.IsNullOrWhiteSpace(schemeStep.WorkStepId))
-        {
-            return null;
-        }
-
-        WorkStepProfile? workStep = WorkSteps.FirstOrDefault(step =>
-            string.Equals(step.Id, schemeStep.WorkStepId, StringComparison.Ordinal));
-        if (workStep is null)
-        {
-            return null;
-        }
-
-        return workStep;
-    }
-
-    private static bool HasSameSchemeStepParameters(
-        ObservableCollection<SchemeWorkStepParameter> left,
-        ObservableCollection<SchemeWorkStepParameter> right)
-    {
-        if (ReferenceEquals(left, right))
-        {
-            return true;
-        }
-
-        if (left.Count != right.Count)
-        {
-            return false;
-        }
-
-        for (int index = 0; index < left.Count; index++)
-        {
-            SchemeWorkStepParameter leftParameter = left[index];
-            SchemeWorkStepParameter rightParameter = right[index];
-            if (!string.Equals(leftParameter.SourceOperationId, rightParameter.SourceOperationId, StringComparison.Ordinal) ||
-                !string.Equals(leftParameter.SourceParameterId, rightParameter.SourceParameterId, StringComparison.Ordinal) ||
-                !string.Equals(leftParameter.ParameterName, rightParameter.ParameterName, StringComparison.OrdinalIgnoreCase) ||
-                !string.Equals(leftParameter.ParameterType, rightParameter.ParameterType, StringComparison.OrdinalIgnoreCase) ||
-                !string.Equals(leftParameter.JudgeType, rightParameter.JudgeType, StringComparison.OrdinalIgnoreCase) ||
-                !string.Equals(leftParameter.JudgeCondition, rightParameter.JudgeCondition, StringComparison.OrdinalIgnoreCase))
-            {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    private static readonly ObservableCollection<SchemeWorkStepParameter> EmptySchemeStepParameters = new();
 
     #endregion
 }

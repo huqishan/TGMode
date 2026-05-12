@@ -97,7 +97,7 @@
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
             <Grid.RowDefinitions>
-                <RowDefinition Height="80"/>
+                <RowDefinition Height="35"/>
                 <RowDefinition/>
             </Grid.RowDefinitions>
             <!--<controls:ModernNavigationBar x:Name="NavigationBar" />-->

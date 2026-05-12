@@ -268,6 +268,7 @@ public static class BusinessConfigurationStore
 
         foreach (SchemeProfile scheme in schemes)
         {
+            DateTime normalizedLastModifiedAt = scheme.LastModifiedAt == default ? DateTime.Now : scheme.LastModifiedAt;
             scheme.Id = EnsureUniqueId(scheme.Id, usedIds);
             scheme.SchemeName = BuildUniqueName(
                 string.IsNullOrWhiteSpace(scheme.SchemeName) ? $"方案 {index}" : scheme.SchemeName.Trim(),
@@ -276,21 +277,37 @@ public static class BusinessConfigurationStore
             ObservableCollection<SchemeWorkStepItem> normalizedSteps = new();
             foreach (SchemeWorkStepItem step in scheme.Steps.Where(step => step is not null))
             {
-                if (!workStepById.TryGetValue(step.WorkStepId, out WorkStepProfile? workStep))
-                {
-                    continue;
-                }
-
                 SchemeWorkStepItem normalizedStep = step.Clone();
                 normalizedStep.Id = string.IsNullOrWhiteSpace(step.Id) ? Guid.NewGuid().ToString("N") : step.Id.Trim();
-                normalizedStep.WorkStepId = workStep.Id;
-                normalizedStep.StepName = workStep.StepName;
-                normalizedStep.OperationSummary = workStep.OperationSummary;
-                normalizedStep.Parameters = SchemeWorkStepItem.CreateParametersFromWorkStep(workStep, step.Parameters);
+                WorkStepProfile? workStep = string.IsNullOrWhiteSpace(step.WorkStepId)
+                    ? null
+                    : workStepById.TryGetValue(step.WorkStepId, out WorkStepProfile? currentWorkStep)
+                        ? currentWorkStep
+                        : null;
+
+                if (normalizedStep.Operations.Count == 0 && workStep is not null)
+                {
+                    normalizedStep.WorkStepId = workStep.Id;
+                    normalizedStep.StepName = string.IsNullOrWhiteSpace(normalizedStep.StepName)
+                        ? workStep.StepName
+                        : normalizedStep.StepName;
+                    normalizedStep.Operations = new ObservableCollection<WorkStepOperation>(
+                        workStep.Steps.Select(operation => operation.Clone()));
+                }
+
+                if (string.IsNullOrWhiteSpace(normalizedStep.StepName))
+                {
+                    normalizedStep.StepName = $"工步 {normalizedSteps.Count + 1}";
+                }
+
+                normalizedStep.Parameters = SchemeWorkStepItem.CreateParametersFromOperations(
+                    normalizedStep.Operations,
+                    step.Parameters);
                 normalizedSteps.Add(normalizedStep);
             }
 
             scheme.Steps = normalizedSteps;
+            scheme.LastModifiedAt = normalizedLastModifiedAt;
             index++;
         }
     }

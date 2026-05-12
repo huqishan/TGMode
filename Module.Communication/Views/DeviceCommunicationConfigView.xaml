@@ -159,23 +159,6 @@
             <Border Grid.Row="0"
                     Style="{StaticResource CardBorderStyle}">
                 <StackPanel>
-                    <!--<StackPanel HorizontalAlignment="Stretch"
-            VerticalAlignment="Stretch">
-                        <TextBlock Style="{StaticResource SectionTitleStyle}" Text="当前配置" />
-                        <TextBlock Margin="0,8,0,0"
-               Foreground="{DynamicResource AppMutedTextBrush}"
-               Text="{Binding SelectedProfile.TypeDescription}"
-               TextWrapping="Wrap" />
-                        <TextBlock Margin="0,12,0,0"
-               FontWeight="SemiBold"
-               Text="{Binding SelectedProfile.Summary}"
-               TextWrapping="Wrap" />
-                        <TextBlock Margin="0,8,0,0"
-               Foreground="{DynamicResource AppMutedTextBrush}"
-               Text="{Binding SelectedProfile.SupportedProtocolsDisplayText}"
-               TextWrapping="NoWrap"
-               TextTrimming="CharacterEllipsis" />
-                    </StackPanel>-->
                     <Grid>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" />
@@ -630,15 +613,6 @@ TextWrapping="Wrap" />
                                                 <TextBlock FontSize="14"
                                        FontWeight="SemiBold"
                                        Text="{Binding Name}" />
-                                                <!--<TextBlock Margin="0,6,0,0"
-                                       Foreground="{DynamicResource AppMutedTextBrush}"
-                                       Text="{Binding FilePath}"
-                                       TextWrapping="NoWrap"
-                                       TextTrimming="CharacterEllipsis" />-->
-                                                <!--<TextBlock Margin="0,6,0,0"
-                                       Foreground="{DynamicResource AppMutedTextBrush}"
-                                       Text="{Binding Summary}"
-                                       TextWrapping="Wrap" />-->
                                             </StackPanel>
                                         </DataTemplate>
                                     </ListBox.ItemTemplate>

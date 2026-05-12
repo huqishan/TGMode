@@ -844,6 +844,7 @@ public sealed class SchemeProfile : ViewModelProperties
 
     private string _id = Guid.NewGuid().ToString("N");
     private string _schemeName = "方案 1";
+    private DateTime _lastModifiedAt = DateTime.Now;
     private ObservableCollection<SchemeWorkStepItem> _steps = new();
 
     #endregion
@@ -868,7 +869,26 @@ public sealed class SchemeProfile : ViewModelProperties
     public string SchemeName
     {
         get => _schemeName;
-        set => SetField(ref _schemeName, value ?? string.Empty, true);
+        set
+        {
+            if (SetField(ref _schemeName, value ?? string.Empty, true))
+            {
+                MarkModified();
+            }
+        }
+    }
+
+    public DateTime LastModifiedAt
+    {
+        get => _lastModifiedAt;
+        set
+        {
+            DateTime normalizedValue = value == default ? DateTime.Now : value;
+            if (SetField(ref _lastModifiedAt, normalizedValue))
+            {
+                OnPropertyChanged(nameof(LastModifiedText));
+            }
+        }
     }
 
     public ObservableCollection<SchemeWorkStepItem> Steps
@@ -886,11 +906,15 @@ public sealed class SchemeProfile : ViewModelProperties
             AttachSteps(_steps);
             OnPropertyChanged();
             OnPropertyChanged(nameof(StepCount));
+            MarkModified();
         }
     }
 
     [JsonIgnore]
     public int StepCount => Steps.Count;
+
+    [JsonIgnore]
+    public string LastModifiedText => $"最后修改：{LastModifiedAt:yyyy-MM-dd HH:mm:ss}";
 
     #endregion
 
@@ -926,6 +950,7 @@ public sealed class SchemeProfile : ViewModelProperties
             }
 
             OnPropertyChanged(nameof(Steps));
+            MarkModified();
             return;
         }
 
@@ -952,15 +977,21 @@ public sealed class SchemeProfile : ViewModelProperties
 
         OnPropertyChanged(nameof(Steps));
         OnPropertyChanged(nameof(StepCount));
+        MarkModified();
     }
 
     private void Step_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName is nameof(SchemeWorkStepItem.WorkStepId)
+        if (e.PropertyName is nameof(SchemeWorkStepItem.IsStartupEnabled)
+            or nameof(SchemeWorkStepItem.WorkStepId)
             or nameof(SchemeWorkStepItem.SchemeStepName)
-            or nameof(SchemeWorkStepItem.OperationSummary))
+            or nameof(SchemeWorkStepItem.Operations)
+            or nameof(SchemeWorkStepItem.Parameters)
+            or nameof(SchemeWorkStepItem.LastModifiedAt)
+            or nameof(SchemeWorkStepItem.LastModifiedText))
         {
             OnPropertyChanged(nameof(Steps));
+            MarkModified();
         }
     }
 
@@ -982,8 +1013,14 @@ public sealed class SchemeProfile : ViewModelProperties
         {
             Id = Id,
             SchemeName = SchemeName,
+            LastModifiedAt = LastModifiedAt,
             Steps = new ObservableCollection<SchemeWorkStepItem>(Steps.Select(step => step.Clone()))
         };
+    }
+
+    public void MarkModified()
+    {
+        LastModifiedAt = DateTime.Now;
     }
 
     #endregion
@@ -999,13 +1036,24 @@ public sealed class SchemeWorkStepItem : ViewModelProperties
     #region 私有字段
 
     private string _id = Guid.NewGuid().ToString("N");
+    private bool _isStartupEnabled = true;
     private string _workStepId = string.Empty;
     private string _stepName = string.Empty;
     private string _schemeStepName = string.Empty;
     private DateTime _lastModifiedAt = DateTime.Now;
-    private string _operationSummary = string.Empty;
     private int _displayOrder = 1;
+    private ObservableCollection<WorkStepOperation> _operations = new();
     private ObservableCollection<SchemeWorkStepParameter> _parameters = new();
+
+    #endregion
+
+    #region 构造方法
+
+    public SchemeWorkStepItem()
+    {
+        AttachOperations(_operations);
+        AttachParameters(_parameters);
+    }
 
     #endregion
 
@@ -1017,10 +1065,28 @@ public sealed class SchemeWorkStepItem : ViewModelProperties
         set => SetField(ref _id, string.IsNullOrWhiteSpace(value) ? Guid.NewGuid().ToString("N") : value.Trim());
     }
 
+    public bool IsStartupEnabled
+    {
+        get => _isStartupEnabled;
+        set
+        {
+            if (SetField(ref _isStartupEnabled, value))
+            {
+                LastModifiedAt = DateTime.Now;
+            }
+        }
+    }
+
     public string WorkStepId
     {
         get => _workStepId;
-        set => SetField(ref _workStepId, value ?? string.Empty, true);
+        set
+        {
+            if (SetField(ref _workStepId, value ?? string.Empty, true))
+            {
+                LastModifiedAt = DateTime.Now;
+            }
+        }
     }
 
     public string StepName
@@ -1031,6 +1097,7 @@ public sealed class SchemeWorkStepItem : ViewModelProperties
             if (SetField(ref _stepName, value ?? string.Empty, true))
             {
                 OnPropertyChanged(nameof(SchemeStepName));
+                LastModifiedAt = DateTime.Now;
             }
         }
     }
@@ -1065,17 +1132,30 @@ public sealed class SchemeWorkStepItem : ViewModelProperties
         }
     }
 
-    public string OperationSummary
-    {
-        get => _operationSummary;
-        set => SetField(ref _operationSummary, value ?? string.Empty, true);
-    }
-
     [JsonIgnore]
     public int DisplayOrder
     {
         get => _displayOrder;
         set => SetField(ref _displayOrder, Math.Max(1, value));
+    }
+
+    public ObservableCollection<WorkStepOperation> Operations
+    {
+        get => _operations;
+        set
+        {
+            if (ReferenceEquals(_operations, value))
+            {
+                return;
+            }
+
+            DetachOperations(_operations);
+            _operations = value ?? new ObservableCollection<WorkStepOperation>();
+            AttachOperations(_operations);
+            OnPropertyChanged();
+            RefreshOperationSnapshot();
+            LastModifiedAt = DateTime.Now;
+        }
     }
 
     public ObservableCollection<SchemeWorkStepParameter> Parameters
@@ -1088,13 +1168,176 @@ public sealed class SchemeWorkStepItem : ViewModelProperties
                 return;
             }
 
+            DetachParameters(_parameters);
             _parameters = value ?? new ObservableCollection<SchemeWorkStepParameter>();
+            AttachParameters(_parameters);
             OnPropertyChanged();
+            LastModifiedAt = DateTime.Now;
         }
     }
 
     [JsonIgnore]
     public string LastModifiedText => $"最后修改：{LastModifiedAt:yyyy-MM-dd HH:mm:ss}";
+
+    #endregion
+
+    #region 集合通知
+
+    private void AttachOperations(ObservableCollection<WorkStepOperation> operations)
+    {
+        operations.CollectionChanged += Operations_CollectionChanged;
+        foreach (WorkStepOperation operation in operations)
+        {
+            operation.PropertyChanged += Operation_PropertyChanged;
+        }
+
+        RefreshOperationDisplayOrders(operations);
+        RefreshOperationSnapshot(updateLastModified: false);
+    }
+
+    private void DetachOperations(ObservableCollection<WorkStepOperation> operations)
+    {
+        operations.CollectionChanged -= Operations_CollectionChanged;
+        foreach (WorkStepOperation operation in operations)
+        {
+            operation.PropertyChanged -= Operation_PropertyChanged;
+        }
+    }
+
+    private void Operations_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        if (e.Action == NotifyCollectionChangedAction.Move)
+        {
+            if (sender is ObservableCollection<WorkStepOperation> movedOperations)
+            {
+                RefreshOperationDisplayOrders(movedOperations);
+            }
+
+            RefreshOperationSnapshot();
+            return;
+        }
+
+        if (e.NewItems is not null)
+        {
+            foreach (WorkStepOperation operation in e.NewItems.OfType<WorkStepOperation>())
+            {
+                operation.PropertyChanged += Operation_PropertyChanged;
+            }
+        }
+
+        if (e.OldItems is not null)
+        {
+            foreach (WorkStepOperation operation in e.OldItems.OfType<WorkStepOperation>())
+            {
+                operation.PropertyChanged -= Operation_PropertyChanged;
+            }
+        }
+
+        if (sender is ObservableCollection<WorkStepOperation> changedOperations)
+        {
+            RefreshOperationDisplayOrders(changedOperations);
+        }
+
+        RefreshOperationSnapshot();
+    }
+
+    private void Operation_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is nameof(WorkStepOperation.OperationObject)
+            or nameof(WorkStepOperation.ProtocolName)
+            or nameof(WorkStepOperation.CommandName)
+            or nameof(WorkStepOperation.InvokeMethod)
+            or nameof(WorkStepOperation.ReturnValue)
+            or nameof(WorkStepOperation.ShowDataToView)
+            or nameof(WorkStepOperation.ViewDataName)
+            or nameof(WorkStepOperation.ViewJudgeType)
+            or nameof(WorkStepOperation.ViewJudgeCondition)
+            or nameof(WorkStepOperation.LuaScript)
+            or nameof(WorkStepOperation.DelayMilliseconds)
+            or nameof(WorkStepOperation.Remark)
+            or nameof(WorkStepOperation.ParameterCount)
+            or nameof(WorkStepOperation.DisplayText)
+            or nameof(WorkStepOperation.Parameters))
+        {
+            RefreshOperationSnapshot();
+        }
+    }
+
+    private void AttachParameters(ObservableCollection<SchemeWorkStepParameter> parameters)
+    {
+        parameters.CollectionChanged += Parameters_CollectionChanged;
+        foreach (SchemeWorkStepParameter parameter in parameters)
+        {
+            parameter.PropertyChanged += Parameter_PropertyChanged;
+        }
+    }
+
+    private void DetachParameters(ObservableCollection<SchemeWorkStepParameter> parameters)
+    {
+        parameters.CollectionChanged -= Parameters_CollectionChanged;
+        foreach (SchemeWorkStepParameter parameter in parameters)
+        {
+            parameter.PropertyChanged -= Parameter_PropertyChanged;
+        }
+    }
+
+    private void Parameters_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        if (e.NewItems is not null)
+        {
+            foreach (SchemeWorkStepParameter parameter in e.NewItems.OfType<SchemeWorkStepParameter>())
+            {
+                parameter.PropertyChanged += Parameter_PropertyChanged;
+            }
+        }
+
+        if (e.OldItems is not null)
+        {
+            foreach (SchemeWorkStepParameter parameter in e.OldItems.OfType<SchemeWorkStepParameter>())
+            {
+                parameter.PropertyChanged -= Parameter_PropertyChanged;
+            }
+        }
+
+        LastModifiedAt = DateTime.Now;
+    }
+
+    private void Parameter_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is nameof(SchemeWorkStepParameter.ParameterName)
+            or nameof(SchemeWorkStepParameter.ParameterType)
+            or nameof(SchemeWorkStepParameter.JudgeType)
+            or nameof(SchemeWorkStepParameter.JudgeCondition))
+        {
+            LastModifiedAt = DateTime.Now;
+        }
+    }
+
+    private static void RefreshOperationDisplayOrders(ObservableCollection<WorkStepOperation> operations)
+    {
+        for (int index = 0; index < operations.Count; index++)
+        {
+            operations[index].DisplayOrder = index + 1;
+        }
+    }
+
+    private void RefreshOperationSnapshot(bool updateLastModified = true)
+    {
+        ObservableCollection<SchemeWorkStepParameter> updatedParameters =
+            CreateParametersFromOperations(Operations, Parameters);
+        if (!HasSameSchemeStepParameters(_parameters, updatedParameters))
+        {
+            DetachParameters(_parameters);
+            _parameters = updatedParameters;
+            AttachParameters(_parameters);
+            OnPropertyChanged(nameof(Parameters));
+        }
+
+        if (updateLastModified)
+        {
+            LastModifiedAt = DateTime.Now;
+        }
+    }
 
     #endregion
 
@@ -1104,10 +1347,11 @@ public sealed class SchemeWorkStepItem : ViewModelProperties
     {
         return new SchemeWorkStepItem
         {
+            IsStartupEnabled = true,
             WorkStepId = workStep.Id,
             StepName = workStep.StepName,
             LastModifiedAt = workStep.LastModifiedAt,
-            OperationSummary = workStep.OperationSummary,
+            Operations = new ObservableCollection<WorkStepOperation>(workStep.Steps.Select(operation => operation.Clone())),
             Parameters = CreateParametersFromWorkStep(workStep)
         };
     }
@@ -1117,12 +1361,24 @@ public sealed class SchemeWorkStepItem : ViewModelProperties
         return new SchemeWorkStepItem
         {
             Id = Id,
+            IsStartupEnabled = IsStartupEnabled,
             WorkStepId = WorkStepId,
             StepName = StepName,
-            OperationSummary = OperationSummary,
             SchemeStepName = _schemeStepName,
             LastModifiedAt = LastModifiedAt,
+            Operations = new ObservableCollection<WorkStepOperation>(Operations.Select(operation => operation.Clone())),
             Parameters = new ObservableCollection<SchemeWorkStepParameter>(Parameters.Select(parameter => parameter.Clone()))
+        };
+    }
+
+    public WorkStepProfile ToWorkStepProfile()
+    {
+        return new WorkStepProfile
+        {
+            Id = string.IsNullOrWhiteSpace(WorkStepId) ? Guid.NewGuid().ToString("N") : WorkStepId,
+            StepName = SchemeStepName,
+            LastModifiedAt = LastModifiedAt,
+            Steps = new ObservableCollection<WorkStepOperation>(Operations.Select(operation => operation.Clone()))
         };
     }
 
@@ -1130,7 +1386,18 @@ public sealed class SchemeWorkStepItem : ViewModelProperties
         WorkStepProfile workStep,
         IEnumerable<SchemeWorkStepParameter>? existingParameters = null)
     {
-        List<string> displayJudgeTypeOptions = workStep.Steps
+        return CreateParametersFromOperations(workStep.Steps, existingParameters);
+    }
+
+    public static ObservableCollection<SchemeWorkStepParameter> CreateParametersFromOperations(
+        IEnumerable<WorkStepOperation> operations,
+        IEnumerable<SchemeWorkStepParameter>? existingParameters = null)
+    {
+        List<WorkStepOperation> operationList = operations
+            .Where(operation => operation is not null)
+            .ToList();
+
+        List<string> displayJudgeTypeOptions = operationList
             .Where(operation => operation.ShowDataToView && !string.IsNullOrWhiteSpace(operation.ViewJudgeType))
             .Select(operation => operation.ViewJudgeType.Trim())
             .Distinct(StringComparer.OrdinalIgnoreCase)
@@ -1150,7 +1417,7 @@ public sealed class SchemeWorkStepItem : ViewModelProperties
         int parameterIndex = 1;
         HashSet<string> addedDisplayedTypeKeys = new(StringComparer.OrdinalIgnoreCase);
 
-        foreach (WorkStepOperation operation in workStep.Steps)
+        foreach (WorkStepOperation operation in operationList)
         {
             foreach (WorkStepOperationParameter parameter in operation.Parameters.OrderBy(item => item.Sequence))
             {
@@ -1281,6 +1548,38 @@ public sealed class SchemeWorkStepItem : ViewModelProperties
     private static string BuildParameterSourceKey(string? operationId, string? parameterId)
     {
         return $"{operationId?.Trim() ?? string.Empty}::{parameterId?.Trim() ?? string.Empty}";
+    }
+
+    private static bool HasSameSchemeStepParameters(
+        ObservableCollection<SchemeWorkStepParameter> left,
+        ObservableCollection<SchemeWorkStepParameter> right)
+    {
+        if (ReferenceEquals(left, right))
+        {
+            return true;
+        }
+
+        if (left.Count != right.Count)
+        {
+            return false;
+        }
+
+        for (int index = 0; index < left.Count; index++)
+        {
+            SchemeWorkStepParameter leftParameter = left[index];
+            SchemeWorkStepParameter rightParameter = right[index];
+            if (!string.Equals(leftParameter.SourceOperationId, rightParameter.SourceOperationId, StringComparison.Ordinal) ||
+                !string.Equals(leftParameter.SourceParameterId, rightParameter.SourceParameterId, StringComparison.Ordinal) ||
+                !string.Equals(leftParameter.ParameterName, rightParameter.ParameterName, StringComparison.OrdinalIgnoreCase) ||
+                !string.Equals(leftParameter.ParameterType, rightParameter.ParameterType, StringComparison.OrdinalIgnoreCase) ||
+                !string.Equals(leftParameter.JudgeType, rightParameter.JudgeType, StringComparison.OrdinalIgnoreCase) ||
+                !string.Equals(leftParameter.JudgeCondition, rightParameter.JudgeCondition, StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     #endregion

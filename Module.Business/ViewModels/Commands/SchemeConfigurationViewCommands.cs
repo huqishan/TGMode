@@ -1,4 +1,4 @@
-﻿using ControlLibrary;
+using ControlLibrary;
 using Microsoft.Win32;
 using Module.Business.Models;
 using Module.Business.Services;
@@ -10,8 +10,8 @@ using System.IO;
 using System.Linq;
 using System.Text.Encodings.Web;
 using System.Text.Json;
-using System.Windows.Input;
 using System.Windows.Data;
+using System.Windows.Input;
 using System.Windows.Media;
 
 namespace Module.Business.ViewModels;
@@ -21,11 +21,15 @@ namespace Module.Business.ViewModels;
 /// </summary>
 public sealed partial class SchemeConfigurationViewModel
 {
+    #region 序列化配置
+
     private static readonly JsonSerializerOptions SchemePackageJsonOptions = new()
     {
         WriteIndented = true,
         Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
     };
+
+    #endregion
 
     #region 构造与初始化
 
@@ -36,11 +40,13 @@ public sealed partial class SchemeConfigurationViewModel
         SchemesView.Filter = FilterSchemes;
         InitializeCommands();
         SelectedScheme = Schemes.FirstOrDefault();
-        SetPageStatus(Schemes.Count == 0 ? "暂无方案配置，请点击新增。" : $"已读取 {Schemes.Count} 个方案", NeutralBrush);
+        SetPageStatus(
+            Schemes.Count == 0 ? "暂无方案配置，请点击新增。" : $"已加载 {Schemes.Count} 个方案。",
+            NeutralBrush);
     }
 
     /// <summary>
-    /// 初始化页面命令，所有按钮通过 Command 绑定。
+    /// 初始化页面命令。
     /// </summary>
     private void InitializeCommands()
     {
@@ -50,19 +56,19 @@ public sealed partial class SchemeConfigurationViewModel
         SaveSchemesCommand = new RelayCommand(_ => SaveSchemes());
         ImportSchemeCommand = new RelayCommand(_ => ImportScheme());
         ExportSchemeCommand = new RelayCommand(_ => ExportSelectedScheme(), _ => SelectedScheme is not null);
-        RefreshWorkStepsCommand = new RelayCommand(_ => RefreshAvailableWorkStepsFromStore());
         AddWorkStepToSchemeCommand = new RelayCommand(_ => AddWorkStepToScheme(), _ => SelectedScheme is not null);
-        RemoveWorkStepFromSchemeCommand = new RelayCommand(_ => RemoveSelectedSchemeStep(), _ => SelectedScheme is not null && SelectedSchemeStep is not null);
-        MoveSchemeStepUpCommand = new RelayCommand(_ => MoveSelectedSchemeStep(-1), _ => CanMoveSelectedSchemeStep(-1));
-        MoveSchemeStepDownCommand = new RelayCommand(_ => MoveSelectedSchemeStep(1), _ => CanMoveSelectedSchemeStep(1));
+        RemoveWorkStepFromSchemeCommand = new RelayCommand(
+            _ => RemoveSelectedSchemeStep(),
+            _ => SelectedScheme is not null && SelectedSchemeStep is not null);
+        UndoRemoveSchemeStepCommand = new RelayCommand(_ => UndoRemoveSchemeStep(), _ => CanUndoRemoveSchemeStep());
     }
 
     #endregion
 
-    #region 方案命令方法
+    #region 方案命令
 
     /// <summary>
-    /// 新增方案，默认使用当前方案或首个工步产品。
+    /// 新增方案并切换到新方案。
     /// </summary>
     private void NewScheme()
     {
@@ -74,20 +80,15 @@ public sealed partial class SchemeConfigurationViewModel
         SchemeProfile scheme = CreateScheme(GenerateUniqueSchemeName("方案"));
         Schemes.Add(scheme);
         SelectCreatedScheme(scheme);
-        SetPageStatus("已新增方案，选择产品后添加工步。", SuccessBrush);
+        SetPageStatus("已新增方案。", SuccessBrush);
     }
 
     /// <summary>
-    /// 复制当前选中方案及其工步列表。
+    /// 复制当前选中的方案。
     /// </summary>
     private void DuplicateSelectedScheme()
     {
-        if (!CanRunCreateOrCopyCommand())
-        {
-            return;
-        }
-
-        if (SelectedScheme is null)
+        if (!CanRunCreateOrCopyCommand() || SelectedScheme is null)
         {
             return;
         }
@@ -108,17 +109,20 @@ public sealed partial class SchemeConfigurationViewModel
             return;
         }
 
+        string deletedSchemeId = SelectedScheme.Id;
         int index = Schemes.IndexOf(SelectedScheme);
+
         Schemes.Remove(SelectedScheme);
         SelectedScheme = Schemes.Count == 0
             ? null
             : Schemes[Math.Clamp(index, 0, Schemes.Count - 1)];
 
+        ClearRemovedSchemeStepUndo(deletedSchemeId);
         SetPageStatus("已删除方案，点击保存后生效。", WarningBrush);
     }
 
     /// <summary>
-    /// 保存所有方案配置。
+    /// 校验并保存全部方案。
     /// </summary>
     private void SaveSchemes()
     {
@@ -133,7 +137,7 @@ public sealed partial class SchemeConfigurationViewModel
     }
 
     /// <summary>
-    /// 导入方案文件，产品名称相同则复用产品，工步内容相同则复用工步。
+    /// 从本地文件导入方案。
     /// </summary>
     private void ImportScheme()
     {
@@ -151,10 +155,12 @@ public sealed partial class SchemeConfigurationViewModel
         try
         {
             string json = File.ReadAllText(dialog.FileName);
-            SchemeConfigurationPackage? package = JsonSerializer.Deserialize<SchemeConfigurationPackage>(json, SchemePackageJsonOptions);
+            SchemeConfigurationPackage? package =
+                JsonSerializer.Deserialize<SchemeConfigurationPackage>(json, SchemePackageJsonOptions);
+
             if (package?.Scheme is null)
             {
-                SetPageStatus("导入失败：方案文件内容为空或格式不正确。", WarningBrush);
+                SetPageStatus("导入失败：方案文件为空或格式无效。", WarningBrush);
                 return;
             }
 
@@ -167,7 +173,7 @@ public sealed partial class SchemeConfigurationViewModel
     }
 
     /// <summary>
-    /// 导出当前选中方案，以及方案引用的产品和完整工步内容。
+    /// 导出当前选中的方案。
     /// </summary>
     private void ExportSelectedScheme()
     {
@@ -201,32 +207,13 @@ public sealed partial class SchemeConfigurationViewModel
             SetPageStatus($"导出方案失败：{ex.Message}", WarningBrush);
         }
     }
-    /// <summary>
-    /// 重新读取可添加工步列表，保留当前正在编辑的方案。
-    /// </summary>
-    private void RefreshAvailableWorkStepsFromStore()
-    {
-        List<SchemeStepRefreshSelectionSnapshot> stepSelections = CaptureSchemeStepRefreshSelections();
-        string? selectedSchemeStepId = SelectedSchemeStep?.Id;
-        BusinessConfigurationCatalog latestCatalog = BusinessConfigurationStore.LoadCatalog();
-        _catalog.WorkSteps = latestCatalog.WorkSteps;
 
-        OnPropertyChanged(nameof(WorkSteps));
-        RefreshAvailableWorkSteps();
-        RestoreSchemeStepRefreshSelections(stepSelections);
-        SynchronizeSelectedSchemeWorkStepSnapshots();
-        SelectedSchemeStep = SelectedScheme?.Steps.FirstOrDefault(step =>
-                               string.Equals(step.Id, selectedSchemeStepId, StringComparison.Ordinal)) ??
-                           SelectedSchemeStep;
-        OnPropertyChanged(nameof(DisplayedSchemeStepParameters));
-        SetPageStatus("已刷新工步列表和工步参数。", SuccessBrush);
-    }
     #endregion
 
-    #region 方案工步命令方法
+    #region 方案工步命令
 
     /// <summary>
-    /// 将当前产品下的可选工步添加到方案工步列表。
+    /// 在当前方案中新增工步。
     /// </summary>
     private void AddWorkStepToScheme()
     {
@@ -235,26 +222,18 @@ public sealed partial class SchemeConfigurationViewModel
             return;
         }
 
-        WorkStepProfile? preferredWorkStep = ResolvePreferredAvailableWorkStep();
-        SchemeWorkStepItem schemeStep = preferredWorkStep is null
-            ? CreateEmptySchemeStep()
-            : SchemeWorkStepItem.FromWorkStep(preferredWorkStep);
-
+        SchemeWorkStepItem schemeStep = CreateEmptySchemeStep(GenerateUniqueSchemeStepName("工步"));
         int insertIndex = SelectedSchemeStep is null
             ? SelectedScheme.Steps.Count
             : Math.Clamp(SelectedScheme.Steps.IndexOf(SelectedSchemeStep) + 1, 0, SelectedScheme.Steps.Count);
 
         SelectedScheme.Steps.Insert(insertIndex, schemeStep);
         SelectedSchemeStep = schemeStep;
-        SetPageStatus(
-            preferredWorkStep is null
-                ? "已添加工步，请在“内置工步”列选择对应工步。"
-                : $"已添加工步：{schemeStep.SchemeStepName}",
-            SuccessBrush);
+        SetPageStatus($"已新增方案工步：{schemeStep.SchemeStepName}。", SuccessBrush);
     }
 
     /// <summary>
-    /// 从方案中移除当前选中的工步。
+    /// 删除当前选中的方案工步，并写入撤回栈。
     /// </summary>
     private void RemoveSelectedSchemeStep()
     {
@@ -264,33 +243,37 @@ public sealed partial class SchemeConfigurationViewModel
         }
 
         int index = SelectedScheme.Steps.IndexOf(SelectedSchemeStep);
+        RememberRemovedSchemeStep(SelectedSchemeStep, index, SelectedScheme);
         SelectedScheme.Steps.Remove(SelectedSchemeStep);
         SelectedSchemeStep = SelectedScheme.Steps.Count == 0
             ? null
             : SelectedScheme.Steps[Math.Clamp(index, 0, SelectedScheme.Steps.Count - 1)];
 
-        SetPageStatus("已移除方案工步。", WarningBrush);
+        SetPageStatus("已删除方案工步。", WarningBrush);
     }
 
     /// <summary>
-    /// 调整方案工步顺序。
+    /// 撤回当前方案最近一次删除的工步，可连续撤回。
     /// </summary>
-    private void MoveSelectedSchemeStep(int offset)
+    private void UndoRemoveSchemeStep()
     {
-        if (!CanMoveSelectedSchemeStep(offset) || SelectedScheme is null || SelectedSchemeStep is null)
+        if (SelectedScheme is null || !TryPopRemovedSchemeStepUndo(SelectedScheme, out RemovedSchemeStepUndoItem? undoItem))
         {
             return;
         }
 
-        int oldIndex = SelectedScheme.Steps.IndexOf(SelectedSchemeStep);
-        int newIndex = oldIndex + offset;
-        SelectedScheme.Steps.Move(oldIndex, newIndex);
-        SetPageStatus("已调整方案工步顺序。", SuccessBrush);
+        int insertIndex = Math.Clamp(undoItem.StepIndex, 0, SelectedScheme.Steps.Count);
+        SchemeWorkStepItem restoredStep = undoItem.SchemeStep.Clone();
+        restoredStep.Id = Guid.NewGuid().ToString("N");
+        SelectedScheme.Steps.Insert(insertIndex, restoredStep);
+        SelectedSchemeStep = restoredStep;
+
+        SetPageStatus($"已撤回删除的工步：{restoredStep.SchemeStepName}。", SuccessBrush);
         RaiseCommandStatesChanged();
     }
 
     /// <summary>
-    /// 将拖拽的方案工步移动到目标工步前后。
+    /// 调整方案工步顺序。
     /// </summary>
     public void MoveSchemeStep(SchemeWorkStepItem draggedSchemeStep, SchemeWorkStepItem targetSchemeStep, bool insertAfter)
     {
@@ -321,99 +304,26 @@ public sealed partial class SchemeConfigurationViewModel
 
         steps.Move(oldIndex, newIndex);
         SelectedSchemeStep = draggedSchemeStep;
-        SetPageStatus("已调整方案工步顺序。", SuccessBrush);
+        SetPageStatus("已调整工步顺序。", SuccessBrush);
         RaiseCommandStatesChanged();
     }
 
     #endregion
 
-    #region 筛选与校验方法
+    #region 校验与搜索
 
-    private void RefreshAvailableWorkSteps()
-    {
-        string? preferredWorkStepId = SelectedSchemeStep?.WorkStepId ?? SelectedAvailableWorkStep?.Id;
-        AvailableWorkSteps.Clear();
-        SelectedAvailableWorkStep = null;
-
-        if (SelectedScheme is null)
-        {
-            RaisePageSummaryChanged();
-            return;
-        }
-
-        foreach (WorkStepProfile workStep in WorkSteps.OrderBy(step => step.StepName))
-        {
-            AvailableWorkSteps.Add(workStep);
-        }
-
-        SelectedAvailableWorkStep = AvailableWorkSteps.FirstOrDefault(workStep =>
-                                     string.Equals(workStep.Id, preferredWorkStepId, StringComparison.Ordinal)) ??
-                                 AvailableWorkSteps.FirstOrDefault();
-        RaisePageSummaryChanged();
-    }
-
-    private List<SchemeStepRefreshSelectionSnapshot> CaptureSchemeStepRefreshSelections()
-    {
-        if (SelectedScheme is null)
-        {
-            return new List<SchemeStepRefreshSelectionSnapshot>();
-        }
-
-        return SelectedScheme.Steps
-            .Select(step => new SchemeStepRefreshSelectionSnapshot(step, step.WorkStepId))
-            .ToList();
-    }
-
-    private void RestoreSchemeStepRefreshSelections(IEnumerable<SchemeStepRefreshSelectionSnapshot> stepSelections)
-    {
-        if (SelectedScheme is null)
-        {
-            return;
-        }
-
-        Dictionary<string, WorkStepProfile> availableWorkStepsById = WorkSteps
-            .GroupBy(step => step.Id, StringComparer.Ordinal)
-            .ToDictionary(group => group.Key, group => group.First(), StringComparer.Ordinal);
-
-        foreach (SchemeStepRefreshSelectionSnapshot selection in stepSelections)
-        {
-            if (!SelectedScheme.Steps.Contains(selection.SchemeStep))
-            {
-                continue;
-            }
-
-            if (!string.IsNullOrWhiteSpace(selection.WorkStepId) &&
-                availableWorkStepsById.TryGetValue(selection.WorkStepId, out WorkStepProfile? workStep))
-            {
-                selection.SchemeStep.WorkStepId = workStep.Id;
-                selection.SchemeStep.StepName = workStep.StepName;
-                selection.SchemeStep.OperationSummary = workStep.OperationSummary;
-                selection.SchemeStep.LastModifiedAt = workStep.LastModifiedAt;
-                continue;
-            }
-
-            selection.SchemeStep.WorkStepId = string.Empty;
-            selection.SchemeStep.Parameters = new ObservableCollection<SchemeWorkStepParameter>();
-        }
-
-        string? preferredWorkStepId = SelectedSchemeStep?.WorkStepId ?? stepSelections
-            .FirstOrDefault(selection => selection.SchemeStep == SelectedSchemeStep)
-            ?.WorkStepId;
-        SelectedAvailableWorkStep = AvailableWorkSteps.FirstOrDefault(workStep =>
-                                     string.Equals(workStep.Id, preferredWorkStepId, StringComparison.Ordinal)) ??
-                                 AvailableWorkSteps.FirstOrDefault();
-    }
-
+    /// <summary>
+    /// 保存前校验方案数据。
+    /// </summary>
     private bool ValidateSchemes(out string message)
     {
         if (Schemes.Count == 0)
         {
-            message = "请至少新增一个方案。";
+            message = "请至少保留一个方案。";
             return false;
         }
 
         HashSet<string> schemeNames = new(StringComparer.OrdinalIgnoreCase);
-        Dictionary<string, WorkStepProfile> workStepById = WorkSteps.ToDictionary(step => step.Id, StringComparer.Ordinal);
 
         foreach (SchemeProfile scheme in Schemes)
         {
@@ -425,18 +335,17 @@ public sealed partial class SchemeConfigurationViewModel
 
             if (!schemeNames.Add(scheme.SchemeName.Trim()))
             {
-                message = $"方案名称不能重复：{scheme.SchemeName}";
+                message = $"方案名称重复：{scheme.SchemeName}";
                 return false;
             }
 
             foreach (SchemeWorkStepItem schemeStep in scheme.Steps)
             {
-                if (!workStepById.TryGetValue(schemeStep.WorkStepId, out WorkStepProfile? workStep))
+                if (string.IsNullOrWhiteSpace(schemeStep.SchemeStepName))
                 {
-                    message = $"方案“{scheme.SchemeName}”包含已不存在的工步，请移除后保存。";
+                    message = $"方案“{scheme.SchemeName}”存在未命名工步。";
                     return false;
                 }
-
             }
         }
 
@@ -444,217 +353,106 @@ public sealed partial class SchemeConfigurationViewModel
         return true;
     }
 
-    #endregion
-
-    #region 工具方法
-    private SchemeConfigurationPackage CreateSchemePackage(SchemeProfile scheme)
+    /// <summary>
+    /// 按关键字过滤方案列表。
+    /// </summary>
+    private bool FilterSchemes(object item)
     {
-        SchemeConfigurationPackage package = new()
+        if (item is not SchemeProfile scheme)
         {
-            Scheme = scheme.Clone()
-        };
-
-        HashSet<string> exportedWorkStepIds = new(StringComparer.Ordinal);
-        foreach (SchemeWorkStepItem schemeStep in scheme.Steps)
-        {
-            WorkStepProfile? workStep = FindCatalogWorkStep(schemeStep);
-            if (workStep is not null && exportedWorkStepIds.Add(workStep.Id))
-            {
-                package.WorkSteps.Add(workStep.Clone());
-            }
+            return false;
         }
 
-        return package;
+        if (string.IsNullOrWhiteSpace(SearchText))
+        {
+            return true;
+        }
+
+        string keyword = SearchText.Trim();
+        return Contains(scheme.SchemeName, keyword) ||
+               scheme.Steps.Any(step =>
+                   Contains(step.SchemeStepName, keyword) ||
+                   Contains(step.StepName, keyword) ||
+                   step.Operations.Any(operation => Contains(operation.DisplayText, keyword)));
     }
 
+    private static bool Contains(string? source, string keyword)
+    {
+        return source?.IndexOf(keyword, StringComparison.OrdinalIgnoreCase) >= 0;
+    }
+
+    #endregion
+
+    #region 导入导出辅助
+
+    private SchemeConfigurationPackage CreateSchemePackage(SchemeProfile scheme)
+    {
+        return new SchemeConfigurationPackage
+        {
+            Scheme = scheme.Clone(),
+            WorkSteps = new ObservableCollection<WorkStepProfile>(
+                scheme.Steps.Select(step => step.ToWorkStepProfile()))
+        };
+    }
+
+    /// <summary>
+    /// 导入方案包，并在必要时补齐内嵌工步快照。
+    /// </summary>
     private void ImportSchemePackage(SchemeConfigurationPackage package)
     {
-        SchemeProfile sourceScheme = package.Scheme!;
-        List<(SchemeWorkStepItem SchemeStep, WorkStepProfile WorkStep)> sourceWorkSteps = new();
+        SchemeProfile scheme = package.Scheme!.Clone();
+        scheme.Id = Guid.NewGuid().ToString("N");
+        scheme.SchemeName = GenerateUniqueImportedSchemeName(scheme.SchemeName);
 
-        foreach (SchemeWorkStepItem sourceSchemeStep in sourceScheme.Steps)
+        foreach (SchemeWorkStepItem schemeStep in scheme.Steps)
         {
-            WorkStepProfile? sourceWorkStep = FindPackageWorkStep(package, sourceSchemeStep);
-            if (sourceWorkStep is null)
+            schemeStep.Id = Guid.NewGuid().ToString("N");
+
+            if (schemeStep.Operations.Count == 0)
             {
-                SetPageStatus($"导入失败：方案文件缺少工步“{sourceSchemeStep.StepName}”的完整内容。", WarningBrush);
-                return;
+                WorkStepProfile? sourceWorkStep = FindPackageWorkStep(package, schemeStep);
+                if (sourceWorkStep is null)
+                {
+                    SetPageStatus($"导入失败：工步“{schemeStep.SchemeStepName}”缺少步骤内容。", WarningBrush);
+                    return;
+                }
+
+                schemeStep.Operations = new ObservableCollection<WorkStepOperation>(
+                    sourceWorkStep.Steps.Select(operation => operation.Clone()));
+
+                if (string.IsNullOrWhiteSpace(schemeStep.StepName))
+                {
+                    schemeStep.StepName = sourceWorkStep.StepName;
+                }
             }
 
-            sourceWorkSteps.Add((sourceSchemeStep, sourceWorkStep));
-        }
-
-        RefreshWorkStepsFromLocalFiles();
-        string importedSchemeName = GenerateUniqueImportedSchemeName(sourceScheme.SchemeName);
-        SchemeProfile scheme = CreateScheme(importedSchemeName);
-        List<ImportedSourceWorkStepGroup> groupedSourceWorkSteps = GroupImportedSourceWorkSteps(sourceWorkSteps);
-        Dictionary<SchemeWorkStepItem, WorkStepProfile> resolvedWorkStepsBySchemeStep = new();
-
-        int reusedWorkStepCount = 0;
-        int createdWorkStepCount = 0;
-        foreach (ImportedSourceWorkStepGroup groupedSourceWorkStep in groupedSourceWorkSteps)
-        {
-            WorkStepProfile workStep = ResolveImportedWorkStep(
-                groupedSourceWorkStep.SourceWorkStep,
-                groupedSourceWorkStep.SourceStepName,
-                importedSchemeName,
-                out bool createdWorkStep);
-            if (createdWorkStep)
+            if (string.IsNullOrWhiteSpace(schemeStep.StepName))
             {
-                createdWorkStepCount++;
+                schemeStep.StepName = GenerateUniqueSchemeStepName("工步", scheme);
             }
-            else
-            {
-                reusedWorkStepCount++;
-            }
-
-            foreach (SchemeWorkStepItem schemeStepItem in groupedSourceWorkStep.SchemeSteps)
-            {
-                resolvedWorkStepsBySchemeStep[schemeStepItem] = workStep;
-            }
-        }
-
-        foreach ((SchemeWorkStepItem sourceSchemeStep, _) in sourceWorkSteps)
-        {
-            WorkStepProfile workStep = resolvedWorkStepsBySchemeStep[sourceSchemeStep];
-            scheme.Steps.Add(CreateImportedSchemeStep(workStep, sourceSchemeStep));
         }
 
         Schemes.Add(scheme);
         SelectCreatedScheme(scheme);
-        RefreshAvailableWorkSteps();
-        SetPageStatus($"已导入方案，复用 {reusedWorkStepCount} 个工步，新建 {createdWorkStepCount} 个工步，点击保存后生效。", SuccessBrush);
-    }
-
-    private static List<ImportedSourceWorkStepGroup> GroupImportedSourceWorkSteps(
-        IEnumerable<(SchemeWorkStepItem SchemeStep, WorkStepProfile WorkStep)> sourceWorkSteps)
-    {
-        List<ImportedSourceWorkStepGroup> groups = new();
-
-        foreach ((SchemeWorkStepItem schemeStep, WorkStepProfile workStep) in sourceWorkSteps)
-        {
-            string sourceStepName = ResolveImportedSourceStepName(workStep, schemeStep.StepName);
-            ImportedSourceWorkStepGroup? existingGroup = groups.FirstOrDefault(group =>
-                TextEquals(group.SourceStepName, sourceStepName) &&
-                HasSameOperationContent(group.SourceWorkStep, workStep));
-
-            if (existingGroup is null)
-            {
-                existingGroup = new ImportedSourceWorkStepGroup(sourceStepName, workStep);
-                groups.Add(existingGroup);
-            }
-
-            existingGroup.SchemeSteps.Add(schemeStep);
-        }
-
-        return groups;
-    }
-
-    private void RefreshWorkStepsFromLocalFiles()
-    {
-        BusinessConfigurationCatalog latestCatalog = BusinessConfigurationStore.LoadCatalog();
-        ObservableCollection<WorkStepProfile> currentWorkSteps = _catalog.WorkSteps;
-
-        _catalog.WorkSteps = latestCatalog.WorkSteps;
-        foreach (WorkStepProfile workStep in currentWorkSteps)
-        {
-            if (!_catalog.WorkSteps.Any(localWorkStep => IsSameWorkStepIdentity(localWorkStep, workStep)))
-            {
-                _catalog.WorkSteps.Add(workStep);
-            }
-        }
-
-        OnPropertyChanged(nameof(WorkSteps));
-    }
-
-    private WorkStepProfile ResolveImportedWorkStep(WorkStepProfile source, string sourceStepName, string schemeName, out bool createdWorkStep)
-    {
-        string normalizedSourceStepName = ResolveImportedSourceStepName(source, sourceStepName);
-        WorkStepProfile? existingWorkStep = WorkSteps
-            .FirstOrDefault(workStep =>
-                TextEquals(workStep.StepName, normalizedSourceStepName) &&
-                HasSameOperationContent(workStep, source));
-
-        if (existingWorkStep is not null)
-        {
-            createdWorkStep = false;
-            return existingWorkStep;
-        }
-
-        WorkStepProfile created = CreateImportedWorkStep(source, sourceStepName, schemeName);
-        WorkSteps.Add(created);
-        createdWorkStep = true;
-        return created;
-    }
-
-    private static string ResolveImportedSourceStepName(WorkStepProfile source, string? sourceStepName)
-    {
-        return string.IsNullOrWhiteSpace(sourceStepName)
-            ? NormalizeText(source.StepName)
-            : sourceStepName.Trim();
-    }
-
-    private WorkStepProfile CreateImportedWorkStep(WorkStepProfile source, string sourceStepName, string schemeName)
-    {
-        string stepName = !string.IsNullOrWhiteSpace(sourceStepName)
-            ? sourceStepName.Trim()
-            : string.IsNullOrWhiteSpace(source.StepName) ? "工步" : source.StepName.Trim();
-        return new WorkStepProfile
-        {
-            Id = Guid.NewGuid().ToString("N"),
-            StepName = GenerateUniqueWorkStepName(AppendSchemeNameSuffix(stepName, schemeName)),
-            LastModifiedAt = DateTime.Now,
-            Steps = new ObservableCollection<WorkStepOperation>(
-                source.Steps.Select(operation => new WorkStepOperation
-                {
-                    Id = Guid.NewGuid().ToString("N"),
-                    OperationType = operation.OperationType,
-                    OperationObject = operation.OperationObject,
-                    ProtocolName = operation.ProtocolName,
-                    CommandName = operation.CommandName,
-                    InvokeMethod = operation.InvokeMethod,
-                    ReturnValue = operation.ReturnValue,
-                    ShowDataToView = operation.ShowDataToView,
-                    ViewDataName = operation.ViewDataName,
-                    ViewJudgeType = operation.ViewJudgeType,
-                    ViewJudgeCondition = operation.ViewJudgeCondition,
-                    LuaScript = operation.LuaScript,
-                    DelayMilliseconds = operation.DelayMilliseconds,
-                    Remark = operation.Remark,
-                    Parameters = new ObservableCollection<WorkStepOperationParameter>(
-                        operation.Parameters.Select(parameter => parameter.Clone()))
-                }))
-        };
-    }
-
-    private WorkStepProfile? FindCatalogWorkStep(SchemeWorkStepItem schemeStep)
-    {
-        return WorkSteps.FirstOrDefault(workStep => string.Equals(workStep.Id, schemeStep.WorkStepId, StringComparison.Ordinal)) ??
-               WorkSteps.FirstOrDefault(workStep =>
-                   TextEquals(workStep.StepName, schemeStep.StepName) &&
-                   TextEquals(workStep.OperationSummary, schemeStep.OperationSummary)) ??
-               (string.IsNullOrWhiteSpace(schemeStep.OperationSummary)
-                   ? WorkSteps.FirstOrDefault(workStep => TextEquals(workStep.StepName, schemeStep.StepName))
-                   : null) ??
-               (string.IsNullOrWhiteSpace(schemeStep.StepName)
-                   ? WorkSteps.FirstOrDefault(workStep => TextEquals(workStep.OperationSummary, schemeStep.OperationSummary))
-                   : null);
+        SetPageStatus($"已导入方案：{scheme.SchemeName}。", SuccessBrush);
     }
 
     private static WorkStepProfile? FindPackageWorkStep(SchemeConfigurationPackage package, SchemeWorkStepItem schemeStep)
     {
         IEnumerable<WorkStepProfile> packageWorkSteps = package.WorkSteps ?? new ObservableCollection<WorkStepProfile>();
+        string operationSummary = BuildOperationSummary(schemeStep.Operations);
+
         return packageWorkSteps.FirstOrDefault(workStep =>
                    string.Equals(workStep.Id, schemeStep.WorkStepId, StringComparison.Ordinal) &&
                    MatchesSchemeStepSnapshot(workStep, schemeStep)) ??
                packageWorkSteps.FirstOrDefault(workStep =>
                    TextEquals(workStep.StepName, schemeStep.StepName) &&
-                   TextEquals(workStep.OperationSummary, schemeStep.OperationSummary)) ??
-               (string.IsNullOrWhiteSpace(schemeStep.OperationSummary)
+                   TextEquals(workStep.OperationSummary, operationSummary)) ??
+               (string.IsNullOrWhiteSpace(operationSummary)
                    ? packageWorkSteps.FirstOrDefault(workStep => TextEquals(workStep.StepName, schemeStep.StepName))
                    : null) ??
                (string.IsNullOrWhiteSpace(schemeStep.StepName)
-                   ? packageWorkSteps.FirstOrDefault(workStep => TextEquals(workStep.OperationSummary, schemeStep.OperationSummary))
+                   ? packageWorkSteps.FirstOrDefault(workStep => TextEquals(workStep.OperationSummary, operationSummary))
                    : null);
     }
 
@@ -667,8 +465,9 @@ public sealed partial class SchemeConfigurationViewModel
             return false;
         }
 
-        if (!string.IsNullOrWhiteSpace(schemeStep.OperationSummary) &&
-            !TextEquals(workStep.OperationSummary, schemeStep.OperationSummary))
+        string operationSummary = BuildOperationSummary(schemeStep.Operations);
+        if (!string.IsNullOrWhiteSpace(operationSummary) &&
+            !TextEquals(workStep.OperationSummary, operationSummary))
         {
             return false;
         }
@@ -676,75 +475,16 @@ public sealed partial class SchemeConfigurationViewModel
         return true;
     }
 
-    private string GenerateUniqueWorkStepName(string stepName)
+    private static string BuildOperationSummary(IEnumerable<WorkStepOperation> operations)
     {
-        HashSet<string> existingNames = new(WorkSteps.Select(workStep => workStep.StepName), StringComparer.OrdinalIgnoreCase);
-        string baseName = string.IsNullOrWhiteSpace(stepName) ? "工步" : stepName.Trim();
-        string candidate = baseName;
-        int index = 2;
+        List<string> items = operations
+            .Where(operation => operation is not null)
+            .Select(operation => operation.DisplayText)
+            .Where(text => !string.IsNullOrWhiteSpace(text))
+            .Select(text => text.Trim())
+            .ToList();
 
-        while (existingNames.Contains(candidate))
-        {
-            candidate = $"{baseName} {index}";
-            index++;
-        }
-
-        return candidate;
-    }
-    private static bool HasSameOperationContent(WorkStepProfile left, WorkStepProfile right)
-    {
-        if (left.Steps.Count != right.Steps.Count)
-        {
-            return false;
-        }
-
-        for (int index = 0; index < left.Steps.Count; index++)
-        {
-            WorkStepOperation leftOperation = left.Steps[index];
-            WorkStepOperation rightOperation = right.Steps[index];
-            if (!TextEquals(leftOperation.OperationObject, rightOperation.OperationObject) ||
-                !TextEquals(leftOperation.ProtocolName, rightOperation.ProtocolName) ||
-                !TextEquals(GetComparableCommandName(leftOperation), GetComparableCommandName(rightOperation)) ||
-                !TextEquals(leftOperation.InvokeMethod, rightOperation.InvokeMethod) ||
-                !TextEquals(leftOperation.ReturnValue, rightOperation.ReturnValue) ||
-                leftOperation.ShowDataToView != rightOperation.ShowDataToView ||
-                !TextEquals(leftOperation.ViewDataName, rightOperation.ViewDataName) ||
-                !TextEquals(leftOperation.ViewJudgeType, rightOperation.ViewJudgeType) ||
-                !TextEquals(leftOperation.ViewJudgeCondition, rightOperation.ViewJudgeCondition) ||
-                !TextEquals(leftOperation.LuaScript, rightOperation.LuaScript))
-            {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    private static string GetComparableCommandName(WorkStepOperation operation)
-    {
-        return string.IsNullOrWhiteSpace(operation.CommandName)
-            ? operation.InvokeMethod
-            : operation.CommandName;
-    }
-    private static bool IsSameWorkStepIdentity(WorkStepProfile left, WorkStepProfile right)
-    {
-        return string.Equals(left.Id, right.Id, StringComparison.Ordinal) ||
-               TextEquals(left.StepName, right.StepName);
-    }
-
-    private static string AppendSchemeNameSuffix(string baseName, string schemeName)
-    {
-        string normalizedBaseName = string.IsNullOrWhiteSpace(baseName) ? "名称" : baseName.Trim();
-        string normalizedSchemeName = NormalizeText(schemeName);
-        if (string.IsNullOrWhiteSpace(normalizedSchemeName))
-        {
-            return normalizedBaseName;
-        }
-
-        string suffix = $"_{normalizedSchemeName}";
-        return normalizedBaseName.EndsWith(suffix, StringComparison.OrdinalIgnoreCase)
-            ? normalizedBaseName
-            : $"{normalizedBaseName}{suffix}";
+        return items.Count == 0 ? string.Empty : string.Join(" / ", items);
     }
 
     private static bool TextEquals(string? left, string? right)
@@ -759,7 +499,7 @@ public sealed partial class SchemeConfigurationViewModel
 
     private static string SanitizeFileName(string fileName)
     {
-        string safeName = string.IsNullOrWhiteSpace(fileName) ? "scheme" : fileName.Trim();
+        string safeName = string.IsNullOrWhiteSpace(fileName) ? "方案" : fileName.Trim();
         foreach (char invalidChar in Path.GetInvalidFileNameChars())
         {
             safeName = safeName.Replace(invalidChar, '_');
@@ -767,6 +507,10 @@ public sealed partial class SchemeConfigurationViewModel
 
         return safeName;
     }
+
+    #endregion
+
+    #region 工厂与命名
 
     private SchemeProfile CreateScheme(string schemeName)
     {
@@ -776,10 +520,12 @@ public sealed partial class SchemeConfigurationViewModel
         };
     }
 
-    private SchemeWorkStepItem CreateEmptySchemeStep()
+    private SchemeWorkStepItem CreateEmptySchemeStep(string schemeStepName)
     {
         return new SchemeWorkStepItem
         {
+            StepName = schemeStepName,
+            IsStartupEnabled = true,
             LastModifiedAt = DateTime.Now
         };
     }
@@ -800,31 +546,12 @@ public sealed partial class SchemeConfigurationViewModel
         };
     }
 
-    private static SchemeWorkStepItem CreateImportedSchemeStep(WorkStepProfile workStep, SchemeWorkStepItem sourceSchemeStep)
-    {
-        SchemeWorkStepItem schemeStep = sourceSchemeStep.Clone();
-        schemeStep.Id = Guid.NewGuid().ToString("N");
-        schemeStep.WorkStepId = workStep.Id;
-        schemeStep.StepName = workStep.StepName;
-        schemeStep.OperationSummary = workStep.OperationSummary;
-        return schemeStep;
-    }
-
     private void SelectCreatedScheme(SchemeProfile scheme)
     {
         SearchText = string.Empty;
         SchemesView.Refresh();
         SelectedScheme = scheme;
         SchemesView.MoveCurrentTo(scheme);
-    }
-
-    private WorkStepProfile? ResolvePreferredAvailableWorkStep()
-    {
-        string? preferredWorkStepId = SelectedSchemeStep?.WorkStepId ?? SelectedAvailableWorkStep?.Id;
-        return AvailableWorkSteps.FirstOrDefault(workStep =>
-                   string.Equals(workStep.Id, preferredWorkStepId, StringComparison.Ordinal)) ??
-               SelectedAvailableWorkStep ??
-               AvailableWorkSteps.FirstOrDefault();
     }
 
     private bool CanRunCreateOrCopyCommand()
@@ -874,7 +601,8 @@ public sealed partial class SchemeConfigurationViewModel
     private string GenerateCopySchemeName(string baseName)
     {
         HashSet<string> existingNames = new(Schemes.Select(scheme => scheme.SchemeName), StringComparer.OrdinalIgnoreCase);
-        string copyName = $"{baseName.Trim()} 副本";
+        string normalizedName = string.IsNullOrWhiteSpace(baseName) ? "方案" : baseName.Trim();
+        string copyName = $"{normalizedName} 副本";
         if (!existingNames.Contains(copyName))
         {
             return copyName;
@@ -890,70 +618,86 @@ public sealed partial class SchemeConfigurationViewModel
         }
     }
 
-    private bool FilterSchemes(object item)
+    private string GenerateUniqueSchemeStepName(string prefix, SchemeProfile? targetScheme = null)
     {
-        if (item is not SchemeProfile scheme)
+        SchemeProfile? scheme = targetScheme ?? SelectedScheme;
+        HashSet<string> existingNames = new(
+            scheme?.Steps.Select(step => step.SchemeStepName) ?? Enumerable.Empty<string>(),
+            StringComparer.OrdinalIgnoreCase);
+
+        string baseName = string.IsNullOrWhiteSpace(prefix) ? "工步" : prefix.Trim();
+        string candidate = baseName;
+        int index = 1;
+
+        while (existingNames.Contains(candidate))
         {
-            return false;
+            index++;
+            candidate = $"{baseName} {index}";
         }
 
-        if (string.IsNullOrWhiteSpace(SearchText))
+        return candidate;
+    }
+
+    #endregion
+
+    #region 删除撤回
+
+    private bool CanUndoRemoveSchemeStep()
+    {
+        return SelectedScheme is not null &&
+               _removedSchemeStepUndoItems.Any(item =>
+                   string.Equals(item.SchemeId, SelectedScheme.Id, StringComparison.Ordinal));
+    }
+
+    private void RememberRemovedSchemeStep(SchemeWorkStepItem schemeStep, int index, SchemeProfile scheme)
+    {
+        _removedSchemeStepUndoItems.Add(new RemovedSchemeStepUndoItem
         {
+            SchemeId = scheme.Id,
+            StepIndex = Math.Max(0, index),
+            SchemeStep = schemeStep.Clone()
+        });
+
+        RaiseCommandStatesChanged();
+    }
+
+    private bool TryPopRemovedSchemeStepUndo(SchemeProfile scheme, out RemovedSchemeStepUndoItem? undoItem)
+    {
+        for (int index = _removedSchemeStepUndoItems.Count - 1; index >= 0; index--)
+        {
+            RemovedSchemeStepUndoItem currentItem = _removedSchemeStepUndoItems[index];
+            if (!string.Equals(currentItem.SchemeId, scheme.Id, StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            _removedSchemeStepUndoItems.RemoveAt(index);
+            undoItem = currentItem;
             return true;
         }
 
-        string keyword = SearchText.Trim();
-        return Contains(scheme.SchemeName, keyword) ||
-               scheme.Steps.Any(step =>
-                   Contains(step.SchemeStepName, keyword) ||
-                   Contains(step.StepName, keyword) ||
-                   Contains(step.OperationSummary, keyword));
+        undoItem = null;
+        return false;
     }
 
-    private static bool Contains(string? source, string keyword)
+    private void ClearRemovedSchemeStepUndo(string? schemeId = null)
     {
-        return source?.IndexOf(keyword, StringComparison.OrdinalIgnoreCase) >= 0;
-    }
-
-    private sealed class SchemeStepRefreshSelectionSnapshot
-    {
-        public SchemeStepRefreshSelectionSnapshot(SchemeWorkStepItem schemeStep, string? workStepId)
+        if (string.IsNullOrWhiteSpace(schemeId))
         {
-            SchemeStep = schemeStep;
-            WorkStepId = workStepId?.Trim() ?? string.Empty;
+            _removedSchemeStepUndoItems.Clear();
+        }
+        else
+        {
+            _removedSchemeStepUndoItems.RemoveAll(item =>
+                string.Equals(item.SchemeId, schemeId, StringComparison.Ordinal));
         }
 
-        public SchemeWorkStepItem SchemeStep { get; }
-
-        public string WorkStepId { get; }
+        RaiseCommandStatesChanged();
     }
 
-    private sealed class ImportedSourceWorkStepGroup
-    {
-        public ImportedSourceWorkStepGroup(string sourceStepName, WorkStepProfile sourceWorkStep)
-        {
-            SourceStepName = sourceStepName;
-            SourceWorkStep = sourceWorkStep;
-        }
+    #endregion
 
-        public string SourceStepName { get; }
-
-        public WorkStepProfile SourceWorkStep { get; }
-
-        public List<SchemeWorkStepItem> SchemeSteps { get; } = new();
-    }
-
-    private bool CanMoveSelectedSchemeStep(int offset)
-    {
-        if (SelectedScheme is null || SelectedSchemeStep is null)
-        {
-            return false;
-        }
-
-        int index = SelectedScheme.Steps.IndexOf(SelectedSchemeStep);
-        int newIndex = index + offset;
-        return index >= 0 && newIndex >= 0 && newIndex < SelectedScheme.Steps.Count;
-    }
+    #region 页面状态与命令刷新
 
     private void Schemes_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
@@ -976,8 +720,7 @@ public sealed partial class SchemeConfigurationViewModel
         RaiseCommandState(ExportSchemeCommand);
         RaiseCommandState(AddWorkStepToSchemeCommand);
         RaiseCommandState(RemoveWorkStepFromSchemeCommand);
-        RaiseCommandState(MoveSchemeStepUpCommand);
-        RaiseCommandState(MoveSchemeStepDownCommand);
+        RaiseCommandState(UndoRemoveSchemeStepCommand);
     }
 
     private static void RaiseCommandState(ICommand? command)

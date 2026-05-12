@@ -329,6 +329,12 @@ public static class SchemeExecutionService
             context.ThrowIfCancellationRequested();
 
             SchemeWorkStepItem schemeStep = scheme.Steps[workStepIndex];
+            if (!schemeStep.IsStartupEnabled)
+            {
+                context.AddLog($"Skip work step {workStepIndex + 1}: {schemeStep.SchemeStepName}.");
+                continue;
+            }
+
             WorkStepProfile? workStep = ResolveWorkStep(schemeStep, workStepsById);
             if (workStep is null)
             {
@@ -961,6 +967,11 @@ public static class SchemeExecutionService
         SchemeWorkStepItem schemeStep,
         IReadOnlyDictionary<string, WorkStepProfile> workStepsById)
     {
+        if (schemeStep.Operations.Count > 0)
+        {
+            return schemeStep.ToWorkStepProfile();
+        }
+
         if (!string.IsNullOrWhiteSpace(schemeStep.WorkStepId) &&
             workStepsById.TryGetValue(schemeStep.WorkStepId, out WorkStepProfile? workStep))
         {

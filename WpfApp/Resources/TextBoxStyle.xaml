@@ -19,4 +19,25 @@
         <Setter Property="Width" Value="220" />
         <Setter Property="Height" Value="35" />
     </Style>
+    <Style x:Key="SchemeNameTextBoxStyle"
+           TargetType="TextBox"
+           BasedOn="{StaticResource InputTextBoxStyle}">
+        <Setter Property="Padding" Value="10,6" />
+        <Setter Property="FontSize" Value="16" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CaretBrush" Value="{DynamicResource AppContentTextBrush}" />
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="Background" Value="{DynamicResource TabCardBackgroundBrush}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource TabItemBorderBrush}" />
+            </Trigger>
+            <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                <Setter Property="Background" Value="{DynamicResource TabCardBackgroundBrush}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource TabItemBorderBrush}" />
+            </Trigger>
+        </Style.Triggers>
+    </Style>
 </ResourceDictionary>
