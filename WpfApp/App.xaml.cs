@@ -1,3 +1,4 @@
+using ControlLibrary;
 using Module.User.Services;
 using Shared.Infrastructure.Events;
 using System;
@@ -15,7 +16,6 @@ namespace WpfApp
         {
             base.OnStartup(e);
             EventAggregator.Current = new EventAggregator();
-            AppLanguageManager.EnableAutoLocalization();
             AppLanguageManager.ApplyLanguage(AppLanguageManager.CurrentLanguage);
 
             ShutdownMode = ShutdownMode.OnExplicitShutdown;

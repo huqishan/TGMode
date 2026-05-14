@@ -10,7 +10,7 @@ using System.Text.Json.Serialization;
 namespace Module.Business.Models;
 
 /// <summary>
-/// 业务配置根对象，统一保存工步配置和方案配置。
+/// 业务配置根对象，统一保存步骤模板和方案配置。
 /// </summary>
 public sealed class BusinessConfigurationCatalog
 {
@@ -249,6 +249,7 @@ public sealed class WorkStepOperation : ViewModelProperties
     private int _delayMilliseconds;
     private string _remark = string.Empty;
     private bool _isChecked;
+    private bool _areParametersModified;
     private int _displayOrder = 1;
     private ObservableCollection<WorkStepOperationParameter> _parameters = new();
 
@@ -412,6 +413,13 @@ public sealed class WorkStepOperation : ViewModelProperties
     }
 
     [JsonIgnore]
+    public bool AreParametersModified
+    {
+        get => _areParametersModified;
+        set => SetField(ref _areParametersModified, value);
+    }
+
+    [JsonIgnore]
     public int DisplayOrder
     {
         get => _displayOrder;
@@ -548,6 +556,7 @@ public sealed class WorkStepOperation : ViewModelProperties
             DelayMilliseconds = DelayMilliseconds,
             Remark = Remark,
             IsChecked = false,
+            AreParametersModified = AreParametersModified,
             Parameters = new ObservableCollection<WorkStepOperationParameter>(Parameters.Select(parameter => parameter.Clone()))
         };
     }

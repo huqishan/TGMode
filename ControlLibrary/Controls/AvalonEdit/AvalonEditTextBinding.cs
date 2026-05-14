@@ -3,7 +3,7 @@ using System;
 using System.Windows;
 using System.Windows.Data;
 
-namespace ControlLibrary.AvalonEdit
+namespace ControlLibrary.Controls.AvalonEdit
 {
     public static class AvalonEditTextBinding
     {

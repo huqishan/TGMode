@@ -5,7 +5,7 @@ using System.IO;
 using System.Reflection;
 using System.Xml;
 
-namespace ControlLibrary.AvalonEdit
+namespace ControlLibrary.Controls.AvalonEdit
 {
     internal static class LuaHighlightingDefinition
     {
@@ -19,7 +19,7 @@ namespace ControlLibrary.AvalonEdit
         private static IHighlightingDefinition LoadDefinition()
         {
             Assembly assembly = typeof(LuaHighlightingDefinition).Assembly;
-            using Stream stream = assembly.GetManifestResourceStream("ControlLibrary.AvalonEdit.Lua.xshd")
+            using Stream stream = assembly.GetManifestResourceStream("ControlLibrary.Controls.AvalonEdit.Lua.xshd")
                 ?? throw new InvalidOperationException("Lua highlighting definition resource was not found.");
             using XmlReader reader = new XmlTextReader(stream);
             return HighlightingLoader.Load(reader, HighlightingManager.Instance);

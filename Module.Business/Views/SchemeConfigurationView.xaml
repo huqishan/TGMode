@@ -1,17 +1,20 @@
-<UserControl x:Class="Module.Business.Views.SchemeConfigurationView"
+﻿<UserControl x:Class="Module.Business.Views.SchemeConfigurationView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:searchBox="clr-namespace:ControlLibrary.Controls.SearchBox.Control;assembly=ControlLibrary"
              xmlns:vm="clr-namespace:Module.Business.ViewModels"
-             xmlns:businessViews="clr-namespace:Module.Business.Views.Controls.Views"
+             xmlns:luaEditor="clr-namespace:ControlLibrary.ControlViews.LuaScrip;assembly=ControlLibrary"
+             xmlns:converts="clr-namespace:ControlLibrary.Converts;assembly=ControlLibrary"
              mc:Ignorable="d"
              HorizontalAlignment="Stretch"
              VerticalAlignment="Stretch"
              d:DesignHeight="760"
              d:DesignWidth="1800">
     <UserControl.Resources>
+        <converts:ComparisonToVisibilityConvert x:Key="comp2V"/>
+        <converts:InvertVisibilityConvert x:Key="inv2V"/>
         <Style x:Key="BusinessInputTextBoxStyle" TargetType="{x:Type TextBox}">
             <Setter Property="MinHeight" Value="38" />
             <Setter Property="Padding" Value="12,8" />
@@ -57,7 +60,7 @@
 
                 <StackPanel>
                     <DockPanel LastChildFill="False">
-                        <TextBlock Style="{StaticResource SectionTitleStyle}" Text="方案配置" />
+                        <TextBlock Style="{StaticResource SectionTitleStyle}" Text="{DynamicResource 方案配置}" />
                         <Border DockPanel.Dock="Right"
                                 Margin="16,0,0,0"
                                 Padding="10,5"
@@ -72,32 +75,32 @@
                     </DockPanel>
                     <TextBlock Margin="0,8,0,0"
                                Foreground="{DynamicResource AppMutedTextBrush}"
-                               Text="维护方案、工步顺序与步骤内容。"
+                               Text="{DynamicResource 维护方案、工步顺序与步骤内容。}"
                                TextWrapping="Wrap" />
                 </StackPanel>
 
                 <searchBox:SearchBox Grid.Row="1"
                                      Margin="0,16,0,0"
-                                     PlaceholderText="搜索方案配置..."
+                                     PlaceholderText="{DynamicResource 搜索方案配置...}"
                                      Text="{Binding SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
 
                 <UniformGrid Grid.Row="2" Columns="6" Margin="0,16,0,16">
-                    <Button Content="新建"
+                    <Button Content="{DynamicResource 新建}"
                             Command="{Binding NewSchemeCommand}"
                             Style="{StaticResource PrimaryActionButtonStyle}" />
-                    <Button Content="复制"
+                    <Button Content="{DynamicResource 复制}"
                             Command="{Binding DuplicateSchemeCommand}"
                             Style="{StaticResource ActionButtonStyle}" />
-                    <Button Content="删除"
+                    <Button Content="{DynamicResource 删除}"
                             Command="{Binding DeleteSchemeCommand}"
                             Style="{StaticResource ActionButtonStyle}" />
-                    <Button Content="保存"
+                    <Button Content="{DynamicResource 保存}"
                             Click="SaveSchemesButton_Click"
                             Style="{StaticResource ActionButtonStyle}" />
-                    <Button Content="导入"
+                    <Button Content="{DynamicResource 导入}"
                             Command="{Binding ImportSchemeCommand}"
                             Style="{StaticResource ActionButtonStyle}" />
-                    <Button Content="导出"
+                    <Button Content="{DynamicResource 导出}"
                             Command="{Binding ExportSchemeCommand}"
                             Style="{StaticResource ActionButtonStyle}" />
                 </UniformGrid>
@@ -132,311 +135,526 @@
         <Grid Grid.Column="2"
               HorizontalAlignment="Stretch"
               VerticalAlignment="Stretch">
-            <Border Grid.Column="2" Style="{StaticResource CardBorderStyle}">
+            
+            <Border Grid.Column="2" Style="{StaticResource CardBorderStyle}" Padding="5,18,5,5">
                 <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="0.78*" />
-                        <ColumnDefinition Width="16" />
-                        <ColumnDefinition Width="1.35*" />
-                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition/>
+                    </Grid.RowDefinitions>
+                    <Border HorizontalAlignment="Right"
+Margin="0,0,0,5"
+Padding="12,6"
+VerticalAlignment="Top"
+Background="{DynamicResource TabCardBackgroundBrush}"
+BorderBrush="{DynamicResource TabItemBorderBrush}"
+BorderThickness="1"
+CornerRadius="999">
+                        <TextBlock FontWeight="SemiBold"
+       Foreground="{Binding PageStatusBrush}"
+       Text="{Binding PageStatusText}" />
+                    </Border>
+                    <Grid Grid.Row="1">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="0.78*" />
+                            <ColumnDefinition Width="16" />
+                            <ColumnDefinition Width="1.35*" />
+                        </Grid.ColumnDefinitions>
+                        <Border Padding="16"
+Background="{DynamicResource TabItemBackgroundBrush}"
+BorderBrush="{DynamicResource TabItemBorderBrush}"
+BorderThickness="1"
+CornerRadius="12">
+                            <Grid>
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="*" />
+                                    </Grid.RowDefinitions>
 
-                    <Border Padding="16"
-          Background="{DynamicResource TabItemBackgroundBrush}"
-          BorderBrush="{DynamicResource TabItemBorderBrush}"
-          BorderThickness="1"
-          CornerRadius="12">
-                        <Grid>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="*" />
-                            </Grid.RowDefinitions>
+                                    <DockPanel Grid.Row="0" LastChildFill="False">
+                                        <StackPanel DockPanel.Dock="Left">
+                                            <TextBlock Style="{StaticResource SectionTitleStyle}" Text="{DynamicResource 方案工步}" />
+                                        </StackPanel>
 
-                            <DockPanel Grid.Row="0" LastChildFill="False">
-                                <StackPanel DockPanel.Dock="Left">
-                                    <TextBlock Style="{StaticResource SectionTitleStyle}" Text="方案工步" />
-                                </StackPanel>
+                                        <StackPanel DockPanel.Dock="Right"
+                HorizontalAlignment="Right"
+                Orientation="Horizontal">
+                                            <Button Content="{DynamicResource 添加工步}"
+                Command="{Binding AddWorkStepToSchemeCommand}"
+                Style="{StaticResource PrimaryActionButtonStyle}" />
+                                            <Button Margin="12,0,0,0"
+                Content="{DynamicResource 删除}"
+                Command="{Binding RemoveWorkStepFromSchemeCommand}"
+                Style="{StaticResource ActionButtonStyle}" />
+                                            <Button Margin="12,0,0,0"
+                Content="{DynamicResource 撤销}"
+                Command="{Binding UndoRemoveSchemeStepCommand}"
+                Style="{StaticResource ActionButtonStyle}" />
+                                        </StackPanel>
+                                    </DockPanel>
 
-                                <StackPanel DockPanel.Dock="Right"
-                          HorizontalAlignment="Right"
-                          Orientation="Horizontal">
-                                    <Button Content="添加工步"
+                                    <TextBlock Grid.Row="1"
+           Margin="0,8,0,10"
+           Foreground="{DynamicResource AppMutedTextBrush}"
+           Text="{DynamicResource 直接在方案中维护工步，拖拽可调整顺序。}"
+           TextWrapping="Wrap" />
+
+                                    <Grid Grid.Row="2">
+                                        <DataGrid x:Name="SchemeStepsDataGrid"
+              HorizontalScrollBarVisibility="Disabled"
+              ItemsSource="{Binding SelectedScheme.Steps}"
+              SelectedItem="{Binding SelectedSchemeStep, Mode=TwoWay}"
+              IsReadOnly="False"
+              AllowDrop="True"
+              PreviewMouseLeftButtonDown="SchemeStepsDataGrid_PreviewMouseLeftButtonDown"
+              PreviewMouseMove="SchemeStepsDataGrid_PreviewMouseMove"
+              PreviewMouseRightButtonDown="SchemeStepsDataGrid_PreviewMouseRightButtonDown"
+              DragOver="SchemeStepsDataGrid_DragOver"
+              DragLeave="SchemeStepsDataGrid_DragLeave"
+              Drop="SchemeStepsDataGrid_Drop"
+              Style="{StaticResource ColumnsDataGridStyle}">
+                                            <DataGrid.ContextMenu>
+                                                <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}"
+                         Style="{StaticResource StructureContextMenuStyle}">
+                                                    <MenuItem Header="{DynamicResource 添加工步}"
                           Command="{Binding AddWorkStepToSchemeCommand}"
-                          Style="{StaticResource PrimaryActionButtonStyle}" />
-                                    <Button Margin="12,0,0,0"
-                          Content="删除"
+                          Style="{StaticResource StructureContextMenuItemStyle}">
+                                                        <MenuItem.Icon>
+                                                            <Viewbox Width="32" Height="32">
+                                                                <Canvas Width="16" Height="16">
+                                                                    <Path Style="{StaticResource ContextMenuIconPathStyle}"
+                                      Data="M4,8 L12,8 M8,4 L8,12" />
+                                                                </Canvas>
+                                                            </Viewbox>
+                                                        </MenuItem.Icon>
+                                                    </MenuItem>
+                                                    <MenuItem Header="{DynamicResource 删除工步}"
                           Command="{Binding RemoveWorkStepFromSchemeCommand}"
-                          Style="{StaticResource ActionButtonStyle}" />
-                                    <Button Margin="12,0,0,0"
-                          Content="撤销"
-                          Command="{Binding UndoRemoveSchemeStepCommand}"
-                          Style="{StaticResource ActionButtonStyle}" />
-                                </StackPanel>
-                            </DockPanel>
+                          Style="{StaticResource StructureContextMenuItemStyle}">
+                                                        <MenuItem.Icon>
+                                                            <Viewbox Width="32" Height="32">
+                                                                <Canvas Width="16" Height="16">
+                                                                    <Path Style="{StaticResource ContextMenuIconPathStyle}"
+                                      Data="M5,5 L11,5 M7,5 L7,4 L9,4 L9,5 M6,7 L6.4,13 L9.6,13 L10,7 M7.5,8 L7.5,12 M8.5,8 L8.5,12" />
+                                                                </Canvas>
+                                                            </Viewbox>
+                                                        </MenuItem.Icon>
+                                                    </MenuItem>
+                                                </ContextMenu>
+                                            </DataGrid.ContextMenu>
+                                            <DataGrid.Columns>
+                                                <DataGridTemplateColumn Width="76">
+                                                    <DataGridTemplateColumn.HeaderTemplate>
+                                                        <DataTemplate>
+                                                            <CheckBox HorizontalAlignment="Center"
+                                  VerticalAlignment="Center"
+                                  Content="{DynamicResource 启用}"
+                                  IsChecked="{Binding DataContext.AreAllSchemeStepsStartupEnabled, RelativeSource={RelativeSource AncestorType={x:Type DataGrid}}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                                        </DataTemplate>
+                                                    </DataGridTemplateColumn.HeaderTemplate>
+                                                    <DataGridTemplateColumn.CellTemplate>
+                                                        <DataTemplate>
+                                                            <CheckBox HorizontalAlignment="Center"
+                                  VerticalAlignment="Center"
+                                  IsChecked="{Binding IsStartupEnabled, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                                        </DataTemplate>
+                                                    </DataGridTemplateColumn.CellTemplate>
+                                                </DataGridTemplateColumn>
+                                                <DataGridTextColumn Width="72"
+                                Header="{DynamicResource 序号}"
+                                Binding="{Binding DisplayOrder}"
+                                IsReadOnly="True"
+                                ElementStyle="{StaticResource CellTextBlockStyle}"
+                                EditingElementStyle="{StaticResource CellTextBoxStyle}" />
+                                                <DataGridTextColumn Width="1.45*"
+                                Header="{DynamicResource 工步名称}"
+                                Binding="{Binding SchemeStepName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                ElementStyle="{StaticResource CellTextBlockStyle}"
+                                EditingElementStyle="{StaticResource CellTextBoxStyle}" />
+                                            </DataGrid.Columns>
+                                        </DataGrid>
 
-                            <TextBlock Grid.Row="1"
-                     Margin="0,8,0,10"
-                     Foreground="{DynamicResource AppMutedTextBrush}"
-                     Text="直接在方案中维护工步，拖拽可调整顺序。"
-                     TextWrapping="Wrap" />
+                                        <Canvas x:Name="SchemeStepDropIndicatorCanvas"
+            HorizontalAlignment="Stretch"
+            VerticalAlignment="Stretch"
+            IsHitTestVisible="False">
+                                            <Border x:Name="SchemeStepDropIndicator"
+                Height="3"
+                CornerRadius="2"
+                Visibility="Collapsed"
+                Background="{DynamicResource PrimaryButtonBrush}" />
+                                        </Canvas>
+                                    </Grid>
+                                </Grid>
+                                
+                                <Grid x:Name="OperationDrawerHost" Margin="-16" Grid.ColumnSpan="3" Panel.ZIndex="30" Opacity="0" IsHitTestVisible="False" DataContext="{Binding SchemeStepEditor}">
+                                    <Border Background="#3A000000" MouseLeftButtonDown="OperationDrawerBackdrop_MouseLeftButtonDown" />
 
-                            <Grid Grid.Row="2">
-                                <DataGrid x:Name="SchemeStepsDataGrid"
-                        HorizontalScrollBarVisibility="Disabled"
-                        ItemsSource="{Binding SelectedScheme.Steps}"
-                        SelectedItem="{Binding SelectedSchemeStep, Mode=TwoWay}"
-                        IsReadOnly="False"
-                        AllowDrop="True"
-                        PreviewMouseLeftButtonDown="SchemeStepsDataGrid_PreviewMouseLeftButtonDown"
-                        PreviewMouseMove="SchemeStepsDataGrid_PreviewMouseMove"
-                        PreviewMouseRightButtonDown="SchemeStepsDataGrid_PreviewMouseRightButtonDown"
-                        DragOver="SchemeStepsDataGrid_DragOver"
-                        DragLeave="SchemeStepsDataGrid_DragLeave"
-                        Drop="SchemeStepsDataGrid_Drop"
-                        Style="{StaticResource ColumnsDataGridStyle}">
-                                    <DataGrid.ContextMenu>
-                                        <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}"
-                                   Style="{StaticResource StructureContextMenuStyle}">
-                                            <MenuItem Header="添加工步"
-                                    Command="{Binding AddWorkStepToSchemeCommand}"
-                                    Style="{StaticResource StructureContextMenuItemStyle}">
-                                                <MenuItem.Icon>
-                                                    <Viewbox Width="32" Height="32">
-                                                        <Canvas Width="16" Height="16">
-                                                            <Path Style="{StaticResource ContextMenuIconPathStyle}"
-                                                Data="M4,8 L12,8 M8,4 L8,12" />
-                                                        </Canvas>
-                                                    </Viewbox>
-                                                </MenuItem.Icon>
-                                            </MenuItem>
-                                            <MenuItem Header="删除工步"
-                                    Command="{Binding RemoveWorkStepFromSchemeCommand}"
-                                    Style="{StaticResource StructureContextMenuItemStyle}">
-                                                <MenuItem.Icon>
-                                                    <Viewbox Width="32" Height="32">
-                                                        <Canvas Width="16" Height="16">
-                                                            <Path Style="{StaticResource ContextMenuIconPathStyle}"
-                                                Data="M5,5 L11,5 M7,5 L7,4 L9,4 L9,5 M6,7 L6.4,13 L9.6,13 L10,7 M7.5,8 L7.5,12 M8.5,8 L8.5,12" />
-                                                        </Canvas>
-                                                    </Viewbox>
-                                                </MenuItem.Icon>
-                                            </MenuItem>
-                                        </ContextMenu>
-                                    </DataGrid.ContextMenu>
-                                    <DataGrid.Columns>
-                                        <DataGridTemplateColumn Width="76">
-                                            <DataGridTemplateColumn.HeaderTemplate>
-                                                <DataTemplate>
-                                                    <CheckBox HorizontalAlignment="Center"
-                                            VerticalAlignment="Center"
-                                            Content="启用"
-                                            IsChecked="{Binding DataContext.AreAllSchemeStepsStartupEnabled, RelativeSource={RelativeSource AncestorType={x:Type DataGrid}}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                                </DataTemplate>
-                                            </DataGridTemplateColumn.HeaderTemplate>
-                                            <DataGridTemplateColumn.CellTemplate>
-                                                <DataTemplate>
-                                                    <CheckBox HorizontalAlignment="Center"
-                                            VerticalAlignment="Center"
-                                            IsChecked="{Binding IsStartupEnabled, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                                </DataTemplate>
-                                            </DataGridTemplateColumn.CellTemplate>
-                                        </DataGridTemplateColumn>
-                                        <DataGridTextColumn Width="72"
-                                          Header="序号"
-                                          Binding="{Binding DisplayOrder}"
-                                          IsReadOnly="True"
-                                          ElementStyle="{StaticResource CellTextBlockStyle}"
-                                          EditingElementStyle="{StaticResource CellTextBoxStyle}" />
-                                        <DataGridTextColumn Width="1.45*"
-                                          Header="工步名称"
-                                          Binding="{Binding SchemeStepName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                          ElementStyle="{StaticResource CellTextBlockStyle}"
-                                          EditingElementStyle="{StaticResource CellTextBoxStyle}" />
-                                    </DataGrid.Columns>
-                                </DataGrid>
+                                    <Border Style="{StaticResource DrawerBorderStyle}">
+                                        <Border.RenderTransform>
+                                            <TranslateTransform x:Name="OperationDrawerTranslateTransform" X="-56" />
+                                        </Border.RenderTransform>
 
-                                <Canvas x:Name="SchemeStepDropIndicatorCanvas"
-                      HorizontalAlignment="Stretch"
-                      VerticalAlignment="Stretch"
-                      IsHitTestVisible="False">
-                                    <Border x:Name="SchemeStepDropIndicator"
-                          Height="3"
-                          CornerRadius="2"
-                          Visibility="Collapsed"
-                          Background="{DynamicResource PrimaryButtonBrush}" />
-                                </Canvas>
+                                        <Grid>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="*" />
+                                            </Grid.RowDefinitions>
+
+                                            <DockPanel LastChildFill="False">
+                                                <StackPanel DockPanel.Dock="Left">
+                                                    <TextBlock Style="{StaticResource SectionTitleStyle}"
+                   Text="{Binding OperationDrawerTitle}" />
+                                                    <TextBlock Margin="0,8,0,0"
+                   Foreground="{DynamicResource AppMutedTextBrush}"
+                   Text="{Binding SelectedWorkStep.StepName}" />
+                                                </StackPanel>
+                                                <StackPanel DockPanel.Dock="Right"
+                HorizontalAlignment="Right"
+                Orientation="Horizontal">
+                                                    <Button Content="{DynamicResource 取消}"
+                Command="{Binding CloseOperationDrawerCommand}"
+                Style="{StaticResource ActionButtonStyle}" />
+                                                    <Button Content="{DynamicResource 保存}"
+                Command="{Binding SaveOperationDrawerCommand}"
+                Style="{StaticResource PrimaryActionButtonStyle}" />
+                                                </StackPanel>
+                                            </DockPanel>
+                                            <StackPanel Margin="0,14,0,0" Grid.Row="1">
+                                                <TextBlock Style="{StaticResource FieldLabelStyle}" Text="{DynamicResource 操作对象}" />
+                                                <ComboBox x:Name="operationObj"
+Style="{StaticResource EditableInputComboBoxStyle}"
+ItemContainerStyle="{StaticResource InputComboBoxItemStyle}"
+ItemsSource="{Binding OperationObjectOptions}"
+Text="{Binding EditingOperationObject, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                            </StackPanel>
+                                            <Grid Grid.Row="2">
+                                                <Grid.RowDefinitions>
+                                                    <RowDefinition Height="Auto"/>
+                                                    <RowDefinition Height="*"/>
+                                                </Grid.RowDefinitions>
+                                                <StackPanel Margin="0,14,0,0" Visibility="{Binding ElementName=luaEditorGrid, Path=Visibility,Converter={StaticResource inv2V}}">
+                                                    <DockPanel Margin="0,0,0,8" LastChildFill="False">
+                                                        <TextBlock DockPanel.Dock="Left" Style="{StaticResource FieldLabelStyle}" Text="{DynamicResource 支持的方法/指令}" />
+                                                        <TextBlock DockPanel.Dock="Right" Style="{StaticResource FieldLabelStyle}" Text="{DynamicResource 拖拽到步骤编辑}" />
+                                                    </DockPanel>
+                                                    
+                                                </StackPanel>
+                                                <Grid x:Name="luaEditorGrid"
+                                                      Grid.Row="1"
+                                                      Margin="0,14,0,0"
+                                                      Visibility="{Binding ElementName=operationObj, Path=SelectedValue,Converter={StaticResource comp2V}, ConverterParameter='Lua'}">
+                                                    <luaEditor:LuaScriptCompilerView ScriptText="{Binding EditingLuaScript, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                                </Grid>
+                                                <DataGrid x:Name="OperationMethodDataGrid" Grid.Row="1" Visibility="{Binding ElementName=luaEditorGrid, Path=Visibility,Converter={StaticResource inv2V}}"
+HorizontalScrollBarVisibility="Disabled"
+AutoGenerateColumns="False"
+IsReadOnly="True"
+ItemsSource="{Binding OperationMethodTable.DefaultView}"
+Style="{StaticResource ColumnsDataGridStyle}">
+                                                    <DataGrid.Columns>
+                                                        <DataGridTextColumn Width="1.2*"
+                  Header="{DynamicResource 方法/指令}"
+                  ElementStyle="{StaticResource CellTextBlockStyle}"
+                  Binding="{Binding [InvokeMethod]}" />
+                                                    </DataGrid.Columns>
+                                                </DataGrid>
+                                            </Grid>
+                                        </Grid>
+                                    </Border>
+                                </Grid>
                             </Grid>
-                        </Grid>
-                    </Border>
+                        </Border>
+                        <Border Grid.Column="2"
+Padding="16"
+Background="{DynamicResource TabItemBackgroundBrush}"
+BorderBrush="{DynamicResource TabItemBorderBrush}"
+BorderThickness="1"
+CornerRadius="12">
+                            <Grid DataContext="{Binding SchemeStepEditor}">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="*" />
+                                </Grid.RowDefinitions>
 
-                    <Border Grid.Column="2"
-          Padding="16"
-          Background="{DynamicResource TabItemBackgroundBrush}"
-          BorderBrush="{DynamicResource TabItemBorderBrush}"
-          BorderThickness="1"
-          CornerRadius="12">
-                        <Grid DataContext="{Binding SchemeStepEditor}">
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="*" />
-                            </Grid.RowDefinitions>
+                                <DockPanel Grid.Row="0" LastChildFill="False">
+                                    <TextBlock Style="{StaticResource SectionTitleStyle}" Text="{DynamicResource 步骤编辑}" />
+                                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                                        <Button Content="{DynamicResource 新建步骤}"
+                Command="{Binding AddOperationCommand}"
+                Style="{StaticResource PrimaryActionButtonStyle}" />
+                                        <Button Margin="12,0,0,0"
+                Content="{DynamicResource 复制步骤}"
+                Command="{Binding CopyOperationCommand}"
+                Style="{StaticResource ActionButtonStyle}" />
+                                        <Button Margin="12,0,0,0"
+                Content="{DynamicResource 粘贴步骤}"
+                Command="{Binding PasteOperationCommand}"
+                Style="{StaticResource ActionButtonStyle}" />
+                                        <Button Margin="12,0,0,0"
+                Content="{DynamicResource 删除步骤}"
+                Command="{Binding DeleteOperationCommand}"
+                Style="{StaticResource ActionButtonStyle}" />
+                                    </StackPanel>
+                                </DockPanel>
 
-                            <DockPanel Grid.Row="0" LastChildFill="False">
-                                <TextBlock Style="{StaticResource SectionTitleStyle}" Text="步骤编辑" />
-                                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-                                    <Button Content="新建步骤"
-                          Command="{Binding AddOperationCommand}"
-                          Style="{StaticResource PrimaryActionButtonStyle}" />
-                                    <Button Margin="12,0,0,0"
-                          Content="复制步骤"
-                          Command="{Binding CopyOperationCommand}"
-                          Style="{StaticResource ActionButtonStyle}" />
-                                    <Button Margin="12,0,0,0"
-                          Content="粘贴步骤"
-                          Command="{Binding PasteOperationCommand}"
-                          Style="{StaticResource ActionButtonStyle}" />
-                                    <Button Margin="12,0,0,0"
-                          Content="删除步骤"
-                          Command="{Binding DeleteOperationCommand}"
-                          Style="{StaticResource ActionButtonStyle}" />
+                                <StackPanel Grid.Row="1" Margin="0,8,0,10">
+                                    <TextBlock FontSize="15"
+               FontWeight="SemiBold"
+               Foreground="{DynamicResource AppContentTextBrush}"
+               Text="{Binding DataContext.SelectedSchemeStep.SchemeStepName, RelativeSource={RelativeSource AncestorType={x:Type UserControl}}, TargetNullValue=未选择方案工步}" />
+                                    <TextBlock Margin="0,6,0,0"
+               Foreground="{DynamicResource AppMutedTextBrush}"
+               Text="{DynamicResource 双击步骤可打开完整编辑；直接修改操作对象和调用方法会同步参数，点击“...”可调整参数，拖拽可调整步骤顺序。}"
+               TextWrapping="Wrap" />
                                 </StackPanel>
-                            </DockPanel>
 
-                            <StackPanel Grid.Row="1" Margin="0,8,0,10">
-                                <TextBlock FontSize="15"
-                         FontWeight="SemiBold"
-                         Foreground="{DynamicResource AppContentTextBrush}"
-                         Text="{Binding DataContext.SelectedSchemeStep.SchemeStepName, RelativeSource={RelativeSource AncestorType={x:Type UserControl}}, TargetNullValue=未选择方案工步}" />
-                                <TextBlock Margin="0,6,0,0"
-                         Foreground="{DynamicResource AppMutedTextBrush}"
-                         Text="双击步骤进入编辑抽屉，拖拽可调整步骤顺序。"
-                         TextWrapping="Wrap" />
-                            </StackPanel>
+                                <Grid Grid.Row="2">
+                                    <DataGrid x:Name="OperationsDataGrid" HorizontalScrollBarVisibility="Disabled"
+              ItemsSource="{Binding SelectedWorkStep.Steps}"
+              SelectedItem="{Binding SelectedOperation, Mode=TwoWay}"
+              AllowDrop="True"
+              PreviewMouseLeftButtonDown="OperationsDataGrid_PreviewMouseLeftButtonDown"
+              PreviewMouseMove="OperationsDataGrid_PreviewMouseMove"
+              DragOver="OperationsDataGrid_DragOver"
+              DragLeave="OperationsDataGrid_DragLeave"
+              Drop="OperationsDataGrid_Drop"
+              MouseDoubleClick="OperationsDataGrid_MouseDoubleClick"
+              Style="{StaticResource ColumnsDataGridStyle}">
+                                        <DataGrid.Columns>
+                                            <DataGridTemplateColumn Width="56" Header="{DynamicResource 选择}">
+                                                <DataGridTemplateColumn.HeaderTemplate>
+                                                    <DataTemplate>
+                                                        <CheckBox HorizontalAlignment="Center"
+                                  VerticalAlignment="Center"
+                                  IsChecked="{Binding DataContext.AreAllOperationsChecked, RelativeSource={RelativeSource AncestorType={x:Type DataGrid}}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                                    </DataTemplate>
+                                                </DataGridTemplateColumn.HeaderTemplate>
+                                                <DataGridTemplateColumn.CellTemplate>
+                                                    <DataTemplate>
+                                                        <CheckBox HorizontalAlignment="Center"
+                                  VerticalAlignment="Center"
+                                  IsChecked="{Binding IsChecked, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                                    </DataTemplate>
+                                                </DataGridTemplateColumn.CellTemplate>
+                                            </DataGridTemplateColumn>
+                                            <DataGridTextColumn Width="64"
+                                Header="{DynamicResource 序号}"
+                                IsReadOnly="True"
+                                ElementStyle="{StaticResource CellTextBlockStyle}"
+                                Binding="{Binding DisplayOrder}" />
+                                            <DataGridTemplateColumn Width="*"
+                                Header="{DynamicResource 操作对象}"
+                                SortMemberPath="OperationObject">
+                                                <DataGridTemplateColumn.CellTemplate>
+                                                    <DataTemplate>
+                                                        <TextBlock Style="{StaticResource CellTextBlockStyle}"
+                                   Text="{Binding OperationObject}" />
+                                                    </DataTemplate>
+                                                </DataGridTemplateColumn.CellTemplate>
+                                                <DataGridTemplateColumn.CellEditingTemplate>
+                                                    <DataTemplate>
+                                                        <ComboBox Style="{StaticResource EditableInputComboBoxStyle}"
+                                  ItemContainerStyle="{StaticResource InputComboBoxItemStyle}"
+                                  ItemsSource="{Binding DataContext.InlineOperationObjectOptions, RelativeSource={RelativeSource AncestorType={x:Type UserControl}}}"
+                                  Text="{Binding OperationObject, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                                    </DataTemplate>
+                                                </DataGridTemplateColumn.CellEditingTemplate>
+                                            </DataGridTemplateColumn>
+                                            <DataGridTemplateColumn Width="*"
+                                Header="{DynamicResource 调用方法}"
+                                SortMemberPath="InvokeMethod">
+                                                <DataGridTemplateColumn.CellTemplate>
+                                                    <DataTemplate>
+                                                        <TextBlock Style="{StaticResource CellTextBlockStyle}"
+                                   Text="{Binding InvokeMethod}" />
+                                                    </DataTemplate>
+                                                </DataGridTemplateColumn.CellTemplate>
+                                                <DataGridTemplateColumn.CellEditingTemplate>
+                                                    <DataTemplate>
+                                                        <ComboBox Style="{StaticResource EditableInputComboBoxStyle}"
+                                  ItemContainerStyle="{StaticResource InputComboBoxItemStyle}"
+                                  ItemsSource="{Binding DataContext.InlineInvokeMethodOptions, RelativeSource={RelativeSource AncestorType={x:Type UserControl}}}"
+                                  Text="{Binding InvokeMethod, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                                    </DataTemplate>
+                                                </DataGridTemplateColumn.CellEditingTemplate>
+                                            </DataGridTemplateColumn>
+                                            <DataGridTemplateColumn Width="96"
+                                Header="{DynamicResource 修改参数}"
+                                SortMemberPath="AreParametersModified">
+                                                <DataGridTemplateColumn.CellTemplate>
+                                                    <DataTemplate>
+                                                        <Grid HorizontalAlignment="Stretch"
+                                                              VerticalAlignment="Stretch">
+                                                            <Button VerticalContentAlignment="Center"
+                                                                    Content="…"
+                                                                    Click="InlineOperationParametersButton_Click"
+                                                                    Style="{StaticResource StepParameterButtonStyle}" Padding="0"/>
+                                                        </Grid>
+                                                    </DataTemplate>
+                                                </DataGridTemplateColumn.CellTemplate>
+                                            </DataGridTemplateColumn>
+                                                                                        <DataGridTextColumn Width="96"
+                                Header="{DynamicResource 延时(ms)}"
+                                ElementStyle="{StaticResource CellTextBlockStyle}"
+                                EditingElementStyle="{StaticResource CellTextBoxStyle}"
+                                Binding="{Binding DelayMilliseconds, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                        </DataGrid.Columns>
+                                    </DataGrid>
 
-                            <Grid Grid.Row="2">
-                                <DataGrid x:Name="OperationsDataGrid" HorizontalScrollBarVisibility="Disabled"
-                        ItemsSource="{Binding SelectedWorkStep.Steps}"
-                        SelectedItem="{Binding SelectedOperation, Mode=TwoWay}"
-                        AllowDrop="True"
-                        PreviewMouseLeftButtonDown="OperationsDataGrid_PreviewMouseLeftButtonDown"
-                        PreviewMouseMove="OperationsDataGrid_PreviewMouseMove"
-                        DragOver="OperationsDataGrid_DragOver"
-                        DragLeave="OperationsDataGrid_DragLeave"
-                        Drop="OperationsDataGrid_Drop"
-                        MouseDoubleClick="OperationsDataGrid_MouseDoubleClick"
-                        Style="{StaticResource ColumnsDataGridStyle}">
-                                    <DataGrid.Columns>
-                                        <DataGridTemplateColumn Width="56" Header="选择">
-                                            <DataGridTemplateColumn.HeaderTemplate>
-                                                <DataTemplate>
-                                                    <CheckBox HorizontalAlignment="Center"
-                                            VerticalAlignment="Center"
-                                            IsChecked="{Binding DataContext.AreAllOperationsChecked, RelativeSource={RelativeSource AncestorType={x:Type DataGrid}}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                                </DataTemplate>
-                                            </DataGridTemplateColumn.HeaderTemplate>
-                                            <DataGridTemplateColumn.CellTemplate>
-                                                <DataTemplate>
-                                                    <CheckBox HorizontalAlignment="Center"
-                                            VerticalAlignment="Center"
-                                            IsChecked="{Binding IsChecked, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                                </DataTemplate>
-                                            </DataGridTemplateColumn.CellTemplate>
-                                        </DataGridTemplateColumn>
-                                        <DataGridTextColumn Width="64"
-                                          Header="序号"
-                                          IsReadOnly="True"
-                                          ElementStyle="{StaticResource CellTextBlockStyle}"
-                                          Binding="{Binding DisplayOrder}" />
-                                        <DataGridTextColumn Width="*"
-                                          Header="操作对象"
-                                          IsReadOnly="True"
-                                          ElementStyle="{StaticResource CellTextBlockStyle}"
-                                          Binding="{Binding OperationObject}" />
-                                        <DataGridTextColumn Width="*"
-                                          Header="调用方法"
-                                          IsReadOnly="True"
-                                          ElementStyle="{StaticResource CellTextBlockStyle}"
-                                          Binding="{Binding InvokeMethod}" />
-                                        <DataGridTextColumn Width="*"
-                                          Header="返回值"
-                                          IsReadOnly="True"
-                                          ElementStyle="{StaticResource CellTextBlockStyle}"
-                                          Binding="{Binding ReturnValue}" />
-                                        <DataGridTextColumn Width="96"
-                                          Header="延时(ms)"
-                                          ElementStyle="{StaticResource CellTextBlockStyle}"
-                                          EditingElementStyle="{StaticResource CellTextBoxStyle}"
-                                          Binding="{Binding DelayMilliseconds, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                    </DataGrid.Columns>
-                                </DataGrid>
+                                    <Canvas x:Name="OperationDropIndicatorCanvas"
+            HorizontalAlignment="Stretch"
+            VerticalAlignment="Stretch"
+            IsHitTestVisible="False">
+                                        <Border x:Name="OperationDropIndicator"
+                Height="3"
+                CornerRadius="2"
+                Visibility="Collapsed"
+                Background="{DynamicResource PrimaryButtonBrush}" />
+                                    </Canvas>
 
-                                <Canvas x:Name="OperationDropIndicatorCanvas"
-                      HorizontalAlignment="Stretch"
-                      VerticalAlignment="Stretch"
-                      IsHitTestVisible="False">
-                                    <Border x:Name="OperationDropIndicator"
-                          Height="3"
-                          CornerRadius="2"
-                          Visibility="Collapsed"
-                          Background="{DynamicResource PrimaryButtonBrush}" />
-                                </Canvas>
+                                    <Grid x:Name="InlineParameterDrawerHost"
+                                          Panel.ZIndex="20"
+                                          Opacity="0"
+                                          IsHitTestVisible="False">
+                                        <Border Background="#3A000000"
+                                                MouseLeftButtonDown="InlineParameterDrawerBackdrop_MouseLeftButtonDown" />
+
+                                        <Border x:Name="InlineParameterDrawerSheet"
+                                                Height="400"
+                                                VerticalAlignment="Bottom"
+                                                Style="{StaticResource DrawerBorderStyle}">
+                                            <Border.RenderTransform>
+                                                <TranslateTransform x:Name="InlineParameterDrawerTranslateTransform" Y="56" />
+                                            </Border.RenderTransform>
+
+                                            <Grid DataContext="{Binding ElementName=InlineParameterDrawerSheet, Path=Tag}">
+                                                <Grid.RowDefinitions>
+                                                    <RowDefinition Height="Auto" />
+                                                    <RowDefinition Height="*" />
+                                                </Grid.RowDefinitions>
+
+                                                <DockPanel LastChildFill="False">
+                                                    <StackPanel DockPanel.Dock="Left">
+                                                        <TextBlock Style="{StaticResource SectionTitleStyle}"
+                                                                   Text="{DynamicResource 参数编辑}" />
+                                                        <TextBlock Grid.Row="1"
+           Margin="0,10,0,10"
+           Foreground="{DynamicResource AppMutedTextBrush}"
+           Text="{Binding OperationSummary}"
+           TextWrapping="Wrap" />
+                                                    </StackPanel>
+
+                                                    <StackPanel DockPanel.Dock="Right" Margin="0,0,0,26"
+                                                                Orientation="Horizontal">
+                                                        <Button Content="{DynamicResource 应用}"
+                                                                Click="ApplyInlineParameterDrawerButton_Click"
+                                                                Style="{StaticResource PrimaryActionButtonStyle}" />
+                                                        <Button Content="{DynamicResource 关闭}"
+                                                                Margin="10,0,0,0"
+                                                                Click="CloseInlineParameterDrawerButton_Click"
+                                                                Style="{StaticResource ActionButtonStyle}" />
+                                                    </StackPanel>
+                                                </DockPanel>
+
+                                                
+
+                                                <TabControl x:Name="InlineParameterTabControl"
+                                                            Grid.Row="1"
+                                                            Style="{DynamicResource SchemeParameterTabControlStyle}"
+                                                            SelectionChanged="InlineParameterTabControl_SelectionChanged">
+                                                    <TabItem Header="{DynamicResource 输入参数}">
+                                                        <DataGrid x:Name="InlineInputParameterDataGrid"
+                                                                  AutoGenerateColumns="False"
+                                                                  CanUserAddRows="False"
+                                                                  HorizontalScrollBarVisibility="Disabled"
+                                                                  IsReadOnly="False"
+                                                                  ItemsSource="{Binding InputParameterRows}"
+                                                                  Style="{StaticResource ColumnsDataGridStyle}">
+                                                            <DataGrid.Columns>
+                                                                <DataGridTextColumn Width="72"
+                                                                                    Header="{DynamicResource 序号}"
+                                                                                    IsReadOnly="True"
+                                                                                    ElementStyle="{StaticResource CellTextBlockStyle}"
+                                                                                    Binding="{Binding Sequence}" />
+                                                                <DataGridTemplateColumn Width="1*"
+                                                                                        Header="{DynamicResource 参数类型}">
+                                                                    <DataGridTemplateColumn.CellTemplate>
+                                                                        <DataTemplate>
+                                                                            <ComboBox Style="{StaticResource EditableInputComboBoxStyle}"
+                                                                                      ItemContainerStyle="{StaticResource InputComboBoxItemStyle}"
+                                                                                      ItemsSource="{Binding DataContext.SchemeStepEditor.ParameterTypeOptions, RelativeSource={RelativeSource AncestorType={x:Type UserControl}}}"
+                                                                                      Text="{Binding Type, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                                                        </DataTemplate>
+                                                                    </DataGridTemplateColumn.CellTemplate>
+                                                                </DataGridTemplateColumn>
+                                                                <DataGridTextColumn Width="1.2*"
+                                                                                    Header="{DynamicResource 参数值}"
+                                                                                    ElementStyle="{StaticResource CellTextBlockStyle}"
+                                                                                    EditingElementStyle="{StaticResource CellTextBoxStyle}"
+                                                                                    Binding="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                                                <DataGridTextColumn Width="1.4*"
+                                                                                    Header="{DynamicResource 描述}"
+                                                                                    IsReadOnly="True"
+                                                                                    ElementStyle="{StaticResource CellTextBlockStyle}"
+                                                                                    Binding="{Binding Description}" />
+                                                            </DataGrid.Columns>
+                                                        </DataGrid>
+                                                    </TabItem>
+
+                                                    <TabItem Header="{DynamicResource 返回参数}">
+                                                        <DataGrid x:Name="InlineReturnParameterDataGrid"
+                                                                  AutoGenerateColumns="False"
+                                                                  CanUserAddRows="False"
+                                                                  HorizontalScrollBarVisibility="Disabled"
+                                                                  IsReadOnly="False"
+                                                                  ItemsSource="{Binding ReturnParameterRows}"
+                                                                  Style="{StaticResource ColumnsDataGridStyle}">
+                                                            <DataGrid.Columns>
+                                                                <DataGridTextColumn Width="1.2*"
+                                                                                    Header="{DynamicResource 返回值 Key}"
+                                                                                    IsReadOnly="True"
+                                                                                    ElementStyle="{StaticResource CellTextBlockStyle}"
+                                                                                    EditingElementStyle="{StaticResource CellTextBoxStyle}"
+                                                                                    Binding="{Binding Key, Mode=OneWay}" />
+                                                                <DataGridCheckBoxColumn Width="96"
+                                                                                        Header="{DynamicResource 显示}"
+                                                                                        Binding="{Binding ShowDataToView, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                                                <DataGridTextColumn Width="1.2*"
+                                                                                    Header="{DynamicResource 数据名称}"
+                                                                                    ElementStyle="{StaticResource CellTextBlockStyle}"
+                                                                                    EditingElementStyle="{StaticResource CellTextBoxStyle}"
+                                                                                    Binding="{Binding ViewDataName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                                                <DataGridTextColumn Width="1.2*"
+                                                                                    Header="{DynamicResource 判断类型}"
+                                                                                    ElementStyle="{StaticResource CellTextBlockStyle}"
+                                                                                    EditingElementStyle="{StaticResource CellTextBoxStyle}"
+                                                                                    Binding="{Binding ViewJudgeType, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                                                <DataGridTextColumn Width="1.2*"
+                                                                                    Header="{DynamicResource 判断条件}"
+                                                                                    ElementStyle="{StaticResource CellTextBlockStyle}"
+                                                                                    EditingElementStyle="{StaticResource CellTextBoxStyle}"
+                                                                                    Binding="{Binding ViewJudgeCondition, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                                            </DataGrid.Columns>
+                                                        </DataGrid>
+                                                    </TabItem>
+                                                </TabControl>
+                                            </Grid>
+                                        </Border>
+                                    </Grid>
+                                </Grid>
                             </Grid>
-                        </Grid>
-                    </Border>
+                        </Border>
+                    </Grid>
                 </Grid>
+                
             </Border>
 
-            <Grid x:Name="OperationDrawerHost"
-                  Grid.ColumnSpan="3"
-                  Panel.ZIndex="30"
-                  Opacity="0"
-                  IsHitTestVisible="False"
-                  DataContext="{Binding SchemeStepEditor}">
-                <Border Background="#3A000000"
-      MouseLeftButtonDown="OperationDrawerBackdrop_MouseLeftButtonDown" />
-
-                <Border Margin="24,120,24,24"
-                        MaxWidth="1320"
-                        MinHeight="420"
-                        MaxHeight="680"
-                        HorizontalAlignment="Stretch"
-                        VerticalAlignment="Bottom"
-                        Style="{StaticResource DrawerBorderStyle}">
-                    <Border.RenderTransform>
-                        <TranslateTransform x:Name="OperationDrawerTranslateTransform" Y="56" />
-                    </Border.RenderTransform>
-
-                    <Grid>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="*" />
-                        </Grid.RowDefinitions>
-
-                        <DockPanel LastChildFill="False">
-                            <StackPanel DockPanel.Dock="Left">
-                                <TextBlock Style="{StaticResource SectionTitleStyle}"
-                         Text="{Binding OperationDrawerTitle}" />
-                                <TextBlock Margin="0,8,0,0"
-                         Foreground="{DynamicResource AppMutedTextBrush}"
-                         Text="{Binding SelectedWorkStep.StepName}" />
-                            </StackPanel>
-                            <StackPanel DockPanel.Dock="Right"
-                      HorizontalAlignment="Right"
-                      Orientation="Horizontal">
-                                <Button Content="取消"
-                      Command="{Binding CloseOperationDrawerCommand}"
-                      Style="{StaticResource ActionButtonStyle}" />
-                                <Button Content="保存"
-                      Command="{Binding SaveOperationDrawerCommand}"
-                      Style="{StaticResource PrimaryActionButtonStyle}" />
-                            </StackPanel>
-                        </DockPanel>
-
-                        <businessViews:OperationEditorView Grid.Row="1" />
-                    </Grid>
-                </Border>
-            </Grid>
+            
         </Grid>
     </Grid>
 </UserControl>

@@ -36,7 +36,6 @@ namespace WpfApp
             Loaded += (_, _) =>
             {
                 UpdateMaximizeRestoreButton();
-                AppLanguageManager.LocalizeElement(this);
             };
             Closed += (_, _) => AppLanguageManager.LanguageChanged -= AppLanguageManager_LanguageChanged;
             AppLanguageManager.LanguageChanged += AppLanguageManager_LanguageChanged;
@@ -120,7 +119,6 @@ namespace WpfApp
             UpdateMaximizeRestoreButton();
             UpdateTabHeaders();
             NavigationBar.ItemsSource = _navigationInfo;
-            AppLanguageManager.LocalizeElement(this);
         }
 
         private static string GetCurrentUserName()

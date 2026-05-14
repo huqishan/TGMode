@@ -11,7 +11,7 @@ namespace Module.Business.ViewModels;
 public sealed partial class WorkStepConfigurationViewModel
 {
     /// <summary>
-    /// 以独立编辑模式打开单条步骤，不影响主工步配置页面的数据上下文。
+    /// 以独立编辑模式打开单条步骤，不影响宿主页面的数据上下文。
     /// </summary>
     public void BeginStandaloneOperationEdit(
         WorkStepOperation? operation,

@@ -35,11 +35,13 @@ public sealed partial class SchemeConfigurationViewModel
     private SchemeProfile? _selectedScheme;
     private SchemeWorkStepItem? _selectedSchemeStep;
     private WorkStepProfile? _schemeStepEditorHostWorkStep;
+    private WorkStepOperation? _trackedInlineOperation;
     private readonly List<RemovedSchemeStepUndoItem> _removedSchemeStepUndoItems = [];
     private string _searchText = string.Empty;
     private string _pageStatusText = "等待编辑";
     private Brush _pageStatusBrush = NeutralBrush;
     private DateTime _lastCreateOrCopyCommandAt = DateTime.MinValue;
+    private bool _isSynchronizingInlineOperationSelection;
 
     #endregion
 
@@ -66,9 +68,13 @@ public sealed partial class SchemeConfigurationViewModel
     public ICollectionView SchemesView { get; private set; } = null!;
 
     /// <summary>
-    /// 复用工步配置页的步骤编辑能力。
+    /// 复用步骤编辑器能力。
     /// </summary>
     public WorkStepConfigurationViewModel SchemeStepEditor { get; } = new();
+
+    public ObservableCollection<string> InlineOperationObjectOptions { get; } = new();
+
+    public ObservableCollection<string> InlineInvokeMethodOptions { get; } = new();
 
     #endregion
 
@@ -284,6 +290,130 @@ public sealed partial class SchemeConfigurationViewModel
     /// <summary>
     /// 刷新页面顶部统计文本。
     /// </summary>
+    private void SchemeStepEditor_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(WorkStepConfigurationViewModel.SelectedOperation))
+        {
+            TrackInlineOperation(SchemeStepEditor.SelectedOperation);
+            RefreshInlineEditingOptions();
+            return;
+        }
+
+        if (e.PropertyName is nameof(WorkStepConfigurationViewModel.SelectedWorkStep)
+            or nameof(WorkStepConfigurationViewModel.OperationCountText))
+        {
+            RefreshInlineEditingOptions();
+        }
+    }
+
+    private void TrackInlineOperation(WorkStepOperation? operation)
+    {
+        if (ReferenceEquals(_trackedInlineOperation, operation))
+        {
+            return;
+        }
+
+        if (_trackedInlineOperation is not null)
+        {
+            _trackedInlineOperation.PropertyChanged -= InlineOperation_PropertyChanged;
+        }
+
+        _trackedInlineOperation = operation;
+
+        if (_trackedInlineOperation is not null)
+        {
+            _trackedInlineOperation.PropertyChanged += InlineOperation_PropertyChanged;
+        }
+    }
+
+    private void InlineOperation_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (!ReferenceEquals(sender, _trackedInlineOperation) ||
+            _isSynchronizingInlineOperationSelection)
+        {
+            return;
+        }
+
+        if (e.PropertyName is nameof(WorkStepOperation.OperationObject)
+            or nameof(WorkStepOperation.InvokeMethod))
+        {
+            RefreshInlineEditingOptions();
+            if (_trackedInlineOperation is not null)
+            {
+                SchemeStepEditor.ResetOperationParametersToDefault(_trackedInlineOperation);
+            }
+        }
+    }
+
+    private void RefreshInlineEditingOptions()
+    {
+        IEnumerable<WorkStepOperation> currentOperations =
+            SchemeStepEditor.SelectedWorkStep?.Steps ?? Enumerable.Empty<WorkStepOperation>();
+
+        ReplaceStringOptions(
+            InlineOperationObjectOptions,
+            new[]
+            {
+                WorkStepConfigurationViewModel.SystemOperationObjectName,
+                WorkStepConfigurationViewModel.LuaOperationObjectName
+            }
+            .Concat(SchemeStepEditor.LoadDeviceOperationObjectNames())
+            .Concat(currentOperations.Select(operation => operation.OperationObject))
+            .Where(option => !WorkStepConfigurationViewModel.IsJudgeOperationObject(option)));
+
+        List<string> invokeMethodOptions = SchemeStepEditor
+            .LoadInvokeMethodOptionsForOperationObject(SchemeStepEditor.SelectedOperation?.OperationObject)
+            .Where(option => !string.IsNullOrWhiteSpace(option))
+            .Select(option => option.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        ReplaceStringOptions(InlineInvokeMethodOptions, invokeMethodOptions);
+        SynchronizeInlineOperation(invokeMethodOptions);
+    }
+
+    private void SynchronizeInlineOperation(IReadOnlyList<string> invokeMethodOptions)
+    {
+        if (_isSynchronizingInlineOperationSelection ||
+            SchemeStepEditor.SelectedOperation is null)
+        {
+            return;
+        }
+
+        _isSynchronizingInlineOperationSelection = true;
+        try
+        {
+            SchemeStepEditor.SynchronizeOperationMetadata(
+                SchemeStepEditor.SelectedOperation,
+                invokeMethodOptions);
+        }
+        finally
+        {
+            _isSynchronizingInlineOperationSelection = false;
+        }
+    }
+
+    private static void ReplaceStringOptions(ObservableCollection<string> target, IEnumerable<string> source)
+    {
+        List<string> options = source
+            .Where(option => !string.IsNullOrWhiteSpace(option))
+            .Select(option => option.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(option => option, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        if (target.SequenceEqual(options, StringComparer.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        target.Clear();
+        foreach (string option in options)
+        {
+            target.Add(option);
+        }
+    }
+
     private void RaisePageSummaryChanged()
     {
         OnPropertyChanged(nameof(SchemeCountText));
@@ -305,8 +435,10 @@ public sealed partial class SchemeConfigurationViewModel
         if (SelectedSchemeStep is null)
         {
             _schemeStepEditorHostWorkStep = null;
+            TrackInlineOperation(null);
             SchemeStepEditor.SelectedOperation = null;
             SchemeStepEditor.SelectedWorkStep = null;
+            RefreshInlineEditingOptions();
             return;
         }
 
@@ -318,6 +450,7 @@ public sealed partial class SchemeConfigurationViewModel
 
         SchemeStepEditor.SelectedWorkStep = _schemeStepEditorHostWorkStep;
         SchemeStepEditor.SelectedOperation = _schemeStepEditorHostWorkStep.Steps.FirstOrDefault();
+        RefreshInlineEditingOptions();
     }
 
     #endregion

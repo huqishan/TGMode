@@ -878,6 +878,13 @@ public sealed partial class DeviceCommunicationConfigViewModel
                 }
             }
 
+            if (!ProtocolPreviewEngine.TryRefreshParsedResultKeys(profile, out string parseMessage))
+            {
+                message = parseMessage;
+                savedPath = string.Empty;
+                return false;
+            }
+
             string storageText = JsonHelper.SerializeObject(ProtocolConfigProfileDocument.FromProfile(profile)).Encrypt();
             File.WriteAllText(savedPath, storageText, Encoding.UTF8);
             message = string.Empty;

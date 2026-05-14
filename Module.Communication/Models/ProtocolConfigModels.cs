@@ -85,6 +85,8 @@ namespace Module.Communication.Models
 
         public string? ParseRulesText { get; set; }
 
+        public List<string>? ParsedResultKeys { get; set; }
+
         public static ProtocolCommandConfigDocument FromCommand(ProtocolCommandConfig command)
         {
             return new ProtocolCommandConfigDocument
@@ -100,13 +102,14 @@ namespace Module.Communication.Models
                 ContentTemplate = command.ContentTemplate,
                 PlaceholderValuesText = command.PlaceholderValuesText,
                 SampleResponseText = command.SampleResponseText,
-                ParseRulesText = command.ParseRulesText
+                ParseRulesText = command.ParseRulesText,
+                ParsedResultKeys = command.ParsedResultKeys.ToList()
             };
         }
 
         public ProtocolCommandConfig ToCommand()
         {
-            return new ProtocolCommandConfig
+            ProtocolCommandConfig command = new ProtocolCommandConfig
             {
                 Name = string.IsNullOrWhiteSpace(Name) ? "指令 1" : Name.Trim(),
                 RequestFormat = RequestFormat,
@@ -123,6 +126,9 @@ namespace Module.Communication.Models
                 SampleResponseText = SampleResponseText ?? string.Empty,
                 ParseRulesText = ParseRulesText ?? string.Empty
             };
+
+            command.ReplaceParsedResultKeys(ParsedResultKeys ?? Enumerable.Empty<string>());
+            return command;
         }
     }
 
@@ -280,6 +286,8 @@ namespace Module.Communication.Models
 
         public ObservableCollection<ProtocolPlaceholderValue> PlaceholderValues { get; } = new ObservableCollection<ProtocolPlaceholderValue>();
 
+        public ObservableCollection<string> ParsedResultKeys { get; } = new ObservableCollection<string>();
+
         public string Name
         {
             get => _name;
@@ -400,6 +408,29 @@ namespace Module.Communication.Models
             set => SetField(ref _parseRulesText, value, raiseStateChanges: false);
         }
 
+        public void ReplaceParsedResultKeys(IEnumerable<string> keys)
+        {
+            List<string> normalizedKeys = keys
+                .Where(key => !string.IsNullOrWhiteSpace(key))
+                .Select(key => key.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(key => key, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            if (ParsedResultKeys.SequenceEqual(normalizedKeys, StringComparer.OrdinalIgnoreCase))
+            {
+                return;
+            }
+
+            ParsedResultKeys.Clear();
+            foreach (string key in normalizedKeys)
+            {
+                ParsedResultKeys.Add(key);
+            }
+
+            OnPropertyChanged(nameof(ParsedResultKeys));
+        }
+
         public string RequestFormatDisplayName => ProtocolDisplayNames.GetPayloadFormatDisplayName(RequestFormat);
 
         public string ResponseFormatDisplayName => ProtocolDisplayNames.GetPayloadFormatDisplayName(ResponseFormat);
@@ -417,7 +448,7 @@ namespace Module.Communication.Models
 
         public ProtocolCommandConfig Clone(string name)
         {
-            return new ProtocolCommandConfig
+            ProtocolCommandConfig command = new ProtocolCommandConfig
             {
                 Name = name,
                 RequestFormat = RequestFormat,
@@ -432,6 +463,9 @@ namespace Module.Communication.Models
                 SampleResponseText = SampleResponseText,
                 ParseRulesText = ParseRulesText
             };
+
+            command.ReplaceParsedResultKeys(ParsedResultKeys);
+            return command;
         }
 
         private bool SetField<T>(ref T field, T value, bool raiseStateChanges = true, [CallerMemberName] string? propertyName = null)
@@ -1073,11 +1107,21 @@ namespace Module.Communication.Models
 
     public sealed class ProtocolResponsePreviewResult
     {
-        public ProtocolResponsePreviewResult(string responseHex, string responseAscii, string parsedJson)
+        public ProtocolResponsePreviewResult(
+            string responseHex,
+            string responseAscii,
+            string parsedJson,
+            IEnumerable<string>? parsedKeys = null)
         {
             ResponseHex = responseHex;
             ResponseAscii = responseAscii;
             ParsedJson = parsedJson;
+            ParsedKeys = (parsedKeys ?? Enumerable.Empty<string>())
+                .Where(key => !string.IsNullOrWhiteSpace(key))
+                .Select(key => key.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(key => key, StringComparer.OrdinalIgnoreCase)
+                .ToArray();
         }
 
         public string ResponseHex { get; }
@@ -1085,6 +1129,8 @@ namespace Module.Communication.Models
         public string ResponseAscii { get; }
 
         public string ParsedJson { get; }
+
+        public IReadOnlyList<string> ParsedKeys { get; }
     }
 
     public static class ProtocolPreviewEngine
@@ -1204,7 +1250,28 @@ namespace Module.Communication.Models
             result = new ProtocolResponsePreviewResult(
                 responseBytes.ByteArrayToHexString(),
                 FormatBytesAsAscii(responseBytes),
-                FormatParsedValue(parsedValue));
+                FormatParsedValue(parsedValue),
+                ExtractParsedResultKeys(parsedValue));
+            return true;
+        }
+
+        public static bool TryRefreshParsedResultKeys(ProtocolConfigProfile profile, out string message)
+        {
+            foreach (ProtocolCommandConfig command in profile.Commands)
+            {
+                if (!TryBuildResponsePreview(command, out ProtocolResponsePreviewResult? previewResult, out message) ||
+                    previewResult is null)
+                {
+                    string protocolName = string.IsNullOrWhiteSpace(profile.Name) ? "未命名协议" : profile.Name.Trim();
+                    string commandName = string.IsNullOrWhiteSpace(command.Name) ? "未命名指令" : command.Name.Trim();
+                    message = $"协议 {protocolName} 的指令 {commandName} 解析失败：{message}";
+                    return false;
+                }
+
+                command.ReplaceParsedResultKeys(previewResult.ParsedKeys);
+            }
+
+            message = string.Empty;
             return true;
         }
 
@@ -1392,7 +1459,14 @@ namespace Module.Communication.Models
                     return false;
                 }
 
-                parsedValue = results[0];
+                if (results.Length == 0)
+                {
+                    parsedValue = null;
+                    message = string.Empty;
+                    return true;
+                }
+
+                parsedValue = ConvertLuaValue(results[0]);
                 message = string.Empty;
                 return true;
             }
@@ -1462,6 +1536,26 @@ namespace Module.Communication.Models
                 ["Data"] = value
             };
             return JsonSerializer.Serialize(wrappedValue, ParsedJsonOptions);
+        }
+
+        private static IEnumerable<string> ExtractParsedResultKeys(object? value)
+        {
+            if (value is null)
+            {
+                return Enumerable.Empty<string>();
+            }
+
+            if (value is IReadOnlyDictionary<string, object?> readOnlyDictionary)
+            {
+                return readOnlyDictionary.Keys;
+            }
+
+            if (value is IDictionary<string, object?> dictionary)
+            {
+                return dictionary.Keys;
+            }
+
+            return new[] { "Data" };
         }
 
         private static string ToLuaStringLiteral(string value)

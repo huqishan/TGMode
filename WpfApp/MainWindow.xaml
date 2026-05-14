@@ -128,16 +128,16 @@
                                    TextAlignment="Center" />
                     </Border>
                     <Button Content="—"
-                            ToolTip="最小化"
+                            ToolTip="{DynamicResource 最小化}"
                             Click="MinimizeWindowButton_Click"
                             Style="{StaticResource MainCaptionButtonStyle}" />
                     <Button x:Name="MaximizeRestoreWindowButton"
                             Content="□"
-                            ToolTip="最大化"
+                            ToolTip="{DynamicResource 最大化}"
                             Click="MaximizeRestoreWindowButton_Click"
                             Style="{StaticResource MainCaptionButtonStyle}"/>
                     <Button Content="X"
-                            ToolTip="关闭"
+                            ToolTip="{DynamicResource 关闭}"
                             Click="CloseWindowButton_Click"
                             Style="{StaticResource MainCloseCaptionButtonStyle}" />
                 </StackPanel>

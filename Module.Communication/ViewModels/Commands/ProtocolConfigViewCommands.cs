@@ -556,6 +556,10 @@ public sealed partial class ProtocolConfigViewModel
         foreach (ProtocolConfigProfile profile in Profiles)
         {
             ValidateProfileForSave(profile);
+            if (!ProtocolPreviewEngine.TryRefreshParsedResultKeys(profile, out string parseMessage))
+            {
+                throw new InvalidOperationException(parseMessage);
+            }
 
             string fileName = BuildUniqueStorageFileName(profile.Name, usedFileNames);
             string filePath = Path.Combine(ProtocolConfigDirectory, fileName);

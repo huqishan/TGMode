@@ -5,6 +5,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
 using System;
+using System.Data;
 using System.Windows.Input;
 using System.Windows.Data;
 using System.Windows.Media;
@@ -12,7 +13,7 @@ using System.Windows.Media;
 namespace Module.Business.ViewModels;
 
 /// <summary>
-/// 工步配置界面的属性集中声明。
+/// 可复用步骤编辑器的属性集中声明。
 /// </summary>
 public sealed partial class WorkStepConfigurationViewModel
 {
@@ -34,6 +35,7 @@ public sealed partial class WorkStepConfigurationViewModel
     private BusinessConfigurationCatalog _catalog = BusinessConfigurationStore.LoadCatalog();
     private WorkStepProfile? _selectedWorkStep;
     private WorkStepOperation? _selectedOperation;
+    private DataRowView? _selectedOperationMethodRow;
     private WorkStepOperation? _drawerOperation;
     private WorkStepOperationParameter? _selectedEditingInvokeParameter;
     private string _searchText = string.Empty;
@@ -59,8 +61,22 @@ public sealed partial class WorkStepConfigurationViewModel
     private bool _isInitializingOperationDrawer;
     private bool _isSyncingSystemInvokeMethodSelection;
     private bool _isDecisionOperationMode;
+    private bool _editingModifyInvokeParameters;
     private readonly HashSet<WorkStepOperationParameter> _trackedEditingInvokeParameters = new();
     private readonly List<WorkStepOperation> _copiedOperations = new();
+
+    #endregion
+
+    #region 方法指令表字段
+
+    private const string OperationMethodColumnKind = "Kind";
+    private const string OperationMethodColumnOperationType = "OperationType";
+    private const string OperationMethodColumnOperationObject = "OperationObject";
+    private const string OperationMethodColumnProtocolName = "ProtocolName";
+    private const string OperationMethodColumnCommandName = "CommandName";
+    private const string OperationMethodColumnInvokeMethod = "InvokeMethod";
+    private const string OperationMethodColumnSummary = "Summary";
+    private const string OperationMethodColumnParameterCount = "ParameterCount";
 
     #endregion
 
@@ -76,6 +92,8 @@ public sealed partial class WorkStepConfigurationViewModel
 
     public ObservableCollection<string> CommandOptions { get; } = new();
 
+    public ObservableCollection<string> ReturnValueOptions { get; } = new();
+
     public ObservableCollection<string> InvokeMethodOptions { get; } = new();
 
     public ObservableCollection<string> InvokeMethodRemarkOptions { get; } = new();
@@ -83,13 +101,20 @@ public sealed partial class WorkStepConfigurationViewModel
     public ObservableCollection<string> ParameterTypeOptions { get; } = new()
     {
         "设置值",
-        "工步值",
         "返回值",
         "全局值",
         "系统值"
     };
 
     public ObservableCollection<WorkStepOperationParameter> EditingInvokeParameters { get; } = new();
+
+    public DataTable OperationMethodTable { get; } = CreateOperationMethodTable();
+
+    public DataRowView? SelectedOperationMethodRow
+    {
+        get => _selectedOperationMethodRow;
+        set => SetField(ref _selectedOperationMethodRow, value);
+    }
 
     private ObservableCollection<string> ExternalReturnValueOptions { get; } = new();
 
@@ -139,6 +164,7 @@ public sealed partial class WorkStepConfigurationViewModel
             OnPropertyChanged(nameof(OperationCountText));
             OnPropertyChanged(nameof(AreAllOperationsChecked));
             RefreshParameterValueOptions();
+            RefreshReturnValueOptions();
             RaiseCommandStatesChanged();
         }
     }
@@ -148,10 +174,15 @@ public sealed partial class WorkStepConfigurationViewModel
         get => _selectedOperation;
         set
         {
-            if (SetField(ref _selectedOperation, value))
+            if (ReferenceEquals(_selectedOperation, value))
             {
-                RaiseCommandStatesChanged();
+                return;
             }
+
+            _selectedOperation = value;
+
+            OnPropertyChanged();
+            RaiseCommandStatesChanged();
         }
     }
 
@@ -182,10 +213,13 @@ public sealed partial class WorkStepConfigurationViewModel
                 OnPropertyChanged(nameof(IsSystemOrJudgeOperationSelected));
                 OnPropertyChanged(nameof(IsLuaOperationSelected));
                 OnPropertyChanged(nameof(IsProtocolCommandSelectionVisible));
+                OnPropertyChanged(nameof(IsModifyInvokeParametersVisible));
                 OnPropertyChanged(nameof(IsInvokeParameterEditorVisible));
                 OnPropertyChanged(nameof(IsReturnValueVisible));
                 RefreshProtocolOptions(updateStatus: false);
                 RefreshInvokeMethodOptions(updateStatus: false);
+                RefreshOperationMethodTable();
+                RefreshReturnValueOptions();
                 RaiseCommandStatesChanged();
             }
         }
@@ -201,7 +235,9 @@ public sealed partial class WorkStepConfigurationViewModel
 
     public bool IsProtocolCommandSelectionVisible => !IsSystemOrJudgeOperationSelected && !IsLuaOperationSelected;
 
-    public bool IsInvokeParameterEditorVisible => !IsLuaOperationSelected;
+    public bool IsModifyInvokeParametersVisible => !IsLuaOperationSelected;
+
+    public bool IsInvokeParameterEditorVisible => !IsLuaOperationSelected && EditingModifyInvokeParameters;
 
     public bool IsReturnValueVisible => !IsLuaOperationSelected;
 
@@ -213,6 +249,8 @@ public sealed partial class WorkStepConfigurationViewModel
             if (SetField(ref _editingProtocolName, value ?? string.Empty))
             {
                 RefreshCommandOptions(updateStatus: false);
+                RefreshOperationMethodTable();
+                RefreshReturnValueOptions();
             }
         }
     }
@@ -228,6 +266,7 @@ public sealed partial class WorkStepConfigurationViewModel
             {
                 EditingInvokeMethod = _editingCommandName;
                 RefreshInvokeParametersFromSelectedCommand();
+                RefreshReturnValueOptions();
             }
         }
     }
@@ -286,6 +325,19 @@ public sealed partial class WorkStepConfigurationViewModel
         }
     }
 
+    public bool EditingModifyInvokeParameters
+    {
+        get => _editingModifyInvokeParameters;
+        set
+        {
+            if (SetField(ref _editingModifyInvokeParameters, value))
+            {
+                OnPropertyChanged(nameof(IsInvokeParameterEditorVisible));
+                RaiseCommandStatesChanged();
+            }
+        }
+    }
+
     public string EditingReturnValue
     {
         get => _editingReturnValue;
@@ -293,6 +345,7 @@ public sealed partial class WorkStepConfigurationViewModel
         {
             if (SetField(ref _editingReturnValue, value ?? string.Empty))
             {
+                RefreshReturnValueOptions();
                 RefreshParameterValueOptions();
             }
         }

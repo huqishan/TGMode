@@ -70,7 +70,7 @@
                 <StackPanel>
                     <DockPanel LastChildFill="False">
                         <TextBlock Style="{StaticResource SectionTitleStyle}"
-                                   Text="流程图配置" />
+                                   Text="{DynamicResource 流程图配置}" />
                         <Border DockPanel.Dock="Right"
                                 Margin="16,0,0,0"
                                 Padding="10,5"
@@ -85,28 +85,28 @@
                     </DockPanel>
                     <TextBlock Margin="0,8,0,0"
                                Foreground="{DynamicResource AppMutedTextBrush}"
-                               Text="管理多个流程图，并在右侧编辑节点与连线。"
+                               Text="{DynamicResource 管理多个流程图，并在右侧编辑节点与连线。}"
                                TextWrapping="Wrap" />
                 </StackPanel>
 
                 <searchBox:SearchBox Grid.Row="1"
                                      Margin="0,16,0,0"
-                                     PlaceholderText="搜索流程图..."
+                                     PlaceholderText="{DynamicResource 搜索流程图...}"
                                      Text="{Binding SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
 
                 <UniformGrid Grid.Row="2" Columns="4" Margin="0,16,0,16">
-                    <Button Content="新建"
+                    <Button Content="{DynamicResource 新建}"
                             Command="{Binding NewFlowchartCommand}"
                             CommandParameter="{Binding ElementName=Editor}"
                             Style="{StaticResource PrimaryActionButtonStyle}" />
-                    <Button Content="复制"
+                    <Button Content="{DynamicResource 复制}"
                             Command="{Binding DuplicateFlowchartCommand}"
                             CommandParameter="{Binding ElementName=Editor}"
                             Style="{StaticResource ActionButtonStyle}" />
-                    <Button Content="删除"
+                    <Button Content="{DynamicResource 删除}"
                             Command="{Binding DeleteFlowchartCommand}"
                             Style="{StaticResource ActionButtonStyle}" />
-                    <Button Content="保存"
+                    <Button Content="{DynamicResource 保存}"
                             Command="{Binding SaveFlowchartCommand}"
                             CommandParameter="{Binding ElementName=Editor}"
                             Style="{StaticResource ActionButtonStyle}" />
@@ -169,7 +169,7 @@
                 <StackPanel>
                     <DockPanel LastChildFill="False">
                         <TextBlock Style="{StaticResource SectionTitleStyle}"
-                                   Text="当前流程图" />
+                                   Text="{DynamicResource 当前流程图}" />
                         <Border DockPanel.Dock="Right"
                                 Margin="16,0,0,0"
                                 Padding="12,6"
@@ -193,7 +193,7 @@
 
                         <StackPanel>
                             <TextBlock Style="{StaticResource FieldLabelStyle}"
-                                       Text="流程图名称" />
+                                       Text="{DynamicResource 流程图名称}" />
                             <TextBox Style="{StaticResource InputTextBoxStyle}"
                                      Text="{Binding SelectedFlowchart.Name, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                         </StackPanel>
@@ -205,15 +205,15 @@
                                            Text="{Binding ExecutionStatusText}"
                                            TextWrapping="Wrap" />
                                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-                                    <Button Content="导入"
+                                    <Button Content="{DynamicResource 导入}"
                                             Command="{Binding OpenFlowchartCommand}"
                                             CommandParameter="{Binding ElementName=Editor}"
                                             Style="{StaticResource ActionButtonStyle}" />
-                                    <Button Content="导出"
+                                    <Button Content="{DynamicResource 导出}"
                                             Command="{Binding ExportFlowchartCommand}"
                                             CommandParameter="{Binding ElementName=Editor}"
                                             Style="{StaticResource ActionButtonStyle}" />
-                                    <Button Content="运行"
+                                    <Button Content="{DynamicResource 运行}"
                                             Command="{Binding ExecuteFlowchartCommand}"
                                             CommandParameter="{Binding ElementName=Editor}"
                                             Style="{StaticResource PrimaryActionButtonStyle}" />
@@ -230,7 +230,7 @@
                                             </Style>
                                         </Button.Style>
                                     </Button>
-                                    <Button Content="停止"
+                                    <Button Content="{DynamicResource 停止}"
                                             Command="{Binding StopFlowchartCommand}"
                                             CommandParameter="{Binding ElementName=Editor}"
                                             Style="{StaticResource ActionButtonStyle}" />
@@ -259,10 +259,10 @@
                                   VerticalScrollBarVisibility="Auto">
                         <StackPanel>
                             <TextBlock Style="{StaticResource SectionTitleStyle}"
-                                       Text="节点面板" />
+                                       Text="{DynamicResource 节点面板}" />
                             <TextBlock Margin="0,8,0,14"
                                        Foreground="{DynamicResource AppMutedTextBrush}"
-                                       Text="拖动组件到画布以创建节点。"
+                                       Text="{DynamicResource 拖动组件到画布以创建节点。}"
                                        TextWrapping="Wrap" />
 
                             <ItemsControl ItemsSource="{Binding NodeTemplates}">
@@ -295,18 +295,18 @@
 
                             <TextBlock FontWeight="SemiBold"
                                        Foreground="{DynamicResource AppMutedTextBrush}"
-                                       Text="操作说明" />
+                                       Text="{DynamicResource 操作说明}" />
                             <TextBlock Margin="0,8,0,0"
                                        Foreground="{DynamicResource AppMutedTextBrush}"
-                                       Text="拖动节点边缘的锚点以创建连线。"
+                                       Text="{DynamicResource 拖动节点边缘的锚点以创建连线。}"
                                        TextWrapping="Wrap" />
                             <TextBlock Margin="0,6,0,0"
                                        Foreground="{DynamicResource AppMutedTextBrush}"
-                                       Text="拖动画布空白区域可平移，滚动鼠标滚轮可缩放，按删除键可删除选中项。"
+                                       Text="{DynamicResource 拖动画布空白区域可平移，滚动鼠标滚轮可缩放，按删除键可删除选中项。}"
                                        TextWrapping="Wrap" />
                             <TextBlock Margin="0,6,0,0"
                                        Foreground="{DynamicResource AppMutedTextBrush}"
-                                       Text="双击处理块或判断块可打开同一个编辑步骤弹框。"
+                                       Text="{DynamicResource 双击处理块或判断块可打开同一个编辑步骤弹框。}"
                                        TextWrapping="Wrap" />
                         </StackPanel>
                     </ScrollViewer>
@@ -343,7 +343,7 @@
                     <DockPanel LastChildFill="False">
                         <StackPanel DockPanel.Dock="Left">
                             <TextBlock Style="{StaticResource SectionTitleStyle}"
-                                       Text="编辑步骤" />
+                                       Text="{DynamicResource 编辑步骤}" />
                             <TextBlock Margin="0,8,0,0"
                                        Foreground="{DynamicResource AppMutedTextBrush}"
                                        Text="{Binding SelectedWorkStep.StepName}" />
@@ -360,10 +360,10 @@
                                 Margin="0,18,0,0"
                                 HorizontalAlignment="Right"
                                 Orientation="Horizontal">
-                        <Button Content="取消"
+                        <Button Content="{DynamicResource 取消}"
                                 Click="NodeOperationEditorCancelButton_Click"
                                 Style="{StaticResource ActionButtonStyle}" />
-                        <Button Content="保存"
+                        <Button Content="{DynamicResource 保存}"
                                 Click="NodeOperationEditorSaveButton_Click"
                                 Style="{StaticResource PrimaryActionButtonStyle}" />
                     </StackPanel>

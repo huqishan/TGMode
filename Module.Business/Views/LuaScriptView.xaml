@@ -26,24 +26,24 @@
                 </Grid.RowDefinitions>
 
                 <StackPanel>
-                    <TextBlock Style="{StaticResource SectionTitleStyle}" Text="Lua 脚本编辑页" />
+                    <TextBlock Style="{StaticResource SectionTitleStyle}" Text="{DynamicResource Lua 脚本编辑页}" />
                     <TextBlock Margin="0,8,0,0" x:Name="title"
                        Foreground="{DynamicResource AppMutedTextBrush}"
-                       Text="用于创建、复制、删除和保存多个 Lua 脚本，可在右侧编辑脚本内容并执行查看返回或错误。"
+                       Text="{DynamicResource 用于创建、复制、删除和保存多个 Lua 脚本，可在右侧编辑脚本内容并执行查看返回或错误。}"
                        TextWrapping="Wrap" />
                 </StackPanel>
 
                 <UniformGrid Grid.Row="1" Columns="4" Margin="0,18,0,16">
-                    <Button Content="新建"
+                    <Button Content="{DynamicResource 新建}"
                     Click="NewProfileButton_Click"
                     Style="{StaticResource PrimaryActionButtonStyle}"/>
-                    <Button Content="复制"
+                    <Button Content="{DynamicResource 复制}"
                     Click="DuplicateProfileButton_Click"
                     Style="{StaticResource ActionButtonStyle}"/>
-                    <Button Content="删除"
+                    <Button Content="{DynamicResource 删除}"
                     Click="DeleteProfileButton_Click"
                     Style="{StaticResource ActionButtonStyle}"/>
-                    <Button Content="保存"
+                    <Button Content="{DynamicResource 保存}"
                     Click="SaveProfilesButton_Click"
                     Style="{StaticResource ActionButtonStyle}"/>
                 </UniformGrid>
@@ -87,7 +87,7 @@
                 <Grid>
                     <StackPanel>
                         <DockPanel>
-                            <TextBlock Style="{StaticResource SectionTitleStyle}" Text="当前脚本" />
+                            <TextBlock Style="{StaticResource SectionTitleStyle}" Text="{DynamicResource 当前脚本}" />
                             <Border HorizontalAlignment="Right"
 Margin="16,0,0,0"
 Padding="12,6"
@@ -102,7 +102,7 @@ CornerRadius="999">
                             </Border>
                         </DockPanel>
 
-                        <TextBlock Style="{StaticResource FieldLabelStyle}" Text="脚本名称" />
+                        <TextBlock Style="{StaticResource FieldLabelStyle}" Text="{DynamicResource 脚本名称}" />
                         <TextBox Style="{StaticResource InputTextBoxStyle}"
                                  Text="{Binding SelectedProfile.Name, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                         <TextBlock Margin="0,8,0,0"

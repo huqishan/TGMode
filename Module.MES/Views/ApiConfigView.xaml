@@ -222,27 +222,27 @@
                 </Grid.RowDefinitions>
 
                 <StackPanel>
-                    <TextBlock Style="{StaticResource SectionTitleStyle}" Text="接口配置" />
+                    <TextBlock Style="{StaticResource SectionTitleStyle}" Text="{DynamicResource 接口配置}" />
                     <TextBlock Margin="0,6,0,0"
                                Style="{StaticResource AppMutedTextBlockStyle}"
-                               Text="集中维护 MES 接口、调用方式、示例报文和测试返回结果。" TextWrapping="Wrap"  />
+                               Text="{DynamicResource 集中维护 MES 接口、调用方式、示例报文和测试返回结果。}" TextWrapping="Wrap"  />
                 </StackPanel>
                 <searchBox:SearchBox Grid.Row="1"
                                    Margin="0,16,0,0"
-                                   PlaceholderText="搜索接口配置..."
+                                   PlaceholderText="{DynamicResource 搜索接口配置...}"
                                    Text="{Binding SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
 
                 <UniformGrid Grid.Row="2" Columns="4" Margin="0,16,0,16">
-                    <Button Content="新增"
+                    <Button Content="{DynamicResource 新增}"
                             Command="{Binding NewProfileCommand}"
                             Style="{StaticResource PrimaryActionButtonStyle}" />
-                    <Button Content="复制"
+                    <Button Content="{DynamicResource 复制}"
                             Command="{Binding DuplicateProfileCommand}"
                             Style="{StaticResource ActionButtonStyle}" />
-                    <Button Content="删除"
+                    <Button Content="{DynamicResource 删除}"
                             Command="{Binding DeleteProfileCommand}"
                             Style="{StaticResource ActionButtonStyle}" />
-                    <Button Content="保存"
+                    <Button Content="{DynamicResource 保存}"
                             Command="{Binding SaveProfilesCommand}"
                             Style="{StaticResource ActionButtonStyle}" />
                 </UniformGrid>
@@ -304,7 +304,7 @@
                     </Grid.RowDefinitions>
 
                     <DockPanel LastChildFill="False">
-                        <TextBlock Style="{StaticResource SectionTitleStyle}" Text="基础配置" />
+                        <TextBlock Style="{StaticResource SectionTitleStyle}" Text="{DynamicResource 基础配置}" />
                         <Border DockPanel.Dock="Right"
                                 Padding="12,6"
                                 Background="{DynamicResource TabCardBackgroundBrush}"
@@ -327,20 +327,20 @@
                         </Grid.ColumnDefinitions>
 
                         <StackPanel Grid.Column="0">
-                            <TextBlock Style="{StaticResource FieldLabelStyle}" Text="接口名称" />
+                            <TextBlock Style="{StaticResource FieldLabelStyle}" Text="{DynamicResource 接口名称}" />
                             <TextBox x:Name="ApiNameTextBox"
                                      Style="{StaticResource InputTextBoxStyle}"
                                      Text="{Binding SelectedProfile.ApiName, UpdateSourceTrigger=PropertyChanged}" />
-                            <TextBlock Style="{StaticResource FieldLabelStyle}" Text="备注" />
+                            <TextBlock Style="{StaticResource FieldLabelStyle}" Text="{DynamicResource 备注}" />
                             <TextBox Style="{StaticResource InputTextBoxStyle}"
                                      Text="{Binding SelectedProfile.Remarks, UpdateSourceTrigger=PropertyChanged}" />
                         </StackPanel>
 
                         <StackPanel Grid.Column="2">
-                            <TextBlock Style="{StaticResource FieldLabelStyle}" Text="数据结构" />
+                            <TextBlock Style="{StaticResource FieldLabelStyle}" Text="{DynamicResource 数据结构}" />
                             <DockPanel LastChildFill="True">
                                 <Button DockPanel.Dock="Right"
-                                        Content="刷新"
+                                        Content="{DynamicResource 刷新}"
                                         Height="{Binding ActualHeight, ElementName=ApiNameTextBox}"
                                         Margin="8,0,0,0"
                                         Padding="10,0"
@@ -353,31 +353,31 @@
                                           ItemsSource="{Binding DataStructureOptions}"
                                           SelectedItem="{Binding SelectedProfile.DataStructName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                             </DockPanel>
-                            <TextBlock Style="{StaticResource FieldLabelStyle}" Text="结果校验" />
+                            <TextBlock Style="{StaticResource FieldLabelStyle}" Text="{DynamicResource 结果校验}" />
                             <TextBox Style="{StaticResource InputTextBoxStyle}"
                                      Text="{Binding SelectedProfile.ResultCheck, UpdateSourceTrigger=PropertyChanged}" />
                         </StackPanel>
 
                         <StackPanel Grid.Column="4">
-                            <TextBlock Style="{StaticResource FieldLabelStyle}" Text="操作" />
+                            <TextBlock Style="{StaticResource FieldLabelStyle}" Text="{DynamicResource 操作}" />
                             <WrapPanel Margin="0,0,0,6">
-                                <Button Content="生成上传报文"
+                                <Button Content="{DynamicResource 生成上传报文}"
                                         Command="{Binding GeneratePayloadCommand}"
                                         Style="{StaticResource PrimaryActionButtonStyle}" />
-                                <Button Content="测试接口"
+                                <Button Content="{DynamicResource 测试接口}"
                                         Command="{Binding TestInterfaceCommand}"
                                         Style="{StaticResource PrimaryActionButtonStyle}" />
-                                <Button Content="Lua编辑"
+                                <Button Content="{DynamicResource Lua编辑}"
                                         Click="LuaButton_Click"
                                         Style="{StaticResource PrimaryActionButtonStyle}" />
                             </WrapPanel>
                             <CheckBox Margin="0,16,0,0"
 Foreground="{DynamicResource AppContentTextBrush}"
-Content="启用接口"
+Content="{DynamicResource 启用接口}"
 IsChecked="{Binding SelectedProfile.IsEnabledAPI, Mode=TwoWay}" />
                             <CheckBox Margin="0,16,0,0"
 Foreground="{DynamicResource AppContentTextBrush}"
-Content="通信查询中显示"
+Content="{DynamicResource 通信查询中显示}"
 IsChecked="{Binding SelectedProfile.IsCommunicationQueryVisible, Mode=TwoWay}" />
 
                         </StackPanel>
@@ -397,7 +397,7 @@ IsChecked="{Binding SelectedProfile.IsCommunicationQueryVisible, Mode=TwoWay}" /
 
                     <TextBlock Grid.Row="0"
                                Style="{StaticResource SectionTitleStyle}"
-                               Text="调用方式与连接参数" />
+                               Text="{DynamicResource 调用方式与连接参数}" />
 
                     <ListBox Grid.Row="2" x:Name="SendMESType"
          Style="{StaticResource MethodTypeListBoxStyle}"
@@ -429,7 +429,7 @@ IsChecked="{Binding SelectedProfile.IsCommunicationQueryVisible, Mode=TwoWay}" /
                                 </Grid.ColumnDefinitions>
 
                                 <StackPanel Grid.Column="0">
-                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="上传方式" />
+                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="{DynamicResource 上传方式}" />
                                     <ComboBox Style="{StaticResource InputComboBoxStyle}"
                                               ItemContainerStyle="{StaticResource InputComboBoxItemStyle}"
                                               ItemsSource="{Binding WebApiMethods}"
@@ -439,16 +439,16 @@ IsChecked="{Binding SelectedProfile.IsCommunicationQueryVisible, Mode=TwoWay}" /
                                 </StackPanel>
 
                                 <StackPanel Grid.Column="2">
-                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="WebApi 地址" />
+                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="{DynamicResource WebApi 地址}" />
                                     <TextBox Style="{StaticResource InputTextBoxStyle}"
                                              Text="{Binding SelectedProfile.Url, UpdateSourceTrigger=PropertyChanged}" />
-                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="Token 地址" />
+                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="{DynamicResource Token 地址}" />
                                     <TextBox Style="{StaticResource InputTextBoxStyle}"
                                              Text="{Binding SelectedProfile.TokenUrl, UpdateSourceTrigger=PropertyChanged}" />
                                 </StackPanel>
 
                                 <StackPanel Grid.Column="4">
-                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="Token 名称" />
+                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="{DynamicResource Token 名称}" />
                                     <TextBox Style="{StaticResource InputTextBoxStyle}"
                                              Text="{Binding SelectedProfile.TokenName, UpdateSourceTrigger=PropertyChanged}" />
                                     <Border Margin="0,12,0,0"
@@ -462,7 +462,7 @@ IsChecked="{Binding SelectedProfile.IsCommunicationQueryVisible, Mode=TwoWay}" /
                                                 <TextBlock FontSize="13"
                                                            FontWeight="SemiBold"
                                                            Foreground="{DynamicResource AppContentTextBrush}"
-                                                           Text="请求头" />
+                                                           Text="{DynamicResource 请求头}" />
                                                 <TextBlock Margin="0,4,0,0"
                                                            Foreground="{DynamicResource AppMutedTextBrush}"
                                                            Text="{Binding SelectedProfile.HeaderSummaryText}" />
@@ -471,7 +471,7 @@ IsChecked="{Binding SelectedProfile.IsCommunicationQueryVisible, Mode=TwoWay}" /
                                                     Width="34"
                                                     Height="34"
                                                     Content="..."
-                                                    ToolTip="编辑请求头"
+                                                    ToolTip="{DynamicResource 编辑请求头}"
                                                     Command="{Binding OpenHeaderDrawerCommand}"
                                                     Style="{StaticResource DrawerIconButtonStyle}" />
                                         </DockPanel>
@@ -492,27 +492,27 @@ IsChecked="{Binding SelectedProfile.IsCommunicationQueryVisible, Mode=TwoWay}" /
                                 </Grid.ColumnDefinitions>
 
                                 <StackPanel Grid.Column="0">
-                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="WebService 地址" />
+                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="{DynamicResource WebService 地址}" />
                                     <TextBox Style="{StaticResource InputTextBoxStyle}"
                                              Text="{Binding SelectedProfile.Url, UpdateSourceTrigger=PropertyChanged}" />
-                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="Action" />
+                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="{DynamicResource Action}" />
                                     <TextBox Style="{StaticResource InputTextBoxStyle}"
                                              Text="{Binding SelectedProfile.Action, UpdateSourceTrigger=PropertyChanged}" />
                                 </StackPanel>
 
                                 <StackPanel Grid.Column="2">
-                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="用户名" />
+                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="{DynamicResource 用户名}" />
                                     <TextBox Style="{StaticResource InputTextBoxStyle}"
                                              Text="{Binding SelectedProfile.UserName, UpdateSourceTrigger=PropertyChanged}" />
-                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="密码" />
+                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="{DynamicResource 密码}" />
                                     <TextBox Style="{StaticResource InputTextBoxStyle}"
                                              Text="{Binding SelectedProfile.Password, UpdateSourceTrigger=PropertyChanged}" />
                                 </StackPanel>
 
                                 <StackPanel Grid.Column="4">
-                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="说明" />
+                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="{DynamicResource 说明}" />
                                     <TextBlock Foreground="{DynamicResource AppMutedTextBrush}"
-                                               Text="适用于 SOAP 或 XML 场景，测试接口时会把左侧上传报文直接作为请求体发送。"
+                                               Text="{DynamicResource 适用于 SOAP 或 XML 场景，测试接口时会把左侧上传报文直接作为请求体发送。}"
                                                TextWrapping="Wrap" />
                                 </StackPanel>
                             </Grid>
@@ -529,31 +529,31 @@ IsChecked="{Binding SelectedProfile.IsCommunicationQueryVisible, Mode=TwoWay}" /
                                 </Grid.ColumnDefinitions>
 
                                 <StackPanel Grid.Column="0">
-                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="本地 IP" />
+                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="{DynamicResource 本地 IP}" />
                                     <TextBox Style="{StaticResource InputTextBoxStyle}"
                                              Text="{Binding SelectedProfile.TCPLocalIpAddress, UpdateSourceTrigger=PropertyChanged}" />
-                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="本地端口" />
+                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="{DynamicResource 本地端口}" />
                                     <TextBox Style="{StaticResource InputTextBoxStyle}"
                                              Text="{Binding SelectedProfile.TCPLocalPort, UpdateSourceTrigger=PropertyChanged}" />
                                 </StackPanel>
 
                                 <StackPanel Grid.Column="2">
-                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="远程 IP" />
+                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="{DynamicResource 远程 IP}" />
                                     <TextBox Style="{StaticResource InputTextBoxStyle}"
                                              Text="{Binding SelectedProfile.TCPRemoteIpAddress, UpdateSourceTrigger=PropertyChanged}" />
-                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="远程端口" />
+                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="{DynamicResource 远程端口}" />
                                     <TextBox Style="{StaticResource InputTextBoxStyle}"
                                              Text="{Binding SelectedProfile.TCPRemotePort, UpdateSourceTrigger=PropertyChanged}" />
                                 </StackPanel>
 
                                 <StackPanel Grid.Column="4">
-                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="附加选项" />
+                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="{DynamicResource 附加选项}" />
                                     <CheckBox Margin="0,0,0,8"
                                               Foreground="{DynamicResource AppContentTextBrush}"
-                                              Content="结尾自动追加回车换行"
+                                              Content="{DynamicResource 结尾自动追加回车换行}"
                                               IsChecked="{Binding SelectedProfile.IsEnter, Mode=TwoWay}" />
                                     <CheckBox Foreground="{DynamicResource AppContentTextBrush}"
-                                              Content="保持 TCP 长连接"
+                                              Content="{DynamicResource 保持 TCP 长连接}"
                                               IsChecked="{Binding SelectedProfile.IsEnabledTCPKeepAlive, Mode=TwoWay}" />
                                 </StackPanel>
                             </Grid>
@@ -570,31 +570,31 @@ IsChecked="{Binding SelectedProfile.IsCommunicationQueryVisible, Mode=TwoWay}" /
                                 </Grid.ColumnDefinitions>
 
                                 <StackPanel Grid.Column="0">
-                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="FTP 地址" />
+                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="{DynamicResource FTP 地址}" />
                                     <TextBox Style="{StaticResource InputTextBoxStyle}"
                                              Text="{Binding SelectedProfile.Url, UpdateSourceTrigger=PropertyChanged}" />
-                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="下载路径" />
+                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="{DynamicResource 下载路径}" />
                                     <TextBox Style="{StaticResource InputTextBoxStyle}"
                                              Text="{Binding SelectedProfile.DownPath, UpdateSourceTrigger=PropertyChanged}" />
                                 </StackPanel>
 
                                 <StackPanel Grid.Column="2">
-                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="用户名" />
+                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="{DynamicResource 用户名}" />
                                     <TextBox Style="{StaticResource InputTextBoxStyle}"
                                              Text="{Binding SelectedProfile.UserName, UpdateSourceTrigger=PropertyChanged}" />
-                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="密码" />
+                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="{DynamicResource 密码}" />
                                     <TextBox Style="{StaticResource InputTextBoxStyle}"
                                              Text="{Binding SelectedProfile.Password, UpdateSourceTrigger=PropertyChanged}" />
                                 </StackPanel>
 
                                 <StackPanel Grid.Column="4">
-                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="模式" />
+                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="{DynamicResource 模式}" />
                                     <CheckBox Foreground="{DynamicResource AppContentTextBrush}"
-                                              Content="下载模式"
+                                              Content="{DynamicResource 下载模式}"
                                               IsChecked="{Binding SelectedProfile.IsDown, Mode=TwoWay}" />
                                     <TextBlock Margin="0,8,0,0"
                                                Foreground="{DynamicResource AppMutedTextBrush}"
-                                               Text="未勾选时按上传模式执行。"
+                                               Text="{DynamicResource 未勾选时按上传模式执行。}"
                                                TextWrapping="Wrap" />
                                 </StackPanel>
                             </Grid>
@@ -614,7 +614,7 @@ IsChecked="{Binding SelectedProfile.IsCommunicationQueryVisible, Mode=TwoWay}" /
 
                     <TextBlock Grid.Row="0"
                                Style="{StaticResource SectionTitleStyle}"
-                               Text="调用预览与返回结果" />
+                               Text="{DynamicResource 调用预览与返回结果}" />
 
                     <Grid Grid.Row="2">
                         <Grid.ColumnDefinitions>
@@ -629,7 +629,7 @@ IsChecked="{Binding SelectedProfile.IsCommunicationQueryVisible, Mode=TwoWay}" /
                                 <RowDefinition Height="8" />
                                 <RowDefinition Height="*" />
                             </Grid.RowDefinitions>
-                            <TextBlock Style="{StaticResource FieldLabelStyle}" Text="上传报文" />
+                            <TextBlock Style="{StaticResource FieldLabelStyle}" Text="{DynamicResource 上传报文}" />
                             <TextBox Grid.Row="2"
                                      Style="{StaticResource InputTextBoxStyle}"
                                      AcceptsReturn="True"
@@ -646,7 +646,7 @@ IsChecked="{Binding SelectedProfile.IsCommunicationQueryVisible, Mode=TwoWay}" /
                                 <RowDefinition Height="8" />
                                 <RowDefinition Height="*" />
                             </Grid.RowDefinitions>
-                            <TextBlock Style="{StaticResource FieldLabelStyle}" Text="MES 返回" />
+                            <TextBlock Style="{StaticResource FieldLabelStyle}" Text="{DynamicResource MES 返回}" />
                             <TextBox Grid.Row="2"
                                      Style="{StaticResource InputTextBoxStyle}"
                                      AcceptsReturn="True"
@@ -692,9 +692,9 @@ IsChecked="{Binding SelectedProfile.IsCommunicationQueryVisible, Mode=TwoWay}" /
                         </Grid.RowDefinitions>
 
                         <DockPanel LastChildFill="False">
-                            <TextBlock Style="{StaticResource SectionTitleStyle}" Text="请求头" />
+                            <TextBlock Style="{StaticResource SectionTitleStyle}" Text="{DynamicResource 请求头}" />
                             <Button DockPanel.Dock="Right"
-                                    Content="关闭"
+                                    Content="{DynamicResource 关闭}"
                                     Command="{Binding CloseHeaderDrawerCommand}"
                                     Style="{StaticResource ActionButtonStyle}" />
                         </DockPanel>
@@ -720,12 +720,12 @@ IsChecked="{Binding SelectedProfile.IsCommunicationQueryVisible, Mode=TwoWay}" /
                                       RowBackground="{DynamicResource TabCardBackgroundBrush}"
                                       AlternatingRowBackground="{DynamicResource TabItemBackgroundBrush}">
                                 <DataGrid.Columns>
-                                    <DataGridTextColumn Header="Key"
+                                    <DataGridTextColumn Header="{DynamicResource Key}"
                                                         Width="1.1*"
                                                         ElementStyle="{StaticResource CenteredDataGridTextBlockStyle}"
                                                         EditingElementStyle="{StaticResource CenteredDataGridTextBoxStyle}"
                                                         Binding="{Binding Key, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                    <DataGridTextColumn Header="Value"
+                                    <DataGridTextColumn Header="{DynamicResource Value}"
                                                         Width="1.9*"
                                                         ElementStyle="{StaticResource CenteredDataGridTextBlockStyle}"
                                                         EditingElementStyle="{StaticResource CenteredDataGridTextBoxStyle}"
@@ -737,13 +737,13 @@ IsChecked="{Binding SelectedProfile.IsCommunicationQueryVisible, Mode=TwoWay}" /
                         <StackPanel Grid.Row="4"
                                     Orientation="Horizontal"
                                     HorizontalAlignment="Right">
-                            <Button Content="新增"
+                            <Button Content="{DynamicResource 新增}"
                                     Command="{Binding AddHeaderCommand}"
                                     Style="{StaticResource ActionButtonStyle}" />
-                            <Button Content="删除"
+                            <Button Content="{DynamicResource 删除}"
                                     Command="{Binding DeleteHeaderCommand}"
                                     Style="{StaticResource ActionButtonStyle}" />
-                            <Button Content="保存"
+                            <Button Content="{DynamicResource 保存}"
                                     Command="{Binding SaveHeaderCommand}"
                                     Style="{StaticResource PrimaryActionButtonStyle}" />
                         </StackPanel>
@@ -771,9 +771,9 @@ IsChecked="{Binding SelectedProfile.IsCommunicationQueryVisible, Mode=TwoWay}" /
                         </Grid.RowDefinitions>
 
                         <DockPanel LastChildFill="False">
-                            <TextBlock Style="{StaticResource SectionTitleStyle}" Text="Lua编辑" />
+                            <TextBlock Style="{StaticResource SectionTitleStyle}" Text="{DynamicResource Lua编辑}" />
                             <Button DockPanel.Dock="Right"
-                                    Content="关闭"
+                                    Content="{DynamicResource 关闭}"
                                     Click="CloseLuaDrawerButton_Click"
                                     Style="{StaticResource ActionButtonStyle}" />
                         </DockPanel>

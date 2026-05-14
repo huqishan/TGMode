@@ -22,7 +22,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <EmbeddedResource Include="AvalonEdit\Lua.xshd" />
+    <EmbeddedResource Include="Controls\AvalonEdit\Lua.xshd" />
   </ItemGroup>
 
 </Project>

@@ -101,7 +101,7 @@
                         Height="52"
                         Padding="0"
                         Style="{StaticResource NavButtonStyle}"
-                        ToolTip="Toggle navigation pane"
+                        ToolTip="{DynamicResource Toggle navigation pane}"
                         Click="PaneToggleButton_Click">
                     <ContentControl x:Name="PaneToggleIconHost"
                                     Width="18"
@@ -116,10 +116,10 @@
                             VerticalAlignment="Center">
                     <TextBlock x:Name="PaneTitleText"
                                Style="{StaticResource NavPaneTitleTextBlockStyle}"
-                               Text="WpfApp" />
+                               Text="{DynamicResource WpfApp}" />
                     <TextBlock Margin="0,4,0,0"
                                Style="{StaticResource NavSubtitleTextBlockStyle}"
-                               Text="Modern Navigation" />
+                               Text="{DynamicResource Modern Navigation}" />
                 </StackPanel>
             </Grid>
 

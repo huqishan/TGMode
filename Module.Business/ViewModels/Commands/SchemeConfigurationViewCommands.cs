@@ -35,6 +35,7 @@ public sealed partial class SchemeConfigurationViewModel
 
     public SchemeConfigurationViewModel()
     {
+        SchemeStepEditor.PropertyChanged += SchemeStepEditor_PropertyChanged;
         Schemes.CollectionChanged += Schemes_CollectionChanged;
         SchemesView = CollectionViewSource.GetDefaultView(Schemes);
         SchemesView.Filter = FilterSchemes;

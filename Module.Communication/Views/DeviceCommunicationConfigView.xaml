@@ -1,4 +1,4 @@
-<UserControl x:Class="Module.Communication.Views.DeviceCommunicationConfigView"
+﻿<UserControl x:Class="Module.Communication.Views.DeviceCommunicationConfigView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
@@ -77,29 +77,29 @@
                 </Grid.RowDefinitions>
 
                 <StackPanel>
-                    <TextBlock Style="{StaticResource SectionTitleStyle}" Text="设备通信配置" />
+                    <TextBlock Style="{StaticResource SectionTitleStyle}" Text="{DynamicResource 设备通信配置}" />
                     <TextBlock Margin="0,8,0,0"
                                Foreground="{DynamicResource AppMutedTextBrush}"
-                               Text="维护 TCP 客户端、TCP 服务端、UDP、串口和 PLC 设备的通信连接参数。"
+                               Text="{DynamicResource 维护 TCP 客户端、TCP 服务端、UDP、串口和 PLC 设备的通信连接参数。}"
                                TextWrapping="Wrap" />
                 </StackPanel>
 
                 <searchBox:SearchBox Grid.Row="1"
                                      Margin="0,16,0,0"
-                                     PlaceholderText="搜索设备通信配置..."
+                                     PlaceholderText="{DynamicResource 搜索设备通信配置...}"
                                      Text="{Binding SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
 
                 <UniformGrid Grid.Row="2" Columns="4" Margin="0,16,0,16">
-                    <Button Content="新增"
+                    <Button Content="{DynamicResource 新增}"
                             Style="{StaticResource PrimaryActionButtonStyle}"
                             Command="{Binding NewProfileCommand}" />
-                    <Button Content="复制"
+                    <Button Content="{DynamicResource 复制}"
                             Style="{StaticResource ActionButtonStyle}"
                             Command="{Binding DuplicateProfileCommand}" />
-                    <Button Content="删除"
+                    <Button Content="{DynamicResource 删除}"
                             Style="{StaticResource ActionButtonStyle}"
                             Command="{Binding DeleteProfileCommand}" />
-                    <Button Content="保存"
+                    <Button Content="{DynamicResource 保存}"
                             Style="{StaticResource ActionButtonStyle}"
                             Command="{Binding SaveProfilesCommand}" />
                 </UniformGrid>
@@ -167,9 +167,9 @@
                         </Grid.RowDefinitions>
 
                         <DockPanel LastChildFill="False">
-                            <TextBlock Style="{StaticResource SectionTitleStyle}" Text="协议配置" />
+                            <TextBlock Style="{StaticResource SectionTitleStyle}" Text="{DynamicResource 协议配置}" />
                             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-                                <Button Content="添加"
+                                <Button Content="{DynamicResource 添加}"
       Style="{StaticResource PrimaryActionButtonStyle}"
       Command="{Binding AddSupportedProtocolCommand}" />
                             </StackPanel>
@@ -178,7 +178,7 @@
                         <TextBlock Grid.Row="1"
  Margin="0,8,0,10"
  Foreground="{DynamicResource AppMutedTextBrush}"
- Text="一个设备可关联多个协议。点击“添加”后会在下方通信测试区域弹出协议列表，支持将协议拖入表格，也可点击协议路径直接导入协议文件。"
+ Text="{DynamicResource 一个设备可关联多个协议。点击“添加”后会在下方通信测试区域弹出协议列表，支持将协议拖入表格，也可点击协议路径直接导入协议文件。}"
  TextWrapping="Wrap" />
 
                         <DataGrid x:Name="SupportedProtocolsDataGrid" Height="140"
@@ -194,7 +194,7 @@ AllowDrop="True"
 DragOver="SupportedProtocolsDataGrid_DragOver"
 Drop="SupportedProtocolsDataGrid_Drop">
                             <DataGrid.Columns>
-                                <DataGridTemplateColumn Header="协议名称" Width="180">
+                                <DataGridTemplateColumn Header="{DynamicResource 协议名称}" Width="180">
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
                                             <TextBlock Style="{StaticResource CellTextBlockStyle}"
@@ -203,7 +203,7 @@ Drop="SupportedProtocolsDataGrid_Drop">
                                     </DataGridTemplateColumn.CellTemplate>
                                 </DataGridTemplateColumn>
 
-                                <DataGridTemplateColumn Header="协议文件路径" Width="*">
+                                <DataGridTemplateColumn Header="{DynamicResource 协议文件路径}" Width="*">
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
                                             <Button Style="{StaticResource ProtocolPathButtonStyle}"
@@ -217,10 +217,10 @@ Drop="SupportedProtocolsDataGrid_Drop">
                                     </DataGridTemplateColumn.CellTemplate>
                                 </DataGridTemplateColumn>
 
-                                <DataGridTemplateColumn Header="操作" Width="96">
+                                <DataGridTemplateColumn Header="{DynamicResource 操作}" Width="96">
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
-                                            <Button Content="删除"
+                                            <Button Content="{DynamicResource 删除}"
                   Style="{StaticResource ActionButtonStyle}"
                   Command="{Binding DataContext.DeleteSupportedProtocolCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
                   CommandParameter="{Binding}" />
@@ -247,14 +247,14 @@ Drop="SupportedProtocolsDataGrid_Drop">
                 <Border Grid.Column="0" Style="{StaticResource CardBorderStyle}">
                     <StackPanel>
                         <DockPanel>
-                            <TextBlock Style="{StaticResource SectionTitleStyle}" Text="连接参数" />
+                            <TextBlock Style="{StaticResource SectionTitleStyle}" Text="{DynamicResource 连接参数}" />
                         </DockPanel>
 
-                        <TextBlock Style="{StaticResource FieldLabelStyle}" Text="配置名称" />
+                        <TextBlock Style="{StaticResource FieldLabelStyle}" Text="{DynamicResource 配置名称}" />
                         <TextBox Style="{StaticResource InputTextBoxStyle}"
                                  Text="{Binding SelectedProfile.LocalName, UpdateSourceTrigger=PropertyChanged}" />
 
-                        <TextBlock Style="{StaticResource FieldLabelStyle}" Text="通信类型" />
+                        <TextBlock Style="{StaticResource FieldLabelStyle}" Text="{DynamicResource 通信类型}" />
                         <ComboBox x:Name="communicationType"
                                   Style="{StaticResource InputComboBoxStyle}"
                                   ItemContainerStyle="{StaticResource InputComboBoxItemStyle}"
@@ -264,17 +264,17 @@ Drop="SupportedProtocolsDataGrid_Drop">
                                   SelectedValuePath="Value" />
 
                         <StackPanel Visibility="{Binding ElementName=communicationType, Path=SelectedItem.Value, Converter={StaticResource ComparisonToVisibilityConvert}, ConverterParameter='TCPClient|TCPServer'}">
-                            <TextBlock Style="{StaticResource FieldLabelStyle}" Text="本地 IP 地址" />
+                            <TextBlock Style="{StaticResource FieldLabelStyle}" Text="{DynamicResource 本地 IP 地址}" />
                             <TextBox Style="{StaticResource InputTextBoxStyle}"
                                      Text="{Binding SelectedProfile.LocalIPAddress, UpdateSourceTrigger=PropertyChanged}" />
 
-                            <TextBlock Style="{StaticResource FieldLabelStyle}" Text="本地端口" />
+                            <TextBlock Style="{StaticResource FieldLabelStyle}" Text="{DynamicResource 本地端口}" />
                             <TextBox Style="{StaticResource InputTextBoxStyle}"
                                      Text="{Binding SelectedProfile.LocalPort, UpdateSourceTrigger=PropertyChanged}" />
                         </StackPanel>
 
                         <StackPanel Visibility="{Binding ElementName=communicationType, Path=SelectedItem.Value, Converter={StaticResource ComparisonToVisibilityConvert}, ConverterParameter='PLC'}">
-                            <TextBlock Style="{StaticResource FieldLabelStyle}" Text="PLC 类型" />
+                            <TextBlock Style="{StaticResource FieldLabelStyle}" Text="{DynamicResource PLC 类型}" />
                             <ComboBox Style="{StaticResource InputComboBoxStyle}"
                                       ItemContainerStyle="{StaticResource InputComboBoxItemStyle}"
                                       ItemsSource="{Binding PLCTypes}"
@@ -284,11 +284,11 @@ Drop="SupportedProtocolsDataGrid_Drop">
                         </StackPanel>
 
                         <StackPanel Visibility="{Binding ElementName=communicationType, Path=SelectedItem.Value, Converter={StaticResource ComparisonToVisibilityConvert}, ConverterParameter='TCPClient|UDP|PLC'}">
-                            <TextBlock Style="{StaticResource FieldLabelStyle}" Text="远端 IP 地址" />
+                            <TextBlock Style="{StaticResource FieldLabelStyle}" Text="{DynamicResource 远端 IP 地址}" />
                             <TextBox Style="{StaticResource InputTextBoxStyle}"
                                      Text="{Binding SelectedProfile.RemoteIPAddress, UpdateSourceTrigger=PropertyChanged}" />
 
-                            <TextBlock Style="{StaticResource FieldLabelStyle}" Text="远端端口" />
+                            <TextBlock Style="{StaticResource FieldLabelStyle}" Text="{DynamicResource 远端端口}" />
                             <TextBox Style="{StaticResource InputTextBoxStyle}"
                                      Text="{Binding SelectedProfile.RemotePort, UpdateSourceTrigger=PropertyChanged}" />
                         </StackPanel>
@@ -298,10 +298,10 @@ Drop="SupportedProtocolsDataGrid_Drop">
                                 <TextBlock VerticalAlignment="Center"
                                            Margin="0"
                                            Style="{StaticResource FieldLabelStyle}"
-                                           Text="端口名称" />
+                                           Text="{DynamicResource 端口名称}" />
                                 <Button DockPanel.Dock="Right"
                                         HorizontalAlignment="Right"
-                                        Content="刷新串口"
+                                        Content="{DynamicResource 刷新串口}"
                                         Style="{StaticResource PrimaryActionButtonStyle}"
                                         Command="{Binding RefreshPortsCommand}" />
                             </DockPanel>
@@ -313,7 +313,7 @@ Drop="SupportedProtocolsDataGrid_Drop">
                                       ItemContainerStyle="{StaticResource InputComboBoxItemStyle}"
                                       Text="{Binding SelectedProfile.PortName, UpdateSourceTrigger=PropertyChanged}" />
 
-                            <TextBlock Style="{StaticResource FieldLabelStyle}" Text="波特率" />
+                            <TextBlock Style="{StaticResource FieldLabelStyle}" Text="{DynamicResource 波特率}" />
                             <ComboBox Style="{StaticResource InputComboBoxStyle}"
                                       ItemsSource="{Binding BaudRateOptions}"
                                       ItemTemplate="{StaticResource SelectionOptionItemTemplate}"
@@ -321,7 +321,7 @@ Drop="SupportedProtocolsDataGrid_Drop">
                                       SelectedValue="{Binding SelectedProfile.BaudRate, Mode=TwoWay}"
                                       SelectedValuePath="Value" />
 
-                            <TextBlock Style="{StaticResource FieldLabelStyle}" Text="校验位" />
+                            <TextBlock Style="{StaticResource FieldLabelStyle}" Text="{DynamicResource 校验位}" />
                             <ComboBox Style="{StaticResource InputComboBoxStyle}"
                                       ItemsSource="{Binding ParityOptions}"
                                       ItemTemplate="{StaticResource SelectionOptionItemTemplate}"
@@ -329,7 +329,7 @@ Drop="SupportedProtocolsDataGrid_Drop">
                                       SelectedValue="{Binding SelectedProfile.Parity, Mode=TwoWay}"
                                       SelectedValuePath="Value" />
 
-                            <TextBlock Style="{StaticResource FieldLabelStyle}" Text="数据位" />
+                            <TextBlock Style="{StaticResource FieldLabelStyle}" Text="{DynamicResource 数据位}" />
                             <ComboBox Style="{StaticResource InputComboBoxStyle}"
                                       ItemsSource="{Binding DataBitOptions}"
                                       ItemTemplate="{StaticResource SelectionOptionItemTemplate}"
@@ -337,7 +337,7 @@ Drop="SupportedProtocolsDataGrid_Drop">
                                       SelectedValue="{Binding SelectedProfile.DataBits, Mode=TwoWay}"
                                       SelectedValuePath="Value" />
 
-                            <TextBlock Style="{StaticResource FieldLabelStyle}" Text="停止位" />
+                            <TextBlock Style="{StaticResource FieldLabelStyle}" Text="{DynamicResource 停止位}" />
                             <ComboBox Style="{StaticResource InputComboBoxStyle}"
                                       ItemsSource="{Binding StopBitOptions}"
                                       ItemTemplate="{StaticResource SelectionOptionItemTemplate}"
@@ -364,7 +364,7 @@ Drop="SupportedProtocolsDataGrid_Drop">
 
                             <DockPanel LastChildFill="False"
                                        HorizontalAlignment="Stretch">
-                                <TextBlock Style="{StaticResource SectionTitleStyle}" Text="通信测试" />
+                                <TextBlock Style="{StaticResource SectionTitleStyle}" Text="{DynamicResource 通信测试}" />
                                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
                                     <Border Margin="0,0,10,0"
                                             Padding="10,5"
@@ -377,10 +377,10 @@ Drop="SupportedProtocolsDataGrid_Drop">
                                                    Foreground="{Binding ConnectionStatusBrush}"
                                                    Text="{Binding ConnectionStatusText}" />
                                     </Border>
-                                    <Button Content="测试连接"
+                                    <Button Content="{DynamicResource 测试连接}"
                                             Style="{StaticResource PrimaryActionButtonStyle}"
                                             Command="{Binding TestConnectionCommand}" />
-                                    <Button Content="关闭"
+                                    <Button Content="{DynamicResource 关闭}"
                                             Style="{StaticResource ActionButtonStyle}"
                                             Command="{Binding CloseConnectionCommand}" />
                                 </StackPanel>
@@ -389,7 +389,7 @@ Drop="SupportedProtocolsDataGrid_Drop">
                             <TextBlock Grid.Row="1"
                                        Margin="0,8,0,0"
                                        Foreground="{DynamicResource AppMutedTextBrush}"
-                                       Text="测试区域会根据当前配置创建通信对象。TCP 服务端模式下可对指定客户端发送报文，PLC 模式下支持下方读写测试。"
+                                       Text="{DynamicResource 测试区域会根据当前配置创建通信对象。TCP 服务端模式下可对指定客户端发送报文，PLC 模式下支持下方读写测试。}"
                                        TextWrapping="Wrap" />
 
                             <StackPanel Grid.Row="2"
@@ -398,7 +398,7 @@ Drop="SupportedProtocolsDataGrid_Drop">
                                            LastChildFill="False">
                                     <TextBlock Margin="0"
                                                Style="{StaticResource FieldLabelStyle}"
-                                               Text="已连接客户端" />
+                                               Text="{DynamicResource 已连接客户端}" />
                                     <TextBlock DockPanel.Dock="Right"
                                                VerticalAlignment="Center"
                                                Foreground="{DynamicResource AppMutedTextBrush}"
@@ -414,7 +414,7 @@ Drop="SupportedProtocolsDataGrid_Drop">
                             <DockPanel Grid.Row="3"
                                        LastChildFill="False"
                                        Visibility="{Binding ElementName=communicationType, Path=SelectedItem.Value, Converter={StaticResource ComparisonToVisibilityConvert}, ConverterParameter='TCPServer|TCPClient|COM|UDP'}">
-                                <TextBlock Style="{StaticResource FieldLabelStyle}" Text="报文" />
+                                <TextBlock Style="{StaticResource FieldLabelStyle}" Text="{DynamicResource 报文}" />
                                 <TextBlock Foreground="{DynamicResource PrimaryButtonBrush}" Margin="14,14,0,6">
                                     <Hyperlink Command="{Binding OpenProtocolCommandLibraryCommand}">填充指令</Hyperlink>
                                 </TextBlock>
@@ -439,11 +439,11 @@ Drop="SupportedProtocolsDataGrid_Drop">
                                          VerticalScrollBarVisibility="Auto"
                                          Text="{Binding SendText, UpdateSourceTrigger=PropertyChanged}" />
                                 <Button Grid.Column="1"
-                                        Content="发送"
+                                        Content="{DynamicResource 发送}"
                                         Style="{StaticResource PrimaryActionButtonStyle}"
                                         Command="{Binding SendCommand}" />
                                 <Button Grid.Column="2"
-                                        Content="全部发送"
+                                        Content="{DynamicResource 全部发送}"
                                         Style="{StaticResource ActionButtonStyle}"
                                         Visibility="{Binding ElementName=communicationType, Path=SelectedItem.Value, Converter={StaticResource ComparisonToVisibilityConvert}, ConverterParameter='TCPServer'}"
                                         Command="{Binding SendAllCommand}" />
@@ -471,19 +471,19 @@ Drop="SupportedProtocolsDataGrid_Drop">
                                 </Grid.ColumnDefinitions>
 
                                 <StackPanel Grid.Column="0">
-                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="PLC 地址" />
+                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="{DynamicResource PLC 地址}" />
                                     <TextBox Style="{StaticResource InputTextBoxStyle}"
                                              Text="{Binding PlcAddress, UpdateSourceTrigger=PropertyChanged}" />
                                 </StackPanel>
 
                                 <StackPanel Grid.Column="2">
-                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="长度" />
+                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="{DynamicResource 长度}" />
                                     <TextBox Style="{StaticResource InputTextBoxStyle}"
                                              Text="{Binding PlcLength, UpdateSourceTrigger=PropertyChanged}" />
                                 </StackPanel>
 
                                 <StackPanel Grid.Column="4">
-                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="数据类型" />
+                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="{DynamicResource 数据类型}" />
                                     <ComboBox Style="{StaticResource InputComboBoxStyle}"
                                               ItemsSource="{Binding PlcDataTypeOptions}"
                                               ItemTemplate="{StaticResource SelectionOptionItemTemplate}"
@@ -493,7 +493,7 @@ Drop="SupportedProtocolsDataGrid_Drop">
                                 </StackPanel>
 
                                 <StackPanel Grid.Column="6">
-                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="写入值" />
+                                    <TextBlock Style="{StaticResource FieldLabelStyle}" Text="{DynamicResource 写入值}" />
                                     <TextBox Style="{StaticResource InputTextBoxStyle}"
                                              Text="{Binding PlcWriteValue, UpdateSourceTrigger=PropertyChanged}" />
                                 </StackPanel>
@@ -501,13 +501,13 @@ Drop="SupportedProtocolsDataGrid_Drop">
                                 <Button Grid.Column="8"
                                         Margin="0"
                                         VerticalAlignment="Bottom"
-                                        Content="读取"
+                                        Content="{DynamicResource 读取}"
                                         Style="{StaticResource PrimaryActionButtonStyle}"
                                         Command="{Binding ReadPlcCommand}" />
                                 <Button Grid.Column="10"
                                         Margin="0"
                                         VerticalAlignment="Bottom"
-                                        Content="写入"
+                                        Content="{DynamicResource 写入}"
                                         Style="{StaticResource ActionButtonStyle}"
                                         Command="{Binding WritePlcCommand}" />
                             </Grid>
@@ -520,7 +520,7 @@ Drop="SupportedProtocolsDataGrid_Drop">
                                            VerticalAlignment="Bottom"
                                            Style="{StaticResource FieldLabelStyle}"
                                            Margin="0"
-                                           Text="解析结果" />
+                                           Text="{DynamicResource 解析结果}" />
                             </DockPanel>
 
 
@@ -531,9 +531,9 @@ Drop="SupportedProtocolsDataGrid_Drop">
                                            VerticalAlignment="Bottom"
                                            Style="{StaticResource FieldLabelStyle}"
                                            Margin="0"
-                                           Text="接收 / 日志" />
+                                           Text="{DynamicResource 接收 / 日志}" />
                                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-                                    <Button Content="清空"
+                                    <Button Content="{DynamicResource 清空}"
                                             Style="{StaticResource ActionButtonStyle}"
                                             Command="{Binding ClearReceiveCommand}" />
                                 </StackPanel>
@@ -586,16 +586,16 @@ Drop="SupportedProtocolsDataGrid_Drop">
 
                             <DockPanel LastChildFill="False">
                                 <StackPanel>
-                                    <TextBlock Style="{StaticResource SectionTitleStyle}" Text="协议列表" />
+                                    <TextBlock Style="{StaticResource SectionTitleStyle}" Text="{DynamicResource 协议列表}" />
                                     <TextBlock Margin="0,8,0,10"
 Foreground="{DynamicResource AppMutedTextBrush}"
-Text="双击可直接添加协议，也可以拖动到上方支持协议表格中。"
+Text="{DynamicResource 双击可直接添加协议，也可以拖动到上方支持协议表格中。}"
 TextWrapping="Wrap" />
                                 </StackPanel>
                                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Margin="16,0,0,10">
-                                    <Button HorizontalAlignment="Right" Content="关闭" Style="{StaticResource ActionButtonStyle}" Command="{Binding CloseProtocolLibraryCommand}" />
+                                    <Button HorizontalAlignment="Right" Content="{DynamicResource 关闭}" Style="{StaticResource ActionButtonStyle}" Command="{Binding CloseProtocolLibraryCommand}" />
                                 </StackPanel>
-                                <searchBox:SearchBox DockPanel.Dock="Right" Width="300" Margin="16,0,0,10" PlaceholderText="搜索协议..." Text="{Binding AvailableProtocolSearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                <searchBox:SearchBox DockPanel.Dock="Right" Width="300" Margin="16,0,0,10" PlaceholderText="{DynamicResource 搜索协议...}" Text="{Binding AvailableProtocolSearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                             </DockPanel>
                             <Grid Grid.Row="2">
                                 <ListBox x:Name="ProtocolLibraryListBox"
@@ -646,16 +646,16 @@ TextWrapping="Wrap" />
 
                             <DockPanel LastChildFill="False">
                                 <StackPanel>
-                                    <TextBlock Style="{StaticResource SectionTitleStyle}" Text="指令列表" />
-                                    <TextBlock Margin="0,8,0,10" Foreground="{DynamicResource AppMutedTextBrush}" Text="显示当前支持协议中的全部指令。双击后会直接生成并填充报文到下方文本框。" TextWrapping="Wrap" />
+                                    <TextBlock Style="{StaticResource SectionTitleStyle}" Text="{DynamicResource 指令列表}" />
+                                    <TextBlock Margin="0,8,0,10" Foreground="{DynamicResource AppMutedTextBrush}" Text="{DynamicResource 显示当前支持协议中的全部指令。双击后会直接生成并填充报文到下方文本框。}" TextWrapping="Wrap" />
                                 </StackPanel>
 
                                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Margin="16,0,0,10">
-                                    <Button Content="关闭"
+                                    <Button Content="{DynamicResource 关闭}"
                             Style="{StaticResource ActionButtonStyle}"
                             Command="{Binding CloseProtocolCommandLibraryCommand}" />
                                 </StackPanel>
-                                <searchBox:SearchBox Width="300" Margin="16,0,0,10" PlaceholderText="搜索指令..." Text="{Binding SupportedProtocolCommandSearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" DockPanel.Dock="Right"/>
+                                <searchBox:SearchBox Width="300" Margin="16,0,0,10" PlaceholderText="{DynamicResource 搜索指令...}" Text="{Binding SupportedProtocolCommandSearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" DockPanel.Dock="Right"/>
                             </DockPanel>
 
                             

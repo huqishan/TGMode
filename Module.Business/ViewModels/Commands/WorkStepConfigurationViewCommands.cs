@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.ComponentModel;
+using System.Data;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -20,7 +21,7 @@ using Shared.Infrastructure.Extensions;
 namespace Module.Business.ViewModels;
 
 /// <summary>
-/// 工步配置界面命令实现。
+/// 可复用步骤编辑器的命令实现。
 /// </summary>
 public sealed partial class WorkStepConfigurationViewModel
 {
@@ -42,7 +43,9 @@ public sealed partial class WorkStepConfigurationViewModel
         WorkStepsView.Filter = FilterWorkSteps;
         InitializeCommands();
         SelectFirstVisibleWorkStep();
-        SetPageStatus(WorkSteps.Count == 0 ? "暂无工步配置，请点击新增。" : $"已读取 {WorkSteps.Count} 个工步", NeutralBrush);
+        RefreshOperationMethodTable();
+        RefreshReturnValueOptions();
+        SetPageStatus("等待编辑步骤。", NeutralBrush);
     }
 
     /// <summary>
@@ -61,8 +64,8 @@ public sealed partial class WorkStepConfigurationViewModel
         SaveOperationDrawerCommand = new RelayCommand(_ => SaveOperationDrawer(), _ => IsOperationDrawerOpen);
         CloseOperationDrawerCommand = new RelayCommand(_ => CloseOperationDrawer());
         RefreshOperationObjectsCommand = new RelayCommand(_ => RefreshOperationObjectOptions(updateStatus: true), _ => IsOperationDrawerOpen);
-        AddInvokeParameterCommand = new RelayCommand(_ => AddInvokeParameter(), _ => IsOperationDrawerOpen && !IsLuaOperationSelected);
-        DeleteInvokeParameterCommand = new RelayCommand(_ => DeleteSelectedInvokeParameter(), _ => IsOperationDrawerOpen && !IsLuaOperationSelected && SelectedEditingInvokeParameter is not null);
+        AddInvokeParameterCommand = new RelayCommand(_ => AddInvokeParameter(), _ => IsOperationDrawerOpen && IsInvokeParameterEditorVisible);
+        DeleteInvokeParameterCommand = new RelayCommand(_ => DeleteSelectedInvokeParameter(), _ => IsOperationDrawerOpen && IsInvokeParameterEditorVisible && SelectedEditingInvokeParameter is not null);
     }
 
     #endregion
@@ -124,7 +127,7 @@ public sealed partial class WorkStepConfigurationViewModel
     }
 
     /// <summary>
-    /// 校验并保存所有工步配置。
+    /// 校验并保存所有工步模板。
     /// </summary>
     private void SaveWorkSteps()
     {
@@ -220,6 +223,79 @@ public sealed partial class WorkStepConfigurationViewModel
     }
 
     /// <summary>
+    /// 将方法/指令表拖拽出来的新步骤插入到当前步骤列表。
+    /// </summary>
+    public void InsertOperation(WorkStepOperation operation, WorkStepOperation? targetOperation, bool insertAfter)
+    {
+        if (SelectedWorkStep is null)
+        {
+            return;
+        }
+
+        WorkStepOperation operationToInsert = operation.Clone();
+        operationToInsert.Id = Guid.NewGuid().ToString("N");
+        operationToInsert.IsChecked = false;
+        operationToInsert.Parameters = new ObservableCollection<WorkStepOperationParameter>(
+            operationToInsert.Parameters.Select(parameter =>
+            {
+                WorkStepOperationParameter clonedParameter = parameter.Clone();
+                clonedParameter.Id = Guid.NewGuid().ToString("N");
+                return clonedParameter;
+            }));
+
+        ObservableCollection<WorkStepOperation> steps = SelectedWorkStep.Steps;
+        int insertIndex = steps.Count;
+        if (targetOperation is not null)
+        {
+            int targetIndex = steps.IndexOf(targetOperation);
+            if (targetIndex >= 0)
+            {
+                insertIndex = targetIndex + (insertAfter ? 1 : 0);
+            }
+        }
+
+        steps.Insert(Math.Clamp(insertIndex, 0, steps.Count), operationToInsert);
+        RefreshOperationParameterModifiedState(operationToInsert);
+        SelectedOperation = operationToInsert;
+        SetPageStatus("已从方法表新增步骤。", SuccessBrush);
+    }
+
+    public WorkStepOperation? CreateOperationFromMethodTableRow(DataRowView? rowView)
+    {
+        if (rowView is null)
+        {
+            return null;
+        }
+
+        string operationType = GetOperationMethodTableValue(rowView, OperationMethodColumnOperationType);
+        string operationObject = GetOperationMethodTableValue(rowView, OperationMethodColumnOperationObject);
+        string protocolName = GetOperationMethodTableValue(rowView, OperationMethodColumnProtocolName);
+        string commandName = GetOperationMethodTableValue(rowView, OperationMethodColumnCommandName);
+        string invokeMethod = GetOperationMethodTableValue(rowView, OperationMethodColumnInvokeMethod);
+        if (string.IsNullOrWhiteSpace(operationObject) || string.IsNullOrWhiteSpace(invokeMethod))
+        {
+            return null;
+        }
+
+        WorkStepOperation operation = new()
+        {
+            OperationType = string.IsNullOrWhiteSpace(operationType) ? "设备" : operationType,
+            OperationObject = operationObject,
+            ProtocolName = protocolName,
+            CommandName = commandName,
+            InvokeMethod = invokeMethod,
+            ReturnValue = ResolveDefaultProtocolCommandReturnValueKey(protocolName, commandName),
+            ShowDataToView = false,
+            DelayMilliseconds = 0,
+            Remark = string.Empty,
+            Parameters = CreateOperationParametersFromMethodTableRow(operationObject, protocolName, commandName, invokeMethod)
+        };
+        RefreshOperationParameterModifiedState(operation);
+
+        return operation;
+    }
+
+    /// <summary>
     /// 保存抽屉中的步骤编辑内容。
     /// </summary>
     private void SaveOperationDrawer()
@@ -230,26 +306,32 @@ public sealed partial class WorkStepConfigurationViewModel
             return;
         }
 
-        if (string.IsNullOrWhiteSpace(EditingOperationObject))
+        bool isLuaOperation = IsLuaOperationSelected;
+        WorkStepOperation? selectedMethodOperation = isLuaOperation
+            ? null
+            : CreateOperationFromMethodTableRow(SelectedOperationMethodRow);
+
+        if (string.IsNullOrWhiteSpace(EditingOperationObject) && selectedMethodOperation is null)
         {
             SetPageStatus("操作对象不能为空。", WarningBrush);
             return;
         }
 
-        string invokeMethod = IsLuaOperationSelected
+        string invokeMethod = isLuaOperation
             ? LuaOperationObjectName
-            : IsSystemOrJudgeOperationSelected
-                ? EditingInvokeMethod
-                : string.IsNullOrWhiteSpace(EditingCommandName)
-                    ? EditingInvokeMethod
-                    : EditingCommandName;
+            : selectedMethodOperation?.InvokeMethod ??
+              (IsSystemOrJudgeOperationSelected
+                  ? EditingInvokeMethod
+                  : string.IsNullOrWhiteSpace(EditingCommandName)
+                      ? EditingInvokeMethod
+                      : EditingCommandName);
         if (string.IsNullOrWhiteSpace(invokeMethod))
         {
             SetPageStatus("调用方法不能为空。", WarningBrush);
             return;
         }
 
-        if (!IsLuaOperationSelected &&
+        if (!isLuaOperation &&
             EditingShowDataToView &&
             string.IsNullOrWhiteSpace(EditingViewDataName))
         {
@@ -263,30 +345,39 @@ public sealed partial class WorkStepConfigurationViewModel
             return;
         }
 
-        _drawerOperation.OperationType = IsLuaOperationSelected
+        _drawerOperation.OperationType = isLuaOperation
             ? LuaOperationObjectName
-            : IsJudgeOperationSelected
-                ? JudgeOperationObjectName
-                : IsSystemOperationSelected
-                    ? "\u7CFB\u7EDF"
-                    : "\u8BBE\u5907";
-        _drawerOperation.OperationObject = IsLuaOperationSelected ? LuaOperationObjectName : EditingOperationObject.Trim();
-        _drawerOperation.ProtocolName = IsProtocolCommandSelectionVisible ? EditingProtocolName.Trim() : string.Empty;
-        _drawerOperation.CommandName = IsProtocolCommandSelectionVisible ? invokeMethod.Trim() : string.Empty;
+            : selectedMethodOperation?.OperationType ??
+              (IsJudgeOperationSelected
+                  ? JudgeOperationObjectName
+                  : IsSystemOperationSelected
+                      ? "\u7CFB\u7EDF"
+                      : "\u8BBE\u5907");
+        _drawerOperation.OperationObject = isLuaOperation
+            ? LuaOperationObjectName
+            : selectedMethodOperation?.OperationObject ?? EditingOperationObject.Trim();
+        _drawerOperation.ProtocolName = isLuaOperation
+            ? string.Empty
+            : selectedMethodOperation?.ProtocolName ??
+              (IsProtocolCommandSelectionVisible ? EditingProtocolName.Trim() : string.Empty);
+        _drawerOperation.CommandName = isLuaOperation
+            ? string.Empty
+            : selectedMethodOperation?.CommandName ??
+              (IsProtocolCommandSelectionVisible ? invokeMethod.Trim() : string.Empty);
         _drawerOperation.InvokeMethod = invokeMethod.Trim();
-        _drawerOperation.ReturnValue = IsLuaOperationSelected ? string.Empty : EditingReturnValue.Trim();
-        _drawerOperation.ShowDataToView = !IsLuaOperationSelected && EditingShowDataToView;
-        _drawerOperation.ViewDataName = IsLuaOperationSelected ? string.Empty : EditingViewDataName.Trim();
-        _drawerOperation.ViewJudgeType = IsLuaOperationSelected ? string.Empty : EditingViewJudgeType.Trim();
-        _drawerOperation.ViewJudgeCondition = IsLuaOperationSelected ? string.Empty : EditingViewJudgeCondition.Trim();
-        _drawerOperation.LuaScript = IsLuaOperationSelected ? EditingLuaScript : string.Empty;
+        _drawerOperation.ReturnValue = isLuaOperation ? string.Empty : EditingReturnValue.Trim();
+        _drawerOperation.ShowDataToView = !isLuaOperation && EditingShowDataToView;
+        _drawerOperation.ViewDataName = isLuaOperation ? string.Empty : EditingViewDataName.Trim();
+        _drawerOperation.ViewJudgeType = isLuaOperation ? string.Empty : EditingViewJudgeType.Trim();
+        _drawerOperation.ViewJudgeCondition = isLuaOperation ? string.Empty : EditingViewJudgeCondition.Trim();
+        _drawerOperation.LuaScript = isLuaOperation ? EditingLuaScript : string.Empty;
         _drawerOperation.DelayMilliseconds = delayMilliseconds;
         _drawerOperation.Remark = EditingRemark.Trim();
-        if (IsLuaOperationSelected)
+        if (isLuaOperation)
         {
             _drawerOperation.Parameters = new ObservableCollection<WorkStepOperationParameter>();
         }
-        else
+        else if (EditingModifyInvokeParameters)
         {
             NormalizeInvokeParameterSequences();
             SortInvokeParametersBySequence();
@@ -295,6 +386,12 @@ public sealed partial class WorkStepConfigurationViewModel
                     .OrderBy(parameter => parameter.Sequence)
                     .Select(parameter => parameter.Clone()));
         }
+        else if (selectedMethodOperation is not null)
+        {
+            _drawerOperation.Parameters = new ObservableCollection<WorkStepOperationParameter>(
+                selectedMethodOperation.Parameters.Select(parameter => parameter.Clone()));
+        }
+        RefreshOperationParameterModifiedState(_drawerOperation);
 
         if (_isNewOperationInDrawer)
         {
@@ -317,6 +414,7 @@ public sealed partial class WorkStepConfigurationViewModel
         _isNewOperationInDrawer = false;
         EditingInvokeParameters.Clear();
         EditingInvokeMethodRemark = string.Empty;
+        EditingModifyInvokeParameters = false;
         EditingShowDataToView = false;
         EditingViewDataName = string.Empty;
         EditingViewJudgeType = string.Empty;
@@ -557,6 +655,7 @@ public sealed partial class WorkStepConfigurationViewModel
             EditingLuaScript = operation.LuaScript;
             EditingDelayMillisecondsText = operation.DelayMilliseconds.ToString();
             EditingRemark = operation.Remark;
+            EditingModifyInvokeParameters = false;
             EditingInvokeParameters.Clear();
             foreach (WorkStepOperationParameter parameter in IsLuaOperationSelected
                          ? Enumerable.Empty<WorkStepOperationParameter>()
@@ -814,10 +913,32 @@ public sealed partial class WorkStepConfigurationViewModel
 
         return savedReturnValues
             .Concat(ExternalReturnValueOptions)
+            .Concat(LoadProtocolCommandReturnValueKeys(EditingProtocolName, EditingCommandName))
             .Concat(editingReturnValues)
             .Select(value => value.Trim())
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .OrderBy(value => value, StringComparer.OrdinalIgnoreCase);
+    }
+
+    private void RefreshReturnValueOptions()
+    {
+        ReplaceStringOptions(ReturnValueOptions, BuildReturnValueOptions());
+    }
+
+    private void ApplyDefaultReturnValueKey()
+    {
+        if (IsSystemOrJudgeOperationSelected ||
+            IsLuaOperationSelected ||
+            !string.IsNullOrWhiteSpace(EditingReturnValue))
+        {
+            return;
+        }
+
+        IReadOnlyList<string> keys = LoadProtocolCommandReturnValueKeys(EditingProtocolName, EditingCommandName);
+        if (keys.Count == 1)
+        {
+            EditingReturnValue = keys[0];
+        }
     }
 
     private static void ReplaceStringOptions(ObservableCollection<string> target, IEnumerable<string> source)
@@ -1087,6 +1208,435 @@ public sealed partial class WorkStepConfigurationViewModel
         PageStatusBrush = brush;
     }
 
+    public IEnumerable<string> LoadDeviceOperationObjectNames()
+    {
+        return LoadDeviceOperationObjectOptions();
+    }
+
+    public IEnumerable<string> LoadInvokeMethodOptionsForOperationObject(string? operationObject)
+    {
+        string normalizedOperationObject = operationObject?.Trim() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(normalizedOperationObject))
+        {
+            return Enumerable.Empty<string>();
+        }
+
+        if (IsLuaOperationObject(normalizedOperationObject))
+        {
+            return new[] { LuaOperationObjectName };
+        }
+
+        if (IsSystemOperationObject(normalizedOperationObject))
+        {
+            return LoadSystemMethodSelectionItems()
+                .Select(method => method.Name);
+        }
+
+        return LoadDeviceInvokeMethodOptions(normalizedOperationObject);
+    }
+
+    private static IEnumerable<string> LoadDeviceInvokeMethodOptions(string operationObject)
+    {
+        HashSet<string> allowedProtocols = new(LoadDeviceSupportedProtocolNames(operationObject), StringComparer.OrdinalIgnoreCase);
+        if (allowedProtocols.Count == 0)
+        {
+            return Enumerable.Empty<string>();
+        }
+
+        return LoadProtocolSelectionItems()
+            .Where(protocol => allowedProtocols.Contains(protocol.Name))
+            .SelectMany(protocol => protocol.Commands.Select(command => command.Name));
+    }
+
+    public void SynchronizeOperationMetadata(
+        WorkStepOperation operation,
+        IReadOnlyList<string> invokeMethodOptions)
+    {
+        if (operation is null)
+        {
+            return;
+        }
+
+        string operationObject = operation.OperationObject?.Trim() ?? string.Empty;
+
+        if (IsLuaOperationObject(operationObject))
+        {
+            operation.OperationType = LuaOperationObjectName;
+            operation.OperationObject = LuaOperationObjectName;
+            operation.ProtocolName = string.Empty;
+            operation.CommandName = string.Empty;
+            operation.InvokeMethod = LuaOperationObjectName;
+            return;
+        }
+
+        string invokeMethod = operation.InvokeMethod?.Trim() ?? string.Empty;
+        if (!string.IsNullOrWhiteSpace(invokeMethod) &&
+            !invokeMethodOptions.Any(option => TextEquals(option, invokeMethod)))
+        {
+            invokeMethod = string.Empty;
+            operation.InvokeMethod = invokeMethod;
+        }
+
+        if (IsSystemOperationObject(operationObject))
+        {
+            operation.OperationType = "\u7CFB\u7EDF";
+            operation.OperationObject = SystemOperationObjectName;
+            operation.ProtocolName = string.Empty;
+            operation.CommandName = string.Empty;
+            return;
+        }
+
+        operation.OperationType = "\u8BBE\u5907";
+        if (TryFindDeviceCommand(operationObject, invokeMethod, out string protocolName, out string commandName))
+        {
+            operation.ProtocolName = protocolName;
+            operation.CommandName = commandName;
+        }
+        else
+        {
+            operation.ProtocolName = string.Empty;
+            operation.CommandName = string.Empty;
+        }
+    }
+
+    private static bool TryFindDeviceCommand(
+        string operationObject,
+        string invokeMethod,
+        out string protocolName,
+        out string commandName)
+    {
+        protocolName = string.Empty;
+        commandName = string.Empty;
+
+        if (string.IsNullOrWhiteSpace(operationObject) || string.IsNullOrWhiteSpace(invokeMethod))
+        {
+            return false;
+        }
+
+        HashSet<string> allowedProtocols = new(LoadDeviceSupportedProtocolNames(operationObject), StringComparer.OrdinalIgnoreCase);
+        if (allowedProtocols.Count == 0)
+        {
+            return false;
+        }
+
+        foreach (ProtocolSelectionItem protocol in LoadProtocolSelectionItems().Where(protocol => allowedProtocols.Contains(protocol.Name)))
+        {
+            ProtocolCommandSelectionItem? command = protocol.Commands
+                .FirstOrDefault(command => TextEquals(command.Name, invokeMethod));
+            if (command is null)
+            {
+                continue;
+            }
+
+            protocolName = protocol.Name;
+            commandName = command.Name;
+            return true;
+        }
+
+        return false;
+    }
+
+    private static DataTable CreateOperationMethodTable()
+    {
+        DataTable table = new("OperationMethods");
+        table.Columns.Add(OperationMethodColumnKind, typeof(string));
+        table.Columns.Add(OperationMethodColumnOperationType, typeof(string));
+        table.Columns.Add(OperationMethodColumnOperationObject, typeof(string));
+        table.Columns.Add(OperationMethodColumnProtocolName, typeof(string));
+        table.Columns.Add(OperationMethodColumnCommandName, typeof(string));
+        table.Columns.Add(OperationMethodColumnInvokeMethod, typeof(string));
+        table.Columns.Add(OperationMethodColumnSummary, typeof(string));
+        table.Columns.Add(OperationMethodColumnParameterCount, typeof(int));
+        return table;
+    }
+
+    private void RefreshOperationMethodTable()
+    {
+        SelectedOperationMethodRow = null;
+        OperationMethodTable.BeginLoadData();
+        try
+        {
+            OperationMethodTable.Rows.Clear();
+            if (IsLuaOperationSelected)
+            {
+                return;
+            }
+
+            if (IsJudgeOperationSelected)
+            {
+                foreach (SystemMethodSelectionItem method in LoadJudgeMethodSelectionItems())
+                {
+                    AddOperationMethodRow(
+                        "方法",
+                        JudgeOperationObjectName,
+                        JudgeOperationObjectName,
+                        string.Empty,
+                        string.Empty,
+                        method.Name,
+                        method.Summary,
+                        method.Parameters.Count);
+                }
+
+                return;
+            }
+
+            if (IsSystemOperationSelected)
+            {
+                IReadOnlyList<SystemMethodSelectionItem> methods = LoadSystemMethodSelectionItems();
+                foreach (SystemMethodSelectionItem method in methods)
+                {
+                    AddOperationMethodRow(
+                        "方法",
+                        "\u7CFB\u7EDF",
+                        SystemOperationObjectName,
+                        string.Empty,
+                        string.Empty,
+                        method.Name,
+                        method.Summary,
+                        method.Parameters.Count);
+                }
+
+                return;
+            }
+
+            string operationObject = EditingOperationObject.Trim();
+            HashSet<string> allowedProtocols = new(LoadDeviceSupportedProtocolNames(operationObject), StringComparer.OrdinalIgnoreCase);
+            if (allowedProtocols.Count == 0)
+            {
+                return;
+            }
+
+            IReadOnlyList<ProtocolSelectionItem> protocols = LoadProtocolSelectionItems().ToList();
+            IEnumerable<ProtocolSelectionItem> visibleProtocols = protocols.Where(protocol => allowedProtocols.Contains(protocol.Name));
+
+            foreach (ProtocolSelectionItem protocol in visibleProtocols.OrderBy(protocol => protocol.Name, StringComparer.OrdinalIgnoreCase))
+            {
+                foreach (ProtocolCommandSelectionItem command in protocol.Commands.OrderBy(command => command.Name, StringComparer.OrdinalIgnoreCase))
+                {
+                    AddOperationMethodRow(
+                        "指令",
+                        "\u8BBE\u5907",
+                        operationObject,
+                        protocol.Name,
+                        command.Name,
+                        command.Name,
+                        protocol.Name,
+                        command.Placeholders.Count);
+                }
+            }
+        }
+        finally
+        {
+            OperationMethodTable.EndLoadData();
+            OnPropertyChanged(nameof(OperationMethodTable));
+        }
+    }
+
+    private void AddOperationMethodRow(
+        string kind,
+        string operationType,
+        string operationObject,
+        string protocolName,
+        string commandName,
+        string invokeMethod,
+        string summary,
+        int parameterCount)
+    {
+        DataRow row = OperationMethodTable.NewRow();
+        row[OperationMethodColumnKind] = kind;
+        row[OperationMethodColumnOperationType] = operationType;
+        row[OperationMethodColumnOperationObject] = operationObject;
+        row[OperationMethodColumnProtocolName] = protocolName;
+        row[OperationMethodColumnCommandName] = commandName;
+        row[OperationMethodColumnInvokeMethod] = invokeMethod;
+        row[OperationMethodColumnSummary] = summary;
+        row[OperationMethodColumnParameterCount] = parameterCount;
+        OperationMethodTable.Rows.Add(row);
+    }
+
+    private ObservableCollection<WorkStepOperationParameter> CreateOperationParametersFromMethodTableRow(
+        string operationObject,
+        string protocolName,
+        string commandName,
+        string invokeMethod)
+    {
+        if (IsJudgeOperationObject(operationObject))
+        {
+            SystemMethodSelectionItem? method = FindJudgeMethodByName(invokeMethod);
+            return CreateOperationParametersFromSystemMethod(method, useTypeAsDefaultValue: false);
+        }
+
+        if (IsSystemOperationObject(operationObject))
+        {
+            SystemMethodSelectionItem? method = FindSystemMethodByName(invokeMethod);
+            return CreateOperationParametersFromSystemMethod(method, useTypeAsDefaultValue: true);
+        }
+
+        ObservableCollection<WorkStepOperationParameter> parameters = new();
+        int sequence = 1;
+        foreach (ProtocolPlaceholderSelectionItem placeholder in LoadProtocolCommandPlaceholders(protocolName, commandName))
+        {
+            parameters.Add(new WorkStepOperationParameter
+            {
+                Sequence = sequence,
+                Name = ParameterTypeOptions.FirstOrDefault() ?? "设置值",
+                ParameterName = placeholder.Name,
+                Value = placeholder.Value,
+                Remark = placeholder.Name
+            });
+            sequence++;
+        }
+
+        return parameters;
+    }
+
+    public ObservableCollection<WorkStepOperationParameter> CreateDefaultOperationParameters(WorkStepOperation operation)
+    {
+        if (operation is null ||
+            IsLuaOperationObject(operation.OperationObject) ||
+            IsLuaOperationObject(operation.OperationType))
+        {
+            return new ObservableCollection<WorkStepOperationParameter>();
+        }
+
+        string operationObject = operation.OperationObject?.Trim() ?? string.Empty;
+        string protocolName = operation.ProtocolName?.Trim() ?? string.Empty;
+        string commandName = string.IsNullOrWhiteSpace(operation.CommandName)
+            ? operation.InvokeMethod?.Trim() ?? string.Empty
+            : operation.CommandName.Trim();
+        string invokeMethod = operation.InvokeMethod?.Trim() ?? string.Empty;
+
+        if (!IsSystemOperationObject(operationObject) &&
+            !IsJudgeOperationObject(operationObject) &&
+            (string.IsNullOrWhiteSpace(protocolName) || string.IsNullOrWhiteSpace(commandName)) &&
+            TryFindDeviceCommand(operationObject, invokeMethod, out string resolvedProtocolName, out string resolvedCommandName))
+        {
+            protocolName = resolvedProtocolName;
+            commandName = resolvedCommandName;
+        }
+
+        return CreateOperationParametersFromMethodTableRow(operationObject, protocolName, commandName, invokeMethod);
+    }
+
+    public bool HasModifiedOperationParameters(
+        WorkStepOperation operation,
+        IEnumerable<WorkStepOperationParameter>? parameters = null)
+    {
+        ObservableCollection<WorkStepOperationParameter> defaultParameters = CreateDefaultOperationParameters(operation);
+        return !HasSameOperationParameters(parameters ?? operation.Parameters, defaultParameters) ||
+               HasModifiedOperationReturnParameters(operation);
+    }
+
+    public void RefreshOperationParameterModifiedState(WorkStepOperation operation)
+    {
+        operation.AreParametersModified = HasModifiedOperationParameters(operation);
+    }
+
+    public void ResetOperationParametersToDefault(WorkStepOperation operation)
+    {
+        if (operation is null)
+        {
+            return;
+        }
+
+        operation.Parameters = CreateDefaultOperationParameters(operation);
+        operation.AreParametersModified = false;
+    }
+
+    private static bool HasSameOperationParameters(
+        IEnumerable<WorkStepOperationParameter> first,
+        IEnumerable<WorkStepOperationParameter> second)
+    {
+        List<WorkStepOperationParameter> firstItems = first
+            .OrderBy(parameter => parameter.Sequence)
+            .ToList();
+        List<WorkStepOperationParameter> secondItems = second
+            .OrderBy(parameter => parameter.Sequence)
+            .ToList();
+
+        if (firstItems.Count != secondItems.Count)
+        {
+            return false;
+        }
+
+        for (int index = 0; index < firstItems.Count; index++)
+        {
+            WorkStepOperationParameter left = firstItems[index];
+            WorkStepOperationParameter right = secondItems[index];
+            if (left.Sequence != right.Sequence ||
+                !TextEquals(left.Name, right.Name) ||
+                !TextEquals(left.ParameterName, right.ParameterName) ||
+                !TextEquals(left.Value, right.Value) ||
+                !TextEquals(left.Remark, right.Remark))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private static bool HasModifiedOperationReturnParameters(WorkStepOperation operation)
+    {
+        string defaultReturnValue = ResolveDefaultOperationReturnValue(operation);
+        return !TextEquals(operation.ReturnValue, defaultReturnValue) ||
+               operation.ShowDataToView ||
+               !string.IsNullOrWhiteSpace(operation.ViewDataName) ||
+               !string.IsNullOrWhiteSpace(operation.ViewJudgeType) ||
+               !string.IsNullOrWhiteSpace(operation.ViewJudgeCondition);
+    }
+
+    private static string ResolveDefaultOperationReturnValue(WorkStepOperation operation)
+    {
+        if (operation is null ||
+            IsLuaOperationObject(operation.OperationObject) ||
+            IsLuaOperationObject(operation.OperationType))
+        {
+            return string.Empty;
+        }
+
+        string protocolName = operation.ProtocolName?.Trim() ?? string.Empty;
+        string commandName = string.IsNullOrWhiteSpace(operation.CommandName)
+            ? operation.InvokeMethod?.Trim() ?? string.Empty
+            : operation.CommandName.Trim();
+
+        return ResolveDefaultProtocolCommandReturnValueKey(protocolName, commandName);
+    }
+
+    private ObservableCollection<WorkStepOperationParameter> CreateOperationParametersFromSystemMethod(
+        SystemMethodSelectionItem? method,
+        bool useTypeAsDefaultValue)
+    {
+        ObservableCollection<WorkStepOperationParameter> parameters = new();
+        if (method is null)
+        {
+            return parameters;
+        }
+
+        int sequence = 1;
+        foreach (SystemMethodParameterSelectionItem parameterMetadata in method.Parameters)
+        {
+            parameters.Add(new WorkStepOperationParameter
+            {
+                Sequence = sequence,
+                Name = ParameterTypeOptions.FirstOrDefault() ?? "设置值",
+                ParameterName = parameterMetadata.Name,
+                Value = useTypeAsDefaultValue ? parameterMetadata.Type : string.Empty,
+                Remark = parameterMetadata.Description
+            });
+            sequence++;
+        }
+
+        return parameters;
+    }
+
+    private static string GetOperationMethodTableValue(DataRowView rowView, string columnName)
+    {
+        return rowView.Row.Table.Columns.Contains(columnName)
+            ? rowView.Row[columnName]?.ToString()?.Trim() ?? string.Empty
+            : string.Empty;
+    }
+
     private void RefreshOperationObjectOptions(bool updateStatus)
     {
         string previousSelection = EditingOperationObject;
@@ -1270,6 +1820,8 @@ public sealed partial class WorkStepConfigurationViewModel
         SelectedEditingInvokeParameter = EditingInvokeParameters
             .FirstOrDefault(parameter => string.Equals(parameter.Id, previousSelectedId, StringComparison.OrdinalIgnoreCase))
             ?? EditingInvokeParameters.FirstOrDefault();
+        RefreshReturnValueOptions();
+        ApplyDefaultReturnValueKey();
     }
 
     private void RefreshInvokeParametersFromSelectedSystemMethod(bool clearWhenNoMetadata)
@@ -1549,7 +2101,6 @@ public sealed partial class WorkStepConfigurationViewModel
         foreach (string option in systemMethods
                      .Select(method => method.Name)
                      .DefaultIfEmpty()
-                     .Concat(systemMethods.Count == 0 ? GetSystemInvokeMethodOptions() : Enumerable.Empty<string>())
                      .Where(option => !string.IsNullOrWhiteSpace(option))
                      .Select(option => option!.Trim())
                      .Distinct(StringComparer.OrdinalIgnoreCase))
@@ -1603,11 +2154,6 @@ public sealed partial class WorkStepConfigurationViewModel
         {
             SetPageStatus($"已按“{EditingOperationObject}”刷新调用方法。", SuccessBrush);
         }
-    }
-
-    private static IEnumerable<string> GetSystemInvokeMethodOptions()
-    {
-        return new[] { "等待", "跳转", "写入日志", "读取系统值", "设置系统值", "开始", "停止" };
     }
 
     private static SystemMethodSelectionItem? FindSystemMethodByName(string methodName)
@@ -2016,6 +2562,60 @@ public sealed partial class WorkStepConfigurationViewModel
         return names;
     }
 
+    private static IEnumerable<string> LoadDeviceSupportedProtocolNames(string operationObject)
+    {
+        if (string.IsNullOrWhiteSpace(operationObject))
+        {
+            return Enumerable.Empty<string>();
+        }
+
+        string communicationConfigDirectory = Path.Combine(AppContext.BaseDirectory, "Config", "Communication");
+        if (!Directory.Exists(communicationConfigDirectory))
+        {
+            return Enumerable.Empty<string>();
+        }
+
+        List<string> names = new();
+        foreach (string filePath in Directory.EnumerateFiles(communicationConfigDirectory, "*.json", SearchOption.TopDirectoryOnly))
+        {
+            try
+            {
+                using JsonDocument document = JsonDocument.Parse(File.ReadAllText(filePath, Encoding.UTF8));
+                if (!document.RootElement.TryGetProperty("LocalName", out JsonElement localNameElement) ||
+                    !TextEquals(localNameElement.GetString(), operationObject))
+                {
+                    continue;
+                }
+
+                if (!document.RootElement.TryGetProperty("SupportedProtocols", out JsonElement supportedProtocolsElement) ||
+                    supportedProtocolsElement.ValueKind != JsonValueKind.Array)
+                {
+                    return Enumerable.Empty<string>();
+                }
+
+                foreach (JsonElement protocolElement in supportedProtocolsElement.EnumerateArray())
+                {
+                    string protocolName = GetJsonString(protocolElement, "ProtocolName");
+                    if (!string.IsNullOrWhiteSpace(protocolName))
+                    {
+                        names.Add(protocolName.Trim());
+                    }
+                }
+
+                break;
+            }
+            catch
+            {
+                // 忽略损坏或非通信配置 JSON，避免阻断步骤编辑。
+            }
+        }
+
+        return names
+            .Where(name => !string.IsNullOrWhiteSpace(name))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(name => name, StringComparer.OrdinalIgnoreCase);
+    }
+
     private static IEnumerable<string> LoadProtocolOptions()
     {
         return LoadProtocolSelectionItems()
@@ -2052,6 +2652,33 @@ public sealed partial class WorkStepConfigurationViewModel
         return command is null
             ? Array.Empty<ProtocolPlaceholderSelectionItem>()
             : command.Placeholders;
+    }
+
+    private static IReadOnlyList<string> LoadProtocolCommandReturnValueKeys(
+        string protocolName,
+        string commandName)
+    {
+        if (string.IsNullOrWhiteSpace(protocolName) || string.IsNullOrWhiteSpace(commandName))
+        {
+            return Array.Empty<string>();
+        }
+
+        ProtocolCommandSelectionItem? command = LoadProtocolSelectionItems()
+            .Where(item => string.Equals(item.Name, protocolName.Trim(), StringComparison.OrdinalIgnoreCase))
+            .SelectMany(item => item.Commands)
+            .FirstOrDefault(command => string.Equals(command.Name, commandName.Trim(), StringComparison.OrdinalIgnoreCase));
+
+        return command is null
+            ? Array.Empty<string>()
+            : command.ReturnValueKeys;
+    }
+
+    private static string ResolveDefaultProtocolCommandReturnValueKey(
+        string protocolName,
+        string commandName)
+    {
+        IReadOnlyList<string> keys = LoadProtocolCommandReturnValueKeys(protocolName, commandName);
+        return keys.Count == 1 ? keys[0] : string.Empty;
     }
 
     private static IEnumerable<ProtocolSelectionItem> LoadProtocolSelectionItems()
@@ -2096,7 +2723,8 @@ public sealed partial class WorkStepConfigurationViewModel
                             string placeholderValuesText = GetJsonString(commandElement, "PlaceholderValuesText");
                             commands.Add(new ProtocolCommandSelectionItem(
                                 commandName,
-                                BuildProtocolPlaceholderSelectionItems(contentTemplate, placeholderValuesText)));
+                                BuildProtocolPlaceholderSelectionItems(contentTemplate, placeholderValuesText),
+                                GetJsonStringArray(commandElement, "ParsedResultKeys")));
                         }
                     }
                 }
@@ -2107,7 +2735,8 @@ public sealed partial class WorkStepConfigurationViewModel
                         "指令 1",
                         BuildProtocolPlaceholderSelectionItems(
                             GetJsonString(document.RootElement, "ContentTemplate"),
-                            GetJsonString(document.RootElement, "PlaceholderValuesText"))));
+                            GetJsonString(document.RootElement, "PlaceholderValuesText")),
+                        GetJsonStringArray(document.RootElement, "ParsedResultKeys")));
                 }
 
                 items.Add(new ProtocolSelectionItem(protocolName.Trim(), commands));
@@ -2138,6 +2767,25 @@ public sealed partial class WorkStepConfigurationViewModel
         return element.TryGetProperty(propertyName, out JsonElement propertyElement)
             ? propertyElement.GetString() ?? string.Empty
             : string.Empty;
+    }
+
+    private static IReadOnlyList<string> GetJsonStringArray(JsonElement element, string propertyName)
+    {
+        if (!element.TryGetProperty(propertyName, out JsonElement propertyElement) ||
+            propertyElement.ValueKind != JsonValueKind.Array)
+        {
+            return Array.Empty<string>();
+        }
+
+        return propertyElement
+            .EnumerateArray()
+            .Where(item => item.ValueKind == JsonValueKind.String)
+            .Select(item => item.GetString() ?? string.Empty)
+            .Where(value => !string.IsNullOrWhiteSpace(value))
+            .Select(value => value.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(value => value, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
     }
 
     private static IReadOnlyList<ProtocolPlaceholderSelectionItem> BuildProtocolPlaceholderSelectionItems(
@@ -2271,24 +2919,24 @@ public sealed partial class WorkStepConfigurationViewModel
         return string.Equals(operationType?.Trim(), "系统", StringComparison.OrdinalIgnoreCase);
     }
 
-    private const string SystemOperationObjectName = "System";
+    internal const string SystemOperationObjectName = "System";
 
-    private const string JudgeOperationObjectName = "\u5224\u65AD";
+    internal const string JudgeOperationObjectName = "\u5224\u65AD";
 
-    private const string LuaOperationObjectName = "Lua";
+    internal const string LuaOperationObjectName = "Lua";
 
-    private static bool IsSystemOperationObject(string? operationObject)
+    internal static bool IsSystemOperationObject(string? operationObject)
     {
         return string.Equals(operationObject?.Trim(), SystemOperationObjectName, StringComparison.OrdinalIgnoreCase) ||
                string.Equals(operationObject?.Trim(), "系统", StringComparison.OrdinalIgnoreCase);
     }
 
-    private static bool IsJudgeOperationObject(string? operationObject)
+    internal static bool IsJudgeOperationObject(string? operationObject)
     {
         return string.Equals(operationObject?.Trim(), JudgeOperationObjectName, StringComparison.OrdinalIgnoreCase);
     }
 
-    private static bool IsLuaOperationObject(string? operationObject)
+    internal static bool IsLuaOperationObject(string? operationObject)
     {
         return string.Equals(operationObject?.Trim(), LuaOperationObjectName, StringComparison.OrdinalIgnoreCase);
     }
@@ -2349,15 +2997,26 @@ public sealed partial class WorkStepConfigurationViewModel
 
     private sealed class ProtocolCommandSelectionItem
     {
-        public ProtocolCommandSelectionItem(string name, IEnumerable<ProtocolPlaceholderSelectionItem> placeholders)
+        public ProtocolCommandSelectionItem(
+            string name,
+            IEnumerable<ProtocolPlaceholderSelectionItem> placeholders,
+            IEnumerable<string> returnValueKeys)
         {
             Name = name;
             Placeholders = placeholders.ToList();
+            ReturnValueKeys = returnValueKeys
+                .Where(key => !string.IsNullOrWhiteSpace(key))
+                .Select(key => key.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(key => key, StringComparer.OrdinalIgnoreCase)
+                .ToList();
         }
 
         public string Name { get; }
 
         public List<ProtocolPlaceholderSelectionItem> Placeholders { get; }
+
+        public List<string> ReturnValueKeys { get; }
     }
 
     private sealed class ProtocolPlaceholderSelectionItem

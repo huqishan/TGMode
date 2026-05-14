@@ -7,7 +7,7 @@
              xmlns:vm="clr-namespace:Module.Communication.ViewModels"
              xmlns:luaCompiler="clr-namespace:ControlLibrary.ControlViews.LuaScrip;assembly=ControlLibrary"
              xmlns:avalonEdit="http://icsharpcode.net/sharpdevelop/avalonedit"
-             xmlns:avalonBinding="clr-namespace:ControlLibrary.AvalonEdit;assembly=ControlLibrary"
+             xmlns:avalonBinding="clr-namespace:ControlLibrary.Controls.AvalonEdit;assembly=ControlLibrary"
              xmlns:converts="clr-namespace:ControlLibrary.Converts;assembly=ControlLibrary"
              mc:Ignorable="d"
              HorizontalAlignment="Stretch"
@@ -40,29 +40,29 @@
                 </Grid.RowDefinitions>
 
                 <StackPanel>
-                    <TextBlock Style="{StaticResource SectionTitleStyle}" Text="协议配置" />
+                    <TextBlock Style="{StaticResource SectionTitleStyle}" Text="{DynamicResource 协议配置}" />
                     <TextBlock Margin="0,8,0,0"
                                Foreground="{DynamicResource AppMutedTextBrush}"
-                               Text="一个协议对应一种设备；协议下维护多条指令，每条指令有独立模板、占位符、校验和返回解析规则。"
+                               Text="{DynamicResource 一个协议对应一种设备；协议下维护多条指令，每条指令有独立模板、占位符、校验和返回解析规则。}"
                                TextWrapping="Wrap" />
                 </StackPanel>
 
                 <searchBox:SearchBox Grid.Row="1"
                                      Margin="0,16,0,0"
-                                     PlaceholderText="搜索协议配置..."
+                                     PlaceholderText="{DynamicResource 搜索协议配置...}"
                                      Text="{Binding SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
 
                 <UniformGrid Grid.Row="2" Columns="4" Margin="0,16,0,16">
-                    <Button Content="新建"
+                    <Button Content="{DynamicResource 新建}"
                             Style="{StaticResource PrimaryActionButtonStyle}"
                             Command="{Binding NewProfileCommand}" />
-                    <Button Content="复制"
+                    <Button Content="{DynamicResource 复制}"
                             Style="{StaticResource ActionButtonStyle}"
                             Command="{Binding DuplicateProfileCommand}" />
-                    <Button Content="删除"
+                    <Button Content="{DynamicResource 删除}"
                             Style="{StaticResource ActionButtonStyle}"
                             Command="{Binding DeleteProfileCommand}" />
-                    <Button Content="保存"
+                    <Button Content="{DynamicResource 保存}"
                             Style="{StaticResource ActionButtonStyle}"
                             Command="{Binding SaveProfilesCommand}" />
                 </UniformGrid>
@@ -103,7 +103,7 @@
                 <Grid>
                     <StackPanel>
                         <DockPanel>
-                            <TextBlock Style="{StaticResource SectionTitleStyle}" Text="当前协议" />
+                            <TextBlock Style="{StaticResource SectionTitleStyle}" Text="{DynamicResource 当前协议}" />
                             <Border HorizontalAlignment="Right"
 Margin="16,0,0,0"
 Padding="12,6"
@@ -118,7 +118,7 @@ CornerRadius="999">
                             </Border>
                         </DockPanel>
                         
-                        <TextBlock Style="{StaticResource FieldLabelStyle}" Text="协议名称" />
+                        <TextBlock Style="{StaticResource FieldLabelStyle}" Text="{DynamicResource 协议名称}" />
                         <TextBox Style="{StaticResource InputTextBoxStyle}"
                                  Text="{Binding SelectedProfile.Name, UpdateSourceTrigger=PropertyChanged}" />
                         <TextBlock Margin="0,8,0,0"
@@ -141,15 +141,15 @@ CornerRadius="999">
                         </Grid.RowDefinitions>
 
                         <DockPanel Grid.Row="0" LastChildFill="False">
-                            <TextBlock Style="{StaticResource SectionTitleStyle}" Text="设备指令" />
+                            <TextBlock Style="{StaticResource SectionTitleStyle}" Text="{DynamicResource 设备指令}" />
                             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-                                <Button Content="新建指令"
+                                <Button Content="{DynamicResource 新建指令}"
                                         Style="{StaticResource PrimaryActionButtonStyle}"
                                         Command="{Binding NewCommandCommand}" />
-                                <Button Content="复制指令"
+                                <Button Content="{DynamicResource 复制指令}"
                                         Style="{StaticResource ActionButtonStyle}"
                                         Command="{Binding DuplicateCommandCommand}" />
-                                <Button Content="删除指令"
+                                <Button Content="{DynamicResource 删除指令}"
                                         Style="{StaticResource ActionButtonStyle}"
                                         Command="{Binding DeleteCommandCommand}" />
                             </StackPanel>
@@ -158,7 +158,7 @@ CornerRadius="999">
                         <TextBlock Grid.Row="1"
                                    Margin="0,8,0,10"
                                    Foreground="{DynamicResource AppMutedTextBrush}"
-                                   Text="点击某条设备指令后，会从下侧滑出弹窗，显示基础设置、执行行为、协议模板与占位符、返回示例与 Lua 解析脚本。"
+                                   Text="{DynamicResource 点击某条设备指令后，会从下侧滑出弹窗，显示基础设置、执行行为、协议模板与占位符、返回示例与 Lua 解析脚本。}"
                                    TextWrapping="Wrap" />
 
                         <ListBox Grid.Row="2"
@@ -211,9 +211,9 @@ CornerRadius="999">
                             </Grid.RowDefinitions>
 
                             <DockPanel LastChildFill="False">
-                                <TextBlock Style="{StaticResource SectionTitleStyle}" Text="指令编辑" />
+                                <TextBlock Style="{StaticResource SectionTitleStyle}" Text="{DynamicResource 指令编辑}" />
                                 <Button DockPanel.Dock="Right"
-                                        Content="关闭"
+                                        Content="{DynamicResource 关闭}"
                                         Style="{StaticResource ActionButtonStyle}"
                                         Command="{Binding CloseCommandDrawerCommand}" />
                             </DockPanel>
@@ -232,9 +232,9 @@ CornerRadius="999">
                                             </Grid.ColumnDefinitions>
 
                                             <StackPanel Grid.Column="0">
-                                                <TextBlock Style="{StaticResource SectionTitleStyle}" Text="基础设置" />
+                                                <TextBlock Style="{StaticResource SectionTitleStyle}" Text="{DynamicResource 基础设置}" />
 
-                                                <TextBlock Style="{StaticResource FieldLabelStyle}" Text="指令名称" />
+                                                <TextBlock Style="{StaticResource FieldLabelStyle}" Text="{DynamicResource 指令名称}" />
                                                 <TextBox Style="{StaticResource InputTextBoxStyle}"
                                                          Text="{Binding SelectedProfile.CommandName, UpdateSourceTrigger=PropertyChanged}" />
 
@@ -246,7 +246,7 @@ CornerRadius="999">
                                                     </Grid.ColumnDefinitions>
 
                                                     <StackPanel Grid.Column="0">
-                                                        <TextBlock Style="{StaticResource FieldLabelStyle}" Text="发送格式" />
+                                                        <TextBlock Style="{StaticResource FieldLabelStyle}" Text="{DynamicResource 发送格式}" />
                                                         <ComboBox Style="{StaticResource InputComboBoxStyle}"
                                                                   ItemContainerStyle="{StaticResource InputComboBoxItemStyle}"
                                                                   ItemTemplate="{StaticResource ProtocolOptionItemTemplate}"
@@ -256,7 +256,7 @@ CornerRadius="999">
                                                     </StackPanel>
 
                                                     <StackPanel Grid.Column="2">
-                                                        <TextBlock Style="{StaticResource FieldLabelStyle}" Text="返回格式" />
+                                                        <TextBlock Style="{StaticResource FieldLabelStyle}" Text="{DynamicResource 返回格式}" />
                                                         <ComboBox Style="{StaticResource InputComboBoxStyle}"
                                                                   ItemContainerStyle="{StaticResource InputComboBoxItemStyle}"
                                                                   ItemTemplate="{StaticResource ProtocolOptionItemTemplate}"
@@ -268,7 +268,7 @@ CornerRadius="999">
                                             </StackPanel>
 
                                             <StackPanel Grid.Column="2">
-                                                <TextBlock Style="{StaticResource SectionTitleStyle}" Text="执行行为" />
+                                                <TextBlock Style="{StaticResource SectionTitleStyle}" Text="{DynamicResource 执行行为}" />
 
                                                 <Grid>
                                                     <Grid.ColumnDefinitions>
@@ -278,7 +278,7 @@ CornerRadius="999">
                                                     </Grid.ColumnDefinitions>
 
                                                     <StackPanel Grid.Column="0">
-                                                        <TextBlock Style="{StaticResource FieldLabelStyle}" Text="执行模式" />
+                                                        <TextBlock Style="{StaticResource FieldLabelStyle}" Text="{DynamicResource 执行模式}" />
                                                         <ComboBox Style="{StaticResource InputComboBoxStyle}" x:Name="ExecutionMode"
                                                                   ItemContainerStyle="{StaticResource InputComboBoxItemStyle}"
                                                                   ItemTemplate="{StaticResource ProtocolOptionItemTemplate}"
@@ -288,7 +288,7 @@ CornerRadius="999">
                                                     </StackPanel>
 
                                                     <StackPanel Grid.Column="2">
-                                                        <TextBlock Style="{StaticResource FieldLabelStyle}" Text="CRC校验" />
+                                                        <TextBlock Style="{StaticResource FieldLabelStyle}" Text="{DynamicResource CRC校验}" />
                                                         <ComboBox Style="{StaticResource InputComboBoxStyle}"
                                                                   ItemContainerStyle="{StaticResource InputComboBoxItemStyle}"
                                                                   ItemTemplate="{StaticResource ProtocolOptionItemTemplate}"
@@ -298,7 +298,7 @@ CornerRadius="999">
                                                     </StackPanel>
                                                 </Grid>
 
-                                                <TextBlock Style="{StaticResource FieldLabelStyle}" Text="强制等待拼接时长(ms)" />
+                                                <TextBlock Style="{StaticResource FieldLabelStyle}" Text="{DynamicResource 强制等待拼接时长(ms)}" />
                                                 <TextBox Style="{StaticResource InputTextBoxStyle}"
                                                          Text="{Binding SelectedProfile.ReplyAggregationMilliseconds, UpdateSourceTrigger=PropertyChanged}" />
                                                 <TextBlock Margin="0,6,0,0"
@@ -323,7 +323,7 @@ CornerRadius="999">
 
                                             <TextBlock Grid.Row="0"
                                                        Style="{StaticResource SectionTitleStyle}"
-                                                       Text="协议模板与占位符" />
+                                                       Text="{DynamicResource 协议模板与占位符}" />
                                             <TextBlock Grid.Row="1"
                                                        Margin="0,8,0,0"
                                                        Foreground="{DynamicResource AppMutedTextBrush}"
@@ -335,7 +335,7 @@ CornerRadius="999">
                                                     <RowDefinition Height="Auto" />
                                                     <RowDefinition Height="*" />
                                                 </Grid.RowDefinitions>
-                                                <TextBlock Style="{StaticResource FieldLabelStyle}" Text="协议内容模板" />
+                                                <TextBlock Style="{StaticResource FieldLabelStyle}" Text="{DynamicResource 协议内容模板}" />
                                                 <TextBox Grid.Row="1"
                                                          Style="{StaticResource InputTextBoxStyle}"
                                                          AcceptsReturn="True"
@@ -356,18 +356,18 @@ CornerRadius="999">
                                                     <ColumnDefinition Width="*" />
                                                 </Grid.ColumnDefinitions>
 
-                                                <TextBlock Style="{StaticResource FieldLabelStyle}" Text="占位符值" />
+                                                <TextBlock Style="{StaticResource FieldLabelStyle}" Text="{DynamicResource 占位符值}" />
                                                 <DataGrid Grid.Row="1" HorizontalScrollBarVisibility="Disabled"
                                                           ItemsSource="{Binding SelectedProfile.PlaceholderValues}"
                                                           Style="{StaticResource ColumnsDataGridStyle}">
                                                     <DataGrid.Columns>
                                                         <DataGridTextColumn Width="1.1*"
-                                                                            Header="占位符"
+                                                                            Header="{DynamicResource 占位符}"
                                                                             IsReadOnly="True"
                                                                             ElementStyle="{StaticResource CellTextBlockStyle}"
                                                                             Binding="{Binding Name}" />
                                                         <DataGridTextColumn Width="1.2*"
-                                                                            Header="值"
+                                                                            Header="{DynamicResource 值}"
                                                                             ElementStyle="{StaticResource CellTextBlockStyle}"
                                                                             EditingElementStyle="{StaticResource CellTextBoxStyle}"
                                                                             Binding="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
@@ -382,7 +382,7 @@ CornerRadius="999">
 
                                                 <TextBlock Grid.Column="2"
                                                            Style="{StaticResource FieldLabelStyle}"
-                                                           Text="实际指令" />
+                                                           Text="{DynamicResource 实际指令}" />
                                                 <TextBox Grid.Row="1"
                                                          Grid.Column="2"
                                                          x:Name="command"
@@ -412,7 +412,7 @@ CornerRadius="999">
 
                                             <TextBlock Grid.Row="0"
                                                        Style="{StaticResource SectionTitleStyle}"
-                                                       Text="返回示例与 Lua 解析脚本" />
+                                                       Text="{DynamicResource 返回示例与 Lua 解析脚本}" />
                                             <TextBlock Grid.Row="1"
                                                        Grid.ColumnSpan="3"
                                                        Margin="0,8,0,0"
@@ -425,7 +425,7 @@ CornerRadius="999">
                                                     <RowDefinition Height="Auto" />
                                                     <RowDefinition Height="*" />
                                                 </Grid.RowDefinitions>
-                                                <TextBlock Style="{StaticResource FieldLabelStyle}" Text="示例返回数据" />
+                                                <TextBlock Style="{StaticResource FieldLabelStyle}" Text="{DynamicResource 示例返回数据}" />
                                                 <TextBox Grid.Row="1"
                                                          Style="{StaticResource InputTextBoxStyle}"
                                                          AcceptsReturn="True"
@@ -444,7 +444,7 @@ CornerRadius="999">
                                                     <ColumnDefinition Width="110" />
                                                     <ColumnDefinition Width="*" />
                                                 </Grid.ColumnDefinitions>
-                                                <TextBlock Style="{StaticResource FieldLabelStyle}" Text="Lua 解析脚本" />
+                                                <TextBlock Style="{StaticResource FieldLabelStyle}" Text="{DynamicResource Lua 解析脚本}" />
                                                 <avalonEdit:TextEditor x:Name="ParseRulesLuaEditor"
                                                                        Grid.Row="1"
                                                                        Background="{DynamicResource TabCardBackgroundBrush}"
@@ -465,7 +465,7 @@ CornerRadius="999">
         Style="{StaticResource ConvertButtonStyle}"
         Command="{Binding ParseResultCommand}" />
 
-                                                <TextBlock Style="{StaticResource FieldLabelStyle}" Text="解析结果" Grid.Row="0" Grid.Column="2"/>
+                                                <TextBlock Style="{StaticResource FieldLabelStyle}" Text="{DynamicResource 解析结果}" Grid.Row="0" Grid.Column="2"/>
                                                 <TextBox Grid.Row="1" Grid.Column="2"
 x:Name="result"
 Style="{StaticResource InputTextBoxStyle}"
@@ -511,10 +511,10 @@ Text="{Binding ParsedResultText, Mode=OneWay}" />
                     <DockPanel LastChildFill="False">
                         <StackPanel DockPanel.Dock="Left">
                             <TextBlock Style="{StaticResource SectionTitleStyle}"
-                                       Text="Lua 解析脚本" />
+                                       Text="{DynamicResource Lua 解析脚本}" />
                             <TextBlock Margin="0,8,0,0"
                                        Foreground="{DynamicResource AppMutedTextBrush}"
-                                       Text="data 表示当前返回数据，脚本只需 return 任意值。" />
+                                       Text="{DynamicResource data 表示当前返回数据，脚本只需 return 任意值。}" />
                         </StackPanel>
                         <TextBlock DockPanel.Dock="Right"
                                    VerticalAlignment="Center"
@@ -530,10 +530,10 @@ Text="{Binding ParsedResultText, Mode=OneWay}" />
                                 Margin="0,18,0,0"
                                 HorizontalAlignment="Right"
                                 Orientation="Horizontal">
-                        <Button Content="取消"
+                        <Button Content="{DynamicResource 取消}"
                                 Click="ParseRuleEditorCancelButton_Click"
                                 Style="{StaticResource ActionButtonStyle}" />
-                        <Button Content="保存"
+                        <Button Content="{DynamicResource 保存}"
                                 Click="ParseRuleEditorSaveButton_Click"
                                 Style="{StaticResource PrimaryActionButtonStyle}" />
                     </StackPanel>

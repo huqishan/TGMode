@@ -195,6 +195,99 @@
         </StackPanel>
     </DataTemplate>
 
+    <DataTemplate x:Key="SchemeParameterTabHeaderTemplate">
+        <TextBlock Margin="14,8"
+                   HorizontalAlignment="Stretch"
+                   FontSize="13"
+                   FontWeight="SemiBold"
+                   Foreground="{Binding RelativeSource={RelativeSource AncestorType={x:Type TabItem}}, Path=Foreground}"
+                   Text="{Binding}"
+                   TextAlignment="Center"
+                   TextWrapping="NoWrap" />
+    </DataTemplate>
+
+    <Style x:Key="SchemeParameterTabItemStyle" TargetType="{x:Type TabItem}">
+        <Setter Property="Foreground" Value="{DynamicResource AppMutedTextBrush}" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="HeaderTemplate" Value="{StaticResource SchemeParameterTabHeaderTemplate}" />
+        <Setter Property="MinWidth" Value="96" />
+        <Setter Property="Height" Value="34" />
+        <Setter Property="Margin" Value="0,0,14,0" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+        <Setter Property="VerticalContentAlignment" Value="Stretch" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type TabItem}">
+                    <Grid Background="{TemplateBinding Background}"
+                          SnapsToDevicePixels="True">
+                        <ContentPresenter ContentSource="Header"
+                                          HorizontalAlignment="Stretch"
+                                          VerticalAlignment="Center"
+                                          RecognizesAccessKey="True" />
+                        <Border x:Name="SelectedLine"
+                                Height="2"
+                                VerticalAlignment="Bottom"
+                                Background="{DynamicResource PrimaryButtonBrush}"
+                                CornerRadius="1"
+                                Opacity="0" />
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter Property="Foreground" Value="{DynamicResource AppContentTextBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsSelected" Value="True">
+                            <Setter Property="Foreground" Value="{DynamicResource AppContentTextBrush}" />
+                            <Setter TargetName="SelectedLine" Property="Opacity" Value="1" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.45" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="SchemeParameterTabControlStyle" TargetType="{x:Type TabControl}">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="ItemContainerStyle" Value="{StaticResource SchemeParameterTabItemStyle}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type TabControl}">
+                    <Grid ClipToBounds="True"
+                          KeyboardNavigation.TabNavigation="Local"
+                          SnapsToDevicePixels="True">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+
+                        <Border Grid.Row="0"
+                                BorderBrush="{DynamicResource TabItemBorderBrush}"
+                                BorderThickness="0,0,0,1">
+                            <TabPanel Margin="0,0,0,6"
+                                      Background="Transparent"
+                                      IsItemsHost="True"
+                                      KeyboardNavigation.TabIndex="1" />
+                        </Border>
+
+                        <ContentPresenter x:Name="PART_SelectedContentHost"
+                                          Grid.Row="1"
+                                          Margin="0,10,0,0"
+                                          ContentSource="SelectedContent"
+                                          HorizontalAlignment="Stretch"
+                                          VerticalAlignment="Stretch"
+                                          SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" />
+                    </Grid>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <Style x:Key="MinimalTabItemStyle" TargetType="{x:Type TabItem}">
         <Setter Property="Foreground" Value="{DynamicResource TabItemForegroundBrush}" />
         <Setter Property="Background" Value="{DynamicResource TabItemBackgroundBrush}" />

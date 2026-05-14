@@ -30,7 +30,6 @@ public static class NavigationCatalog
             new("业务管理", IconFactory.Cpu, null,
                 new ObservableCollection<ControlInfoDataItem>
                 {
-                    new("工步配置", IconFactory.Boxes, "Module.Business.Views.WorkStepConfigurationView, Module.Business", null),
                     new("方案配置", IconFactory.FileCog, "Module.Business.Views.SchemeConfigurationView, Module.Business", null),
                     new("流程图", IconFactory.Workflow, "Module.Business.Views.FlowchartView, Module.Business", null),
                     new("脚本管理", IconFactory.Workflow, "Module.Business.Views.LuaScriptView, Module.Business", null),

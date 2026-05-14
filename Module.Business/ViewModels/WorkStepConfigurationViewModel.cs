@@ -3,7 +3,7 @@ using ControlLibrary;
 namespace Module.Business.ViewModels;
 
 /// <summary>
-/// 工步配置界面 ViewModel。
+/// 可复用步骤编辑器 ViewModel。
 /// </summary>
 public sealed partial class WorkStepConfigurationViewModel : ViewModelProperties
 {

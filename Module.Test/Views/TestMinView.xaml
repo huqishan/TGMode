@@ -1,4 +1,4 @@
-<UserControl x:Class="Module.Test.Views.TestMinView"
+﻿<UserControl x:Class="Module.Test.Views.TestMinView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
@@ -127,7 +127,7 @@
                     </StackPanel>
 
                     <StackPanel Grid.Column="2" VerticalAlignment="Center">
-                        <TextBlock Style="{StaticResource AppMutedTextBlockStyle}" Text="产品条码" />
+                        <TextBlock Style="{StaticResource AppMutedTextBlockStyle}" Text="{DynamicResource 产品条码}" />
                         <TextBlock Margin="0,6,0,0"
                                    FontFamily="Consolas"
                                    FontSize="22"
@@ -152,7 +152,7 @@
                     <Button Grid.Column="0"
                             Command="{Binding SingleStepTestCommand}"
                             Style="{StaticResource CompactTestStepButtonStyle}"
-                            ToolTip="单步测试">
+                            ToolTip="{DynamicResource 单步测试}">
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
                             <Grid Width="20" Height="20" Margin="0,0,7,0" VerticalAlignment="Center">
                                 <Ellipse Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
@@ -167,14 +167,14 @@
                                        FontSize="14"
                                        FontWeight="SemiBold"
                                        VerticalAlignment="Center"
-                                       Text="单步" />
+                                       Text="{DynamicResource 单步}" />
                         </StackPanel>
                     </Button>
 
                     <Button Grid.Column="2"
                             Command="{Binding ContinuousTestCommand}"
                             Style="{StaticResource CompactTestContinuousButtonStyle}"
-                            ToolTip="连续测试">
+                            ToolTip="{DynamicResource 连续测试}">
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
                             <Grid Width="20" Height="20" Margin="0,0,7,0" VerticalAlignment="Center">
                                 <Ellipse Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" />
@@ -192,14 +192,14 @@
                                        FontSize="14"
                                        FontWeight="SemiBold"
                                        VerticalAlignment="Center"
-                                       Text="连续" />
+                                       Text="{DynamicResource 连续}" />
                         </StackPanel>
                     </Button>
 
                     <Button Grid.Column="4"
                             Command="{Binding StopTestCommand}"
                             Style="{StaticResource CompactTestStopButtonStyle}"
-                            ToolTip="停止测试">
+                            ToolTip="{DynamicResource 停止测试}">
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
                             <Rectangle Width="14"
                                        Height="14"
@@ -212,7 +212,7 @@
                                        FontSize="14"
                                        FontWeight="SemiBold"
                                        VerticalAlignment="Center"
-                                       Text="停止" />
+                                       Text="{DynamicResource 停止}" />
                         </StackPanel>
                     </Button>
                 </Grid>
@@ -225,7 +225,7 @@
                         <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
 
-                    <TextBlock Style="{StaticResource SectionTitleStyle}" Text="工步列表" />
+                    <TextBlock Style="{StaticResource SectionTitleStyle}" Text="{DynamicResource 工步列表}" />
 
                     <ListBox Grid.Row="1"
                              Margin="0,12,0,0"
@@ -269,7 +269,7 @@
                 </Grid.RowDefinitions>
 
                 <StackPanel Grid.Row="0">
-                    <TextBlock Style="{StaticResource SectionTitleStyle}" Text="结果列表" />
+                    <TextBlock Style="{StaticResource SectionTitleStyle}" Text="{DynamicResource 结果列表}" />
                     <TextBlock Margin="0,6,0,0"
                                Style="{StaticResource AppMutedTextBlockStyle}"
                                Text="{Binding SchemeName}" />
@@ -295,7 +295,7 @@
                         <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
 
-                    <TextBlock Style="{StaticResource SectionTitleStyle}" Text="MES 工艺列表" />
+                    <TextBlock Style="{StaticResource SectionTitleStyle}" Text="{DynamicResource MES 工艺列表}" />
 
                     <ListBox Grid.Row="1"
                              Margin="0,6,0,0"
@@ -331,7 +331,7 @@
                     </Grid.RowDefinitions>
 
                     <StackPanel>
-                        <TextBlock Style="{StaticResource SectionTitleStyle}" Text="运行日志" />
+                        <TextBlock Style="{StaticResource SectionTitleStyle}" Text="{DynamicResource 运行日志}" />
                     </StackPanel>
 
                     <TextBox Grid.Row="1"

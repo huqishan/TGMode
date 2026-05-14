@@ -118,13 +118,13 @@
             <StackPanel Orientation="Horizontal"
                         GotKeyboardFocus="DataStructureFieldEditor_GotKeyboardFocus">
                 <CheckBox Margin="0,0,6,0" IsChecked="{Binding IsSelected, Mode=TwoWay}" VerticalAlignment="Center"/>
-                <Label Content="客户端Code|" Style="{DynamicResource LabelStyle}"/>
+                <Label Content="{DynamicResource 客户端Code|}" Style="{DynamicResource LabelStyle}"/>
                 <TextBox Text="{Binding ClientCode, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Style="{DynamicResource DataStructureTextBoxStyle}"/>
 
-                <Label Content="上传MESCode|" Style="{DynamicResource LabelStyle}"/>
+                <Label Content="{DynamicResource 上传MESCode|}" Style="{DynamicResource LabelStyle}"/>
                 <TextBox Text="{Binding MesCode, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Style="{DynamicResource DataStructureTextBoxStyle}"/>
 
-                <Label Content="数据类型|" Style="{DynamicResource LabelStyle}"/>
+                <Label Content="{DynamicResource 数据类型|}" Style="{DynamicResource LabelStyle}"/>
                 <ComboBox Style="{StaticResource InputComboBoxStyle}" Width="120"
 ItemContainerStyle="{StaticResource InputComboBoxItemStyle}"
 DisplayMemberPath="DisplayName"
@@ -132,7 +132,7 @@ ItemsSource="{Binding DataTypes}"
 SelectedValue="{Binding DataType, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
 SelectedValuePath="Value" />
 
-                <!--<Label Content="默认值|" Style="{DynamicResource LabelStyle}"/>
+                <!--<Label Content="{DynamicResource 默认值|}" Style="{DynamicResource LabelStyle}"/>
                 <TextBox Text="{Binding DefaultValue, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Style="{DynamicResource DataStructureTextBoxStyle}"/>-->
             </StackPanel>
         </HierarchicalDataTemplate>
@@ -154,25 +154,25 @@ SelectedValuePath="Value" />
                     <RowDefinition Height="*" />
                 </Grid.RowDefinitions>
                 <StackPanel DockPanel.Dock="Left">
-                    <TextBlock Style="{StaticResource SectionTitleStyle}" Text="数据结构配置" />
-                    <TextBlock TextWrapping="Wrap" Margin="0,6,0,0" Style="{StaticResource AppMutedTextBlockStyle}" Text="支持多配置、JSON/XML、MESCode、ClientCode、数据类型、默认值与 XML 命名空间。" />
+                    <TextBlock Style="{StaticResource SectionTitleStyle}" Text="{DynamicResource 数据结构配置}" />
+                    <TextBlock TextWrapping="Wrap" Margin="0,6,0,0" Style="{StaticResource AppMutedTextBlockStyle}" Text="{DynamicResource 支持多配置、JSON/XML、MESCode、ClientCode、数据类型、默认值与 XML 命名空间。}" />
 
                 </StackPanel>
                 <searchBox:SearchBox Grid.Row="1"
    Margin="0,16,0,0"
-   PlaceholderText="搜索结构配置..."
+   PlaceholderText="{DynamicResource 搜索结构配置...}"
    Text="{Binding SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                 <UniformGrid Grid.Row="2" Columns="4" Margin="0,16,0,16">
-                    <Button Content="新增"
+                    <Button Content="{DynamicResource 新增}"
                             Command="{Binding AddProfileCommand}"
                             Style="{StaticResource PrimaryActionButtonStyle}" />
-                    <Button Content="复制"
+                    <Button Content="{DynamicResource 复制}"
                             Command="{Binding DuplicateProfileCommand}"
                             Style="{StaticResource ActionButtonStyle}" />
-                    <Button Content="删除"
+                    <Button Content="{DynamicResource 删除}"
                             Command="{Binding DeleteProfileCommand}"
                             Style="{StaticResource ActionButtonStyle}" />
-                    <Button Content="保存"
+                    <Button Content="{DynamicResource 保存}"
                             Command="{Binding SaveProfilesCommand}"
                             Style="{StaticResource ActionButtonStyle}" />
                 </UniformGrid>
@@ -232,7 +232,7 @@ SelectedValuePath="Value" />
                 <Grid>
                     <StackPanel>
                         <DockPanel>
-                            <TextBlock Style="{StaticResource SectionTitleStyle}" Text="当前结构" />
+                            <TextBlock Style="{StaticResource SectionTitleStyle}" Text="{DynamicResource 当前结构}" />
                             <Border HorizontalAlignment="Right"
 Margin="16,0,0,0"
 Padding="12,6"
@@ -252,12 +252,12 @@ CornerRadius="999">
                                 <ColumnDefinition/>
                             </Grid.ColumnDefinitions>
                             <StackPanel>
-                                <TextBlock Style="{StaticResource FieldLabelStyle}" Text="结构名称" />
+                                <TextBlock Style="{StaticResource FieldLabelStyle}" Text="{DynamicResource 结构名称}" />
                                 <TextBox Style="{StaticResource InputTextBoxStyle}"
          Text="{Binding SelectedProfile.Name, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                             </StackPanel>
                             <StackPanel HorizontalAlignment="Left" Grid.Column="1" Margin="16,0,0,0">
-                                <TextBlock Style="{StaticResource FieldLabelStyle}" Text="结构类型" />
+                                <TextBlock Style="{StaticResource FieldLabelStyle}" Text="{DynamicResource 结构类型}" />
                                 <ComboBox Style="{StaticResource InputComboBoxStyle}"
 ItemContainerStyle="{StaticResource InputComboBoxItemStyle}"
 DisplayMemberPath="DisplayName"
@@ -284,7 +284,7 @@ SelectedValuePath="Value" />
                     <ContextMenu ItemContainerStyle="{StaticResource StructureContextMenuItemStyle}"
                                  DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}"
                                  Style="{StaticResource StructureContextMenuStyle}">
-                        <MenuItem Header="导入结构">
+                        <MenuItem Header="{DynamicResource 导入结构}">
                             <MenuItem.Icon>
                                 <Viewbox Width="32" Height="32">
                                     <Canvas Width="16" Height="16">
@@ -294,7 +294,7 @@ SelectedValuePath="Value" />
                                 </Viewbox>
                             </MenuItem.Icon>
                         </MenuItem>
-                        <MenuItem Header="导出结构">
+                        <MenuItem Header="{DynamicResource 导出结构}">
                             <MenuItem.Icon>
                                 <Viewbox Width="32" Height="32">
                                     <Canvas Width="16" Height="16">
@@ -304,7 +304,7 @@ SelectedValuePath="Value" />
                                 </Viewbox>
                             </MenuItem.Icon>
                         </MenuItem>
-                        <MenuItem Header="结构导入">
+                        <MenuItem Header="{DynamicResource 结构导入}">
                             <MenuItem.Icon>
                                 <Viewbox Width="32" Height="32">
                                     <Canvas Width="16" Height="16">
@@ -314,7 +314,7 @@ SelectedValuePath="Value" />
                                 </Viewbox>
                             </MenuItem.Icon>
                         </MenuItem>
-                        <MenuItem Header="添加子项"
+                        <MenuItem Header="{DynamicResource 添加子项}"
                                   Command="{Binding AddFieldChildCommand}">
                             <MenuItem.Icon>
                                 <Viewbox Width="32" Height="32">
@@ -326,7 +326,7 @@ SelectedValuePath="Value" />
                             </MenuItem.Icon>
                         </MenuItem>
                         <MenuItem x:Name="CopyFieldMenuItem"
-                                  Header="复制"
+                                  Header="{DynamicResource 复制}"
                                   Command="{Binding CopyFieldCommand}">
                             <MenuItem.Icon>
                                 <Viewbox Width="32" Height="32">
@@ -338,7 +338,7 @@ SelectedValuePath="Value" />
                             </MenuItem.Icon>
                         </MenuItem>
                         <MenuItem x:Name="PasteFieldMenuItem"
-                                  Header="粘贴"
+                                  Header="{DynamicResource 粘贴}"
                                   Command="{Binding PasteFieldCommand}">
                             <MenuItem.Icon>
                                 <Viewbox Width="32" Height="32">
@@ -350,7 +350,7 @@ SelectedValuePath="Value" />
                             </MenuItem.Icon>
                         </MenuItem>
                         <MenuItem x:Name="DeleteFieldMenuItem"
-                                  Header="删除"
+                                  Header="{DynamicResource 删除}"
                                   Command="{Binding DeleteFieldCommand}">
                             <MenuItem.Icon>
                                 <Viewbox Width="32" Height="32">
@@ -368,7 +368,7 @@ SelectedValuePath="Value" />
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
-                    <TextBlock Style="{StaticResource SectionTitleStyle}" Text="结构内容" />
+                    <TextBlock Style="{StaticResource SectionTitleStyle}" Text="{DynamicResource 结构内容}" />
 
                     <TreeView x:Name="StructureTreeView"
           Grid.Row="1"
@@ -426,9 +426,9 @@ IsHitTestVisible="False">
                         </Grid.RowDefinitions>
 
                         <DockPanel LastChildFill="False">
-                            <TextBlock Style="{StaticResource SectionTitleStyle}" Text="节点详细信息" />
+                            <TextBlock Style="{StaticResource SectionTitleStyle}" Text="{DynamicResource 节点详细信息}" />
                             <Button DockPanel.Dock="Right"
-                                    Content="关闭"
+                                    Content="{DynamicResource 关闭}"
                                     Command="{Binding CloseStructureDrawerCommand}"
                                     Style="{StaticResource ActionButtonStyle}" />
                         </DockPanel>
@@ -441,7 +441,7 @@ IsHitTestVisible="False">
                                 <TextBlock HorizontalAlignment="Center"
                                            VerticalAlignment="Center"
                                            Foreground="{DynamicResource AppMutedTextBrush}"
-                                           Text="未选择节点">
+                                           Text="{DynamicResource 未选择节点}">
                                     <TextBlock.Style>
                                         <Style TargetType="{x:Type TextBlock}">
                                             <Setter Property="Visibility" Value="Collapsed" />
@@ -470,25 +470,25 @@ IsHitTestVisible="False">
                                     </Grid.RowDefinitions>
 
                                     <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,0,12">
-                                        <TextBlock Style="{StaticResource FieldLabelStyle}" Text="客户端Code" />
+                                        <TextBlock Style="{StaticResource FieldLabelStyle}" Text="{DynamicResource 客户端Code}" />
                                         <TextBox Style="{StaticResource InputTextBoxStyle}"
                                                  Text="{Binding ClientCode, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                                     </StackPanel>
 
                                     <StackPanel Grid.Row="0" Grid.Column="2" Margin="0,0,0,12">
-                                        <TextBlock Style="{StaticResource FieldLabelStyle}" Text="上传MESCode" />
+                                        <TextBlock Style="{StaticResource FieldLabelStyle}" Text="{DynamicResource 上传MESCode}" />
                                         <TextBox Style="{StaticResource InputTextBoxStyle}"
                                                  Text="{Binding MesCode, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                                     </StackPanel>
 
                                     <StackPanel Grid.Row="1" Margin="0,0,0,12">
-                                        <TextBlock Style="{StaticResource FieldLabelStyle}" Text="默认值" />
+                                        <TextBlock Style="{StaticResource FieldLabelStyle}" Text="{DynamicResource 默认值}" />
                                         <TextBox Style="{StaticResource InputTextBoxStyle}"
              Text="{Binding DefaultValue, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                                     </StackPanel>
                                     <StackPanel Grid.Row="1" Grid.Column="2" Orientation="Horizontal">
                                         <StackPanel>
-                                            <TextBlock Style="{StaticResource FieldLabelStyle}" Text="数据类型" />
+                                            <TextBlock Style="{StaticResource FieldLabelStyle}" Text="{DynamicResource 数据类型}" />
                                             <ComboBox Style="{StaticResource InputComboBoxStyle}"  Width="220"
 ItemContainerStyle="{StaticResource InputComboBoxItemStyle}" HorizontalAlignment="Left"
 DisplayMemberPath="DisplayName"
@@ -497,25 +497,25 @@ SelectedValue="{Binding DataType, Mode=TwoWay, UpdateSourceTrigger=PropertyChang
 SelectedValuePath="Value" />
                                         </StackPanel>
                                         <StackPanel Margin="12,0,0,0">
-                                            <TextBlock Style="{StaticResource FieldLabelStyle}" Text="保留位数" />
+                                            <TextBlock Style="{StaticResource FieldLabelStyle}" Text="{DynamicResource 保留位数}" />
                                             <TextBox Style="{StaticResource InputTextBoxStyle}"
 Text="{Binding KeepCount, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                                         </StackPanel>
                                         <StackPanel Margin="12,0,0,0">
-                                            <TextBlock Style="{StaticResource FieldLabelStyle}" Text="循环次数" />
+                                            <TextBlock Style="{StaticResource FieldLabelStyle}" Text="{DynamicResource 循环次数}" />
                                             <TextBox Style="{StaticResource InputTextBoxStyle}"
 Text="{Binding WhileCount, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                                         </StackPanel>
                                         <CheckBox Grid.Row="0" Margin="12,25,0,0"
 Grid.Column="2"
 VerticalAlignment="Center"
-Content="当前字段允许为空"
+Content="{DynamicResource 当前字段允许为空}"
 Foreground="{DynamicResource AppContentTextBrush}"
 IsChecked="{Binding IsNull, Mode=TwoWay}" />
                                     </StackPanel>
 
                                     <StackPanel Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="3" Margin="0,0,0,12">
-                                        <TextBlock Style="{StaticResource FieldLabelStyle}" Text="XML命名空间" />
+                                        <TextBlock Style="{StaticResource FieldLabelStyle}" Text="{DynamicResource XML命名空间}" />
                                         <TextBox Style="{StaticResource InputTextBoxStyle}"
                                                  Text="{Binding XmlNamespace, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                                     </StackPanel>
@@ -530,19 +530,19 @@ IsChecked="{Binding IsNull, Mode=TwoWay}" />
                                         </Grid.ColumnDefinitions>
 
                                         <StackPanel Grid.Column="0">
-                                            <TextBlock Style="{StaticResource FieldLabelStyle}" Text="判断值" />
+                                            <TextBlock Style="{StaticResource FieldLabelStyle}" Text="{DynamicResource 判断值}" />
                                             <TextBox Style="{StaticResource InputTextBoxStyle}"
                                                      Text="{Binding JudgeValue, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                                         </StackPanel>
 
                                         <StackPanel Grid.Column="2">
-                                            <TextBlock Style="{StaticResource FieldLabelStyle}" Text="OK文本" />
+                                            <TextBlock Style="{StaticResource FieldLabelStyle}" Text="{DynamicResource OK文本}" />
                                             <TextBox Style="{StaticResource InputTextBoxStyle}"
                                                      Text="{Binding OKText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                                         </StackPanel>
 
                                         <StackPanel Grid.Column="4">
-                                            <TextBlock Style="{StaticResource FieldLabelStyle}" Text="NG文本" />
+                                            <TextBlock Style="{StaticResource FieldLabelStyle}" Text="{DynamicResource NG文本}" />
                                             <TextBox Style="{StaticResource InputTextBoxStyle}"
                                                      Text="{Binding NGText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                                         </StackPanel>
