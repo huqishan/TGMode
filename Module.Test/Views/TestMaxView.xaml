@@ -230,8 +230,8 @@ ItemsSource="{Binding WorkStep}">
                         </ListBox>
                         <testControls:TestDataTable Grid.Column="1" ItemsSource="{Binding TestData}" />
                     </Grid>
-
                 </TabItem>
+                <TabItem Header="实时图表"></TabItem>
             </TabControl>
 
         </Border>

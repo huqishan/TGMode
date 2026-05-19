@@ -20,28 +20,28 @@ public sealed class TestMaxViewModel : ViewModelProperties, IDisposable
     private readonly IEventAggregator _eventAggregator;
     private string _stationName;
     private string _lineName;
-    private string _testStatus = "\u5f85\u914d\u7f6e";
-    private string _productName = "\u4ea7\u54c1\u540d\u79f0";
-    private string _productBarcode = "\u672a\u8bfb\u7801";
-    private string _schemeName = "\u672a\u9009\u62e9\u65b9\u6848";
-    private string _workOrderNo = "\u672a\u4e0b\u53d1";
+    private string _testStatus = "待配置";
+    private string _productName = "产品名称";
+    private string _productBarcode = "未读码";
+    private string _schemeName = "未选择方案";
+    private string _workOrderNo = "未下发";
     private string _selectedProductName = string.Empty;
     private TestProfileOption? _selectedProfile;
-    private string _runStateText = "Waiting";
+    private string _runStateText = "待机";
     private string _elapsedTimeText = "0.0 s";
     private Brush _statusBrush = WaitingBrush;
     private readonly Stopwatch _elapsedStopwatch = new();
     private bool _disposed;
 
     public TestMaxViewModel(IEventAggregator eventAggregator)
-        : this("\u5de5\u4f4d 1", eventAggregator)
+        : this("工位 1", eventAggregator)
     {
     }
 
     public TestMaxViewModel(string stationName, IEventAggregator eventAggregator)
     {
-        _stationName = string.IsNullOrWhiteSpace(stationName) ? "\u672a\u547d\u540d\u5de5\u4f4d" : stationName.Trim();
-        _lineName = "\u7ebf\u4f53 A";
+        _stationName = string.IsNullOrWhiteSpace(stationName) ? "未命名工位" : stationName.Trim();
+        _lineName = "线体 A";
         _eventAggregator = eventAggregator;
 
         SingleStepTestCommand = new RelayCommand(_ => StartSingleStepTest());
@@ -66,7 +66,7 @@ public sealed class TestMaxViewModel : ViewModelProperties, IDisposable
                 WorkStep = "单体电压",
                 Name = $"单体电压{i}",
                 TestValue = "23.8V",
-                JudgmentCondition = "\u7535\u538b > 22V",
+                JudgmentCondition = "电压 > 22V",
                 Result = "OK"
             });
         }
@@ -137,7 +137,7 @@ public sealed class TestMaxViewModel : ViewModelProperties, IDisposable
         {
             if (SetField(ref _selectedProfile, value))
             {
-                SchemeName = value?.WorkStepName ?? "\u672a\u9009\u62e9\u65b9\u6848";
+                SchemeName = value?.WorkStepName ?? "未选择方案";
             }
         }
     }
@@ -189,12 +189,12 @@ public sealed class TestMaxViewModel : ViewModelProperties, IDisposable
 
     private void StartSingleStepTest()
     {
-        StartTest("\u5355\u6b65\u6d4b\u8bd5");
+        StartTest("单步测试");
     }
 
     private void StartContinuousTest()
     {
-        StartTest("\u8fde\u7eed\u6d4b\u8bd5");
+        StartTest("连续测试");
     }
 
     private void StopTest()
@@ -203,15 +203,15 @@ public sealed class TestMaxViewModel : ViewModelProperties, IDisposable
         UpdateElapsedTime();
         ApplyCurrentWorkStepElapsedTime(ElapsedTimeText);
         _elapsedStopwatch.Reset();
-        TestStatus = "\u5df2\u505c\u6b62";
-        RunStateText = "Waiting";
+        TestStatus = "已停止";
+        RunStateText = "待机";
         StatusBrush = WaitingBrush;
     }
 
     private void StartTest(string statusText)
     {
         TestStatus = statusText;
-        RunStateText = "Running";
+        RunStateText = "运行中";
         StatusBrush = RunningBrush;
         _elapsedStopwatch.Restart();
         UpdateElapsedTime();
@@ -294,8 +294,8 @@ public sealed class TestMaxViewModel : ViewModelProperties, IDisposable
             return FailureBrush;
         }
 
-        return message.TestStatus.Contains("\u6d4b\u8bd5\u4e2d", StringComparison.OrdinalIgnoreCase) ||
-               message.TestStatus.Contains("\u6267\u884c\u4e2d", StringComparison.OrdinalIgnoreCase)
+        return message.TestStatus.Contains("测试中", StringComparison.OrdinalIgnoreCase) ||
+               message.TestStatus.Contains("执行中", StringComparison.OrdinalIgnoreCase)
             ? RunningBrush
             : WaitingBrush;
     }
@@ -316,34 +316,34 @@ public sealed class TestMaxViewModel : ViewModelProperties, IDisposable
         [
             new()
             {
-                WorkStep = "\u4e0a\u7535\u68c0\u67e5",
-                Name = "\u7535\u538b\u91c7\u6837",
+                WorkStep = "上电检查",
+                Name = "电压采样",
                 TestValue = "23.8V",
-                JudgmentCondition = "\u7535\u538b > 22V",
+                JudgmentCondition = "电压 > 22V",
                 Result = "OK"
             },
             new()
             {
-                WorkStep = "\u4e0a\u7535\u68c0\u67e5",
-                Name = "\u7535\u6d41\u91c7\u6837",
+                WorkStep = "上电检查",
+                Name = "电流采样",
                 TestValue = "1.2A",
-                JudgmentCondition = "\u7535\u538b > 22V",
+                JudgmentCondition = "电压 > 22V",
                 Result = "OK"
             },
             new()
             {
-                WorkStep = "\u4e0a\u7535\u68c0\u67e5",
-                Name = "PLC\u63e1\u624b",
+                WorkStep = "上电检查",
+                Name = "PLC握手",
                 TestValue = "286ms",
-                JudgmentCondition = "\u54cd\u5e94\u65f6\u95f4 < 200ms",
+                JudgmentCondition = "响应时间 < 200ms",
                 Result = "NG"
             },
             new()
             {
-                WorkStep = "\u901a\u8baf\u6d4b\u8bd5",
-                Name = "\u8bfb\u53d6\u6761\u7801",
+                WorkStep = "通讯测试",
+                Name = "读取条码",
                 TestValue = "A2405060001",
-                JudgmentCondition = "\u6761\u7801\u4e0d\u4e3a\u7a7a",
+                JudgmentCondition = "条码不为空",
                 Result = "OK"
             }
         ];
@@ -353,9 +353,9 @@ public sealed class TestMaxViewModel : ViewModelProperties, IDisposable
     {
         return
         [
-            "\u6807\u51c6\u7535\u6c60\u5305",
-            "\u9ad8\u538b\u63a7\u5236\u76d2",
-            "\u4ea7\u7ebf\u6837\u4ef6"
+            "标准电池包",
+            "高压控制盒",
+            "产线样件"
         ];
     }
 
@@ -364,17 +364,17 @@ public sealed class TestMaxViewModel : ViewModelProperties, IDisposable
         return
         [
             new(
-                "\u4e0a\u7535\u68c0\u67e5",
-                "\u5355\u6b65",
-                "\u6821\u9a8c\u7535\u538b\u3001\u7535\u6d41\u548c PLC \u63e1\u624b\u72b6\u6001\u3002"),
+                "上电检查",
+                "单步",
+                "校验电压、电流和 PLC 握手状态。"),
             new(
-                "\u901a\u8baf\u6d4b\u8bd5",
-                "\u8fde\u7eed",
-                "\u5faa\u73af\u8bfb\u53d6\u6761\u7801\u3001\u5de5\u5355\u548c MES \u8fd4\u56de\u7ed3\u679c\u3002"),
+                "通讯测试",
+                "连续",
+                "循环读取条码、工单和 MES 返回结果。"),
             new(
-                "\u7ed3\u679c\u590d\u6838",
-                "\u5224\u5b9a",
-                "\u6c47\u603b\u6d4b\u8bd5\u6570\u636e\u5e76\u5237\u65b0\u5224\u5b9a\u72b6\u6001\u3002")
+                "结果复核",
+                "判定",
+                "汇总测试数据并刷新判定状态。")
         ];
     }
 }

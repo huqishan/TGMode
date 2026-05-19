@@ -17,7 +17,7 @@ public sealed class TestViewModel : ViewModelProperties, IDisposable
         _eventAggregator = eventAggregator ?? throw new ArgumentNullException(nameof(eventAggregator));
         Stations = new ObservableCollection<TestMaxViewModel>
         {
-            new("\u5de5\u4f4d 1", _eventAggregator),
+            new("工位 1", _eventAggregator),
         };
 
         AddStationCommand = new RelayCommand(_ => AddStation());
@@ -27,7 +27,7 @@ public sealed class TestViewModel : ViewModelProperties, IDisposable
 
     public ICommand AddStationCommand { get; }
 
-    public string StationCountText => $"\u5171 {Stations.Count} \u4e2a\u5de5\u4f4d";
+    public string StationCountText => $"共 {Stations.Count} 个工位";
 
     public void Dispose()
     {
@@ -46,7 +46,7 @@ public sealed class TestViewModel : ViewModelProperties, IDisposable
 
     private void AddStation()
     {
-        Stations.Add(new TestMaxViewModel($"\u5de5\u4f4d {_nextStationIndex++}", _eventAggregator));
+        Stations.Add(new TestMaxViewModel($"工位 {_nextStationIndex++}", _eventAggregator));
         OnPropertyChanged(nameof(StationCountText));
     }
 }
