@@ -121,7 +121,7 @@ namespace Shared.Infrastructure.Communication
             }
         }
 
-        public bool Read(ref ReadWriteModel readWriteModel)
+        public bool Receive(ref SendReceiveModel readWriteModel)
         {
             int waitTime = readWriteModel.WaitTime > 0 ? readWriteModel.WaitTime : 10000;
             if (_responseQueue.TryTake(out string? response, waitTime))
@@ -134,7 +134,7 @@ namespace Shared.Infrastructure.Communication
             return false;
         }
 
-        public bool Write(ref ReadWriteModel readWriteModel, bool isWait = false)
+        public bool Send(ref SendReceiveModel readWriteModel, bool isWait = false)
         {
             if (_udpServer is null || IsConnected != ConnectState.Connected)
             {
@@ -169,9 +169,9 @@ namespace Shared.Infrastructure.Communication
             }
         }
 
-        public Task<bool> WriteAsync(ReadWriteModel readWriteModel)
+        public Task<bool> SendAsync(SendReceiveModel readWriteModel)
         {
-            return Task.Run(() => Write(ref readWriteModel));
+            return Task.Run(() => Send(ref readWriteModel));
         }
 
         public virtual string OnReceiveHandler(byte[] data)

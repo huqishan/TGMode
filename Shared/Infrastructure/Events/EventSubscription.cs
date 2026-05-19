@@ -42,6 +42,8 @@ namespace Shared.Infrastructure.Events
         /// <value>A token that identifies this <see cref="IEventSubscription"/>.</value>
         public SubscriptionToken SubscriptionToken { get; set; }
 
+        public Action<Exception>? PublicationExceptionHandler { get; set; }
+
         /// <summary>
         /// Gets the execution strategy to publish this event.
         /// </summary>
@@ -62,7 +64,14 @@ namespace Shared.Infrastructure.Events
             {
                 return arguments =>
                 {
-                    InvokeAction(action);
+                    try
+                    {
+                        InvokeAction(action);
+                    }
+                    catch (Exception ex)
+                    {
+                        HandlePublicationException(ex);
+                    }
                 };
             }
             return null;
@@ -78,6 +87,11 @@ namespace Shared.Infrastructure.Events
             if (action == null) throw new ArgumentNullException(nameof(action));
 
             action();
+        }
+
+        protected void HandlePublicationException(Exception exception)
+        {
+            PublicationExceptionHandler?.Invoke(exception);
         }
     }
 
@@ -139,6 +153,8 @@ namespace Shared.Infrastructure.Events
         /// <value>A token that identifies this <see cref="IEventSubscription"/>.</value>
         public SubscriptionToken SubscriptionToken { get; set; }
 
+        public Action<Exception>? PublicationExceptionHandler { get; set; }
+
         /// <summary>
         /// Gets the execution strategy to publish this event.
         /// </summary>
@@ -160,14 +176,21 @@ namespace Shared.Infrastructure.Events
             {
                 return arguments =>
                 {
-                    TPayload argument = default(TPayload);
-                    if (arguments != null && arguments.Length > 0 && arguments[0] != null)
+                    try
                     {
-                        argument = (TPayload)arguments[0];
+                        TPayload argument = default(TPayload);
+                        if (arguments != null && arguments.Length > 0 && arguments[0] != null)
+                        {
+                            argument = (TPayload)arguments[0];
+                        }
+                        if (filter(argument))
+                        {
+                            InvokeAction(action, argument);
+                        }
                     }
-                    if (filter(argument))
+                    catch (Exception ex)
                     {
-                        InvokeAction(action, argument);
+                        HandlePublicationException(ex);
                     }
                 };
             }
@@ -185,6 +208,11 @@ namespace Shared.Infrastructure.Events
             if (action == null) throw new ArgumentNullException(nameof(action));
 
             action(argument);
+        }
+
+        protected void HandlePublicationException(Exception exception)
+        {
+            PublicationExceptionHandler?.Invoke(exception);
         }
     }
 }

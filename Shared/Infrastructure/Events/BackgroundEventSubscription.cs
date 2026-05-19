@@ -25,7 +25,17 @@ namespace Shared.Infrastructure.Events
         /// <param name="action">The action to execute.</param>
         protected override void InvokeAction(Action action)
         {
-            Task.Run(action);
+            Task.Run(() =>
+            {
+                try
+                {
+                    action();
+                }
+                catch (Exception ex)
+                {
+                    HandlePublicationException(ex);
+                }
+            });
         }
     }
 
@@ -56,7 +66,17 @@ namespace Shared.Infrastructure.Events
         public override void InvokeAction(Action<TPayload> action, TPayload argument)
         {
             //ThreadPool.QueueUserWorkItem( (o) => action(argument) );
-            Task.Run(() => action(argument));
+            Task.Run(() =>
+            {
+                try
+                {
+                    action(argument);
+                }
+                catch (Exception ex)
+                {
+                    HandlePublicationException(ex);
+                }
+            });
         }
     }
 }

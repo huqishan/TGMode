@@ -44,14 +44,14 @@ namespace Shared.Abstractions
         /// <param name="message">消息</param>
         /// <param name="receiveObj">接收者对象</param>
         /// <returns></returns>
-        bool Write(ref ReadWriteModel readWriteModel, bool isWait = false);
+        bool Send(ref SendReceiveModel readWriteModel, bool isWait = false);
         /// <summary>
         /// 异步发送
         /// </summary>
         /// <param name="message">消息</param>
         /// <param name="receiveObj">接收者对象</param>
         /// <returns></returns>
-        Task<bool> WriteAsync(ReadWriteModel readWriteModel);
+        Task<bool> SendAsync(SendReceiveModel readWriteModel);
         /// <summary>
         /// 读取
         /// </summary>
@@ -59,7 +59,7 @@ namespace Shared.Abstractions
         /// <param name="lenght">长度</param>
         /// <param name="type">数据格式</param>
         /// <returns>string/string[]</returns>
-        bool Read(ref ReadWriteModel readWriteModel);
+        bool Receive(ref SendReceiveModel readWriteModel);
         /// <summary>
         /// 关闭
         /// </summary>

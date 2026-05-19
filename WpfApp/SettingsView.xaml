@@ -67,102 +67,13 @@
                               HorizontalAlignment="Left"
                               FontSize="14"
                               MaxDropDownHeight="240"
+                              ItemsSource="{Binding LanguageOptions}"
                               DisplayMemberPath="DisplayName"
                               ItemContainerStyle="{StaticResource InputComboBoxItemStyle}"
                               SelectedValuePath="Key"
-                              Style="{StaticResource InputComboBoxStyle}"
-                              SelectionChanged="OnLanguageSelectionChanged" />
+                              SelectedValue="{Binding SelectedLanguageKey, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                              Style="{StaticResource InputComboBoxStyle}" />
                 </StackPanel>
-            </Border>
-
-            <Border Width="650" Height="400"
-                    Padding="28"
-                    HorizontalAlignment="Left"
-                    Background="{DynamicResource TabItemBackgroundBrush}"
-                    BorderBrush="{DynamicResource TabItemBorderBrush}"
-                    BorderThickness="1"
-                    CornerRadius="18">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="*" />
-                    </Grid.RowDefinitions>
-
-                    <DockPanel Grid.Row="0" LastChildFill="True">
-                        <StackPanel DockPanel.Dock="Right"
-                                    Orientation="Horizontal"
-                                    HorizontalAlignment="Right">
-                            <Button Margin="0,0,10,0"
-                                    Click="AddStationButton_Click"
-                                    Content="{DynamicResource SettingsAddStation}"
-                                    Style="{StaticResource ActionButtonStyle}" />
-                            <Button Click="SaveStationsButton_Click"
-                                    Content="{DynamicResource SettingsSaveStations}"
-                                    Style="{StaticResource PrimaryActionButtonStyle}" />
-                        </StackPanel>
-
-                        <TextBlock Style="{StaticResource AppTitleTextBlockStyle}"
-                                   Text="{DynamicResource SettingsTestStationsTitle}" />
-                    </DockPanel>
-
-                    <TextBlock Grid.Row="1"
-                               Margin="0,8,0,0"
-                               Style="{StaticResource AppMutedTextBlockStyle}"
-                               Text="{DynamicResource SettingsTestStationsDescription}"
-                               TextWrapping="Wrap" />
-
-                    <TextBlock Grid.Row="2"
-                               Margin="0,12,0,0"
-                               FontWeight="SemiBold"
-                               Text="{Binding TestStationSummaryText}" />
-
-                    <TextBlock Grid.Row="3"
-                               Margin="0,6,0,16"
-                               Foreground="{DynamicResource AppMutedTextBrush}"
-                               Text="{Binding TestStationStatusText}"
-                               TextWrapping="Wrap" />
-
-                    <DataGrid Grid.Row="4"
-                              x:Name="TestStationsDataGrid"
-                              Margin="0,4,0,0" HorizontalScrollBarVisibility="Disabled"
-                              ItemsSource="{Binding TestStations}"
-                              Style="{StaticResource ColumnsDataGridStyle}">
-                        <DataGrid.Columns>
-                            <DataGridTextColumn Header="{DynamicResource SettingsTestStationNameLabel}"
-                                                Width="*"
-                                                Binding="{Binding StationName, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
-                                                ElementStyle="{StaticResource CellTextBlockStyle}"
-                                                EditingElementStyle="{StaticResource CellTextBoxStyle}" />
-
-                            <DataGridTemplateColumn Header="{DynamicResource SettingsTestStationSchemeMatchLabel}"
-                                                    Width="140">
-                                <DataGridTemplateColumn.CellTemplate>
-                                    <DataTemplate>
-                                        <CheckBox HorizontalAlignment="Center"
-                                                  VerticalAlignment="Center"
-                                                  IsChecked="{Binding IsSchemeMatchingEnabled, Mode=TwoWay}" />
-                                    </DataTemplate>
-                                </DataGridTemplateColumn.CellTemplate>
-                            </DataGridTemplateColumn>
-
-                            <DataGridTemplateColumn Header="{DynamicResource Action}"
-                                                    Width="110">
-                                <DataGridTemplateColumn.CellTemplate>
-                                    <DataTemplate>
-                                        <Button HorizontalAlignment="Center"
-                                                Click="DeleteStationButton_Click"
-                                                Content="{DynamicResource SettingsDeleteStation}"
-                                                Style="{StaticResource ActionButtonStyle}"
-                                                Tag="{Binding}" />
-                                    </DataTemplate>
-                                </DataGridTemplateColumn.CellTemplate>
-                            </DataGridTemplateColumn>
-                        </DataGrid.Columns>
-                    </DataGrid>
-                </Grid>
             </Border>
         </StackPanel>
     </ScrollViewer>

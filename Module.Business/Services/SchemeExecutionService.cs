@@ -1,9 +1,11 @@
-﻿using Module.Business.Models;
+﻿using ControlLibrary.Models.MediatorModels.Communication;
+using Module.Business.Models;
+using Module.Business.ViewModels.PropertyVMs;
 using Shared.Abstractions;
-using Shared.Infrastructure.Communication;
 using Shared.Infrastructure.Events;
 using Shared.Infrastructure.Extensions;
 using Shared.Infrastructure.Lua;
+using Shared.Infrastructure.Mediator;
 using Shared.Models.Communication;
 using Shared.Models.Test;
 using System;
@@ -38,8 +40,20 @@ public static class SchemeExecutionService
     private static readonly ConcurrentDictionary<string, SchemeExecutionContext> ActiveExecutions =
         new(StringComparer.OrdinalIgnoreCase);
     private static readonly ConcurrentDictionary<string, string> GlobalValues = new(StringComparer.OrdinalIgnoreCase);
+    private static IEventAggregator? _eventAggregator;
+    private static IMediator? _mediator;
 
     #endregion
+
+    public static void ConfigureEventAggregator(IEventAggregator eventAggregator)
+    {
+        _eventAggregator = eventAggregator ?? throw new ArgumentNullException(nameof(eventAggregator));
+    }
+
+    public static void ConfigureMediator(IMediator mediator)
+    {
+        _mediator = mediator ?? throw new ArgumentNullException(nameof(mediator));
+    }
 
     #region 执行生命周期事件
 
@@ -145,7 +159,7 @@ public static class SchemeExecutionService
 
         try
         {
-            BusinessConfigurationCatalog catalog = BusinessConfigurationStore.LoadCatalog();
+            SchemeConfigurationCatalog catalog = BusinessConfigurationStore.LoadCatalog();
             SchemeProfile? scheme = catalog.Schemes.FirstOrDefault(item =>
                 string.Equals(item.SchemeName?.Trim(), normalizedSchemeName, StringComparison.OrdinalIgnoreCase));
             if (scheme is null)
@@ -743,24 +757,25 @@ public static class SchemeExecutionService
             return SchemeStepExecutionOutput.Failure("Communication name is required.");
         }
 
-        ICommunication? communication = CommunicationFactory.Get(communicationName);
-        if (communication is null)
+        if (_mediator is null)
         {
-            return SchemeStepExecutionOutput.Failure($"Communication '{communicationName}' is not running.");
+            return SchemeStepExecutionOutput.Failure("Device communication mediator is not configured.");
         }
 
         string message = BuildDeviceMessage(operation, schemeStep, returnValues);
-        ReadWriteModel readWriteModel = new(message);
-        bool result = await communication.WriteAsync(readWriteModel).ConfigureAwait(false);
+        SendReceiveModel send = new(message);
+        DeviceExecutionActionResult result = await _mediator
+            .Send(new SendDeviceDataRequest(communicationName, send), context.CancellationToken)
+            .ConfigureAwait(false);
         context.ThrowIfCancellationRequested();
 
-        return result
-            ? SchemeStepExecutionOutput.Success(readWriteModel.Result ?? string.Empty)
+        return result.IsSuccess
+            ? SchemeStepExecutionOutput.Success(result.Result ?? string.Empty)
             : SchemeStepExecutionOutput.Failure(
-                string.IsNullOrWhiteSpace(readWriteModel.Result?.ToString())
+                string.IsNullOrWhiteSpace(result.Message)
                     ? $"Communication '{communicationName}' write failed."
-                    : readWriteModel.Result.ToString()!,
-                readWriteModel.Result);
+                    : result.Message,
+                result.Result);
     }
 
     private static string BuildDeviceMessage(
@@ -1094,7 +1109,7 @@ public static class SchemeExecutionService
     {
         try
         {
-            EventAggregator.Current
+            _eventAggregator?
                 .GetEvent<TestExecutionStatusChangedEvent>()
                 .Publish(new TestExecutionStatusMessage(
                     stationNo,

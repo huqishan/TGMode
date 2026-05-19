@@ -35,16 +35,16 @@
 
                 <UniformGrid Grid.Row="1" Columns="4" Margin="0,18,0,16">
                     <Button Content="{DynamicResource 新建}"
-                    Click="NewProfileButton_Click"
+                    Command="{Binding NewProfileCommand}"
                     Style="{StaticResource PrimaryActionButtonStyle}"/>
                     <Button Content="{DynamicResource 复制}"
-                    Click="DuplicateProfileButton_Click"
+                    Command="{Binding DuplicateProfileCommand}"
                     Style="{StaticResource ActionButtonStyle}"/>
                     <Button Content="{DynamicResource 删除}"
-                    Click="DeleteProfileButton_Click"
+                    Command="{Binding DeleteProfileCommand}"
                     Style="{StaticResource ActionButtonStyle}"/>
                     <Button Content="{DynamicResource 保存}"
-                    Click="SaveProfilesButton_Click"
+                    Command="{Binding SaveProfilesCommand}"
                     Style="{StaticResource ActionButtonStyle}"/>
                 </UniformGrid>
 

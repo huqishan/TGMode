@@ -27,7 +27,12 @@ namespace Module.MES.Views
         public ApiConfigView()
         {
             InitializeComponent();
-            DataContext = new ApiConfigViewModel();
+        }
+
+        public ApiConfigView(ApiConfigViewModel viewModel)
+        {
+            InitializeComponent();
+            DataContext = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
         }
 
         #endregion

@@ -16,6 +16,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using Shared.Infrastructure.Extensions;
+using Module.Business.ViewModels.PropertyVMs;
 
 namespace Module.Business.Views
 {
@@ -25,7 +26,6 @@ namespace Module.Business.Views
     public partial class SchemeConfigurationView : UserControl
     {
         #region 常量与字段
-
         private const string SchemeStepDragDataFormat = "Module.Business.SchemeWorkStepItem";
         private const string OperationDragDataFormat = "Module.Business.WorkStepOperation";
         private const double OperationDrawerClosedOffset = 56d;
@@ -52,7 +52,12 @@ namespace Module.Business.Views
         public SchemeConfigurationView()
         {
             InitializeComponent();
-            DataContext = new SchemeConfigurationViewModel();
+        }
+
+        public SchemeConfigurationView(SchemeConfigurationViewModel viewModel)
+        {
+            InitializeComponent();
+            DataContext = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
             HookOperationMethodDragEvents();
             Loaded += SchemeConfigurationView_Loaded;
             Unloaded += SchemeConfigurationView_Unloaded;
@@ -66,7 +71,7 @@ namespace Module.Business.Views
         {
             if (ViewModel is not null)
             {
-                ViewModel.SchemeStepEditor.PropertyChanged += SchemeStepEditor_PropertyChanged;
+                ViewModel.PropertyChanged += ViewModel_PropertyChanged;
             }
 
             UpdateOperationDrawerVisual(animate: false);
@@ -77,44 +82,25 @@ namespace Module.Business.Views
         {
             if (ViewModel is not null)
             {
-                ViewModel.SchemeStepEditor.PropertyChanged -= SchemeStepEditor_PropertyChanged;
+                ViewModel.PropertyChanged -= ViewModel_PropertyChanged;
             }
         }
 
         #endregion
 
         #region 属性联动
-
-        /// <summary>
-        /// 切换当前方案时退出重命名态，避免文本框停留在旧方案上。
-        /// </summary>
         /// <summary>
         /// 同步步骤抽屉开关动画。
         /// </summary>
-        private void SchemeStepEditor_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+        /// <summary>
+        private void ViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
-            if (e.PropertyName == nameof(WorkStepConfigurationViewModel.IsOperationDrawerOpen))
+            if (e.PropertyName == nameof(SchemeConfigurationViewModel.IsStepEditorOpen))
             {
                 UpdateOperationDrawerVisual(animate: true);
             }
         }
 
-        #endregion
-
-        #region 方案名称重命名
-
-        /// <summary>
-        /// 进入方案名称编辑态，显示文本框并自动全选。
-        /// </summary>
-        /// <summary>
-        /// 文本框失焦后退出编辑态并保留当前输入。
-        /// </summary>
-        /// <summary>
-        /// 回车确认，Esc 恢复编辑前名称。
-        /// </summary>
-        /// <summary>
-        /// 控制方案名称的显示态与编辑态切换。
-        /// </summary>
         #endregion
 
         #region 方案工步拖拽
@@ -139,7 +125,7 @@ namespace Module.Business.Views
         }
 
         /// <summary>
-        /// 淇濆瓨鍓嶆彁浜ゅ綋鍓嶆柟妗堝悕绉扮殑缁戝畾鍊硷紝閬垮厤鍥犳湭澶辩劍鑰屼涪澶辨渶鍚庝竴娆¤緭鍏ャ€?
+        /// 提交方案名称文本框的当前编辑值，避免保存时仍停留在旧绑定值。
         /// </summary>
         private void CommitSchemeNameTextBoxes()
         {
@@ -309,7 +295,7 @@ namespace Module.Business.Views
         {
             if (ViewModel is not null)
             {
-                ViewModel.SchemeStepEditor.SelectedOperationMethodRow = OperationMethodDataGrid.SelectedItem as DataRowView;
+                ViewModel.SelectedInvokeMethodRow = OperationMethodDataGrid.SelectedItem as DataRowView;
             }
         }
 
@@ -333,7 +319,7 @@ namespace Module.Business.Views
                 return;
             }
 
-            WorkStepOperation? operation = ViewModel?.SchemeStepEditor.CreateOperationFromMethodTableRow(_pendingDraggedOperationMethodRow);
+            WorkStepOperation? operation = ViewModel?.CreateStepFromInvokeMethodRow(_pendingDraggedOperationMethodRow);
             _pendingDraggedOperationMethodRow = null;
             if (operation is null)
             {
@@ -349,7 +335,6 @@ namespace Module.Business.Views
         #endregion
 
         #region 步骤拖拽与双击编辑
-
         private void OperationsDataGrid_MouseDoubleClick(object sender, MouseButtonEventArgs e)
         {
             if (IsOperationSelectionCheckBox(e.OriginalSource as DependencyObject) ||
@@ -364,7 +349,7 @@ namespace Module.Business.Views
             }
 
             OperationsDataGrid.SelectedItem = operation;
-            ViewModel?.SchemeStepEditor.OpenOperationDrawerForEdit(operation);
+            ViewModel?.OpenStepEditorForEdit(operation);
             e.Handled = true;
         }
 
@@ -436,11 +421,11 @@ namespace Module.Business.Views
             {
                 if (isExistingOperation && targetOperation is not null)
                 {
-                    ViewModel?.SchemeStepEditor.MoveOperation(draggedOperation, targetOperation, insertAfter);
+                    ViewModel?.MoveStep(draggedOperation, targetOperation, insertAfter);
                 }
                 else if (!isExistingOperation)
                 {
-                    ViewModel?.SchemeStepEditor.InsertOperation(draggedOperation, targetOperation, insertAfter);
+                    ViewModel?.InsertStep(draggedOperation, targetOperation, insertAfter);
                 }
             }
 
@@ -462,7 +447,7 @@ namespace Module.Business.Views
             targetOperation = FindAncestor<DataGridRow>(e.OriginalSource as DependencyObject)?.Item as WorkStepOperation;
             insertAfter = false;
             isExistingOperation = draggedOperation is not null &&
-                                  ViewModel?.SchemeStepEditor.SelectedWorkStep?.Steps.Contains(draggedOperation) == true;
+                                  ViewModel?.ContainsCurrentStep(draggedOperation) == true;
 
             if (draggedOperation is null)
             {
@@ -480,7 +465,7 @@ namespace Module.Business.Views
                 return targetOperation is not null && !ReferenceEquals(draggedOperation, targetOperation);
             }
 
-            return ViewModel?.SchemeStepEditor.SelectedWorkStep is not null;
+            return ViewModel?.HasCurrentSchemeStep() == true;
         }
 
         private void ShowOperationDropIndicator(DataGridRow? targetRow, bool insertAfter)
@@ -531,10 +516,18 @@ namespace Module.Business.Views
             OperationsDataGrid.SelectedItem = operation;
             if (ViewModel is not null)
             {
-                ViewModel.SchemeStepEditor.SelectedOperation = operation;
+                ViewModel.SelectedStep = operation;
             }
 
-            InlineParameterDrawerSheet.Tag = new InlineParameterEditState(operation);
+            InlineParameterEditState state = new(
+                operation,
+                ViewModel?.StepCollection ?? Enumerable.Empty<WorkStepOperation>(),
+                CollectReturnParameterKeys);
+            InlineParameterDrawerSheet.Tag = state;
+            ViewModel?.SetActiveParameterCollections(
+                state.OperationSummary,
+                state.InputParameterRows,
+                state.ReturnParameterRows);
             OpenInlineParameterDrawer();
             e.Handled = true;
         }
@@ -567,7 +560,7 @@ namespace Module.Business.Views
             state.TargetOperation.Parameters = parameters;
             state.ApplyReturnParameters();
             state.TargetOperation.AreParametersModified =
-                ViewModel.SchemeStepEditor.HasModifiedOperationParameters(state.TargetOperation, parameters);
+                ViewModel.HasModifiedStepParameters(state.TargetOperation, parameters);
 
             CloseInlineParameterDrawer();
             e.Handled = true;
@@ -584,6 +577,8 @@ namespace Module.Business.Views
             InlineReturnParameterDataGrid?.CommitEdit(DataGridEditingUnit.Cell, true);
             InlineReturnParameterDataGrid?.CommitEdit(DataGridEditingUnit.Row, true);
             state.SanitizeReturnParameterTable();
+            state.RefreshInputValueOptions(
+                ViewModel?.StepCollection ?? Enumerable.Empty<WorkStepOperation>());
         }
 
         private void OpenInlineParameterDrawer()
@@ -595,7 +590,15 @@ namespace Module.Business.Views
         private void CloseInlineParameterDrawer()
         {
             _isInlineParameterDrawerOpen = false;
+            ViewModel?.ClearActiveParameterCollections();
+            InlineParameterDrawerSheet.Tag = null;
             UpdateInlineParameterDrawerVisual(animate: true);
+        }
+
+        private IEnumerable<string> CollectReturnParameterKeys(WorkStepOperation operation)
+        {
+            return ViewModel?.CreateReturnParametersFromOperation(operation)
+                .Select(parameter => parameter.ParameterName) ?? Enumerable.Empty<string>();
         }
 
         private void UpdateInlineParameterDrawerVisual(bool animate)
@@ -650,21 +653,29 @@ namespace Module.Business.Views
 
         private sealed class InlineParameterEditState
         {
-            public InlineParameterEditState(WorkStepOperation operation)
+            private readonly Func<WorkStepOperation, IEnumerable<string>> _collectReturnParameterKeys;
+
+            public InlineParameterEditState(
+                WorkStepOperation operation,
+                IEnumerable<WorkStepOperation> currentOperations,
+                Func<WorkStepOperation, IEnumerable<string>> collectReturnParameterKeys)
             {
                 TargetOperation = operation;
+                _collectReturnParameterKeys = collectReturnParameterKeys;
                 OperationTitle = operation.DisplayText;
                 OperationSummary = $"{operation.OperationObject}.{operation.InvokeMethod}";
                 InputParameterRows = CreateInputParameterRows(operation.Parameters);
                 ReturnParameterRows = CreateReturnParameterRows(operation, out IReadOnlyList<string> parsedReturnKeys);
                 ParsedReturnKeys = parsedReturnKeys;
+                RefreshInputValueOptions(currentOperations);
                 Parameters = new ObservableCollection<WorkStepOperationParameter>(
                     operation.Parameters
                         .OrderBy(parameter => parameter.Sequence)
                         .Select(parameter => parameter.Clone()));
-                ParameterSummary = InputParameterRows.Count == 0 ? "无输入参数" : $"{InputParameterRows.Count} 个输入参数";
+                ParameterSummary = InputParameterRows.Count == 0
+                    ? "无输入参数"
+                    : $"{InputParameterRows.Count} 个输入参数";
             }
-
             public WorkStepOperation TargetOperation { get; }
 
             public string OperationTitle { get; }
@@ -678,6 +689,24 @@ namespace Module.Business.Views
             public ObservableCollection<InlineReturnParameterRow> ReturnParameterRows { get; }
 
             public IReadOnlyList<string> ParsedReturnKeys { get; }
+
+            public void RefreshInputValueOptions(IEnumerable<WorkStepOperation> currentOperations)
+            {
+                List<string> options = BuildInputReturnValueOptions(
+                        currentOperations,
+                        TargetOperation,
+                        _collectReturnParameterKeys)
+                    .Where(value => !string.IsNullOrWhiteSpace(value))
+                    .Select(value => value.Trim())
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .OrderBy(value => value, StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+
+                foreach (InlineInputParameterRow row in InputParameterRows)
+                {
+                    ReplaceStringOptions(row.ValueOptions, options);
+                }
+            }
 
             public ObservableCollection<WorkStepOperationParameter> BuildInputParameters()
             {
@@ -867,24 +896,131 @@ namespace Module.Business.Views
                        string.IsNullOrWhiteSpace(row.ViewJudgeCondition);
             }
 
-            public sealed class InlineInputParameterRow
+            private static IEnumerable<string> BuildInputReturnValueOptions(
+                IEnumerable<WorkStepOperation> currentOperations,
+                WorkStepOperation targetOperation,
+                Func<WorkStepOperation, IEnumerable<string>> collectReturnParameterKeys)
             {
+                List<WorkStepOperation> operations = currentOperations
+                    .Where(operation => operation is not null)
+                    .ToList();
+
+                int targetIndex = operations.FindIndex(operation =>
+                    ReferenceEquals(operation, targetOperation) ||
+                    string.Equals(operation.Id, targetOperation.Id, StringComparison.Ordinal));
+
+                if (targetIndex <= 0)
+                {
+                    return Enumerable.Empty<string>();
+                }
+
+                return operations
+                    .Take(targetIndex)
+                    .SelectMany(operation => collectReturnParameterKeys(operation) ?? Enumerable.Empty<string>());
+            }
+
+            private static void ReplaceStringOptions(ObservableCollection<string> target, IEnumerable<string> source)
+            {
+                List<string> options = source
+                    .Where(option => !string.IsNullOrWhiteSpace(option))
+                    .Select(option => option.Trim())
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .OrderBy(option => option, StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+
+                if (target.SequenceEqual(options, StringComparer.OrdinalIgnoreCase))
+                {
+                    return;
+                }
+
+                target.Clear();
+                foreach (string option in options)
+                {
+                    target.Add(option);
+                }
+            }
+
+            public sealed class InlineInputParameterRow : INotifyPropertyChanged
+            {
+                private string _type = string.Empty;
+                private string _value = string.Empty;
+
+                public event PropertyChangedEventHandler? PropertyChanged;
+
                 public string Id { get; set; } = string.Empty;
 
                 public int Sequence { get; set; }
 
-                public string Type { get; set; } = string.Empty;
+                public string Type
+                {
+                    get => _type;
+                    set
+                    {
+                        string normalizedValue = value?.Trim() ?? string.Empty;
+                        if (string.Equals(_type, normalizedValue, StringComparison.Ordinal))
+                        {
+                            return;
+                        }
+
+                        _type = normalizedValue;
+                        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Type)));
+                    }
+                }
 
                 public string ParameterName { get; set; } = string.Empty;
 
-                public string Value { get; set; } = string.Empty;
+                public string Value
+                {
+                    get => _value;
+                    set
+                    {
+                        string normalizedValue = value ?? string.Empty;
+                        if (string.Equals(_value, normalizedValue, StringComparison.Ordinal))
+                        {
+                            return;
+                        }
+
+                        _value = normalizedValue;
+                        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Value)));
+                    }
+                }
 
                 public string Description { get; set; } = string.Empty;
+
+                public ObservableCollection<string> ValueOptions { get; } = new();
             }
 
-            public sealed class InlineReturnParameterRow
+            public sealed class InlineReturnParameterRow : INotifyPropertyChanged
             {
+                public sealed record JudgeTemplateOption(string DisplayText, string Value)
+                {
+                    public override string ToString() => DisplayText;
+                }
+
+                private static readonly IReadOnlyList<JudgeTemplateOption> DefaultJudgeTemplateOptions =
+                    Array.AsReadOnly(new[]
+                    {
+                        new JudgeTemplateOption("大于", ">"),
+                        new JudgeTemplateOption("大于等于", ">="),
+                        new JudgeTemplateOption("小于", "<"),
+                        new JudgeTemplateOption("小于等于", "<="),
+                        new JudgeTemplateOption("等于", "=="),
+                        new JudgeTemplateOption("不等于", "!="),
+                        new JudgeTemplateOption("区间(左开右开)", "<{0}<"),
+                        new JudgeTemplateOption("区间(左闭右闭)", "<={0}<="),
+                        new JudgeTemplateOption("为空", "()"),
+                        new JudgeTemplateOption("不为空", "!()"),
+                        new JudgeTemplateOption("黑名单", "黑名单"),
+                        new JudgeTemplateOption("白名单", "白名单"),
+                        new JudgeTemplateOption("不适用", "NA")
+                    });
+
                 private string _key = string.Empty;
+                private string _viewJudgeType = string.Empty;
+                private string _firstJudgeConditionValue = string.Empty;
+                private string _secondJudgeConditionValue = string.Empty;
+
+                public event PropertyChangedEventHandler? PropertyChanged;
 
                 public string Key
                 {
@@ -896,9 +1032,220 @@ namespace Module.Business.Views
 
                 public string ViewDataName { get; set; } = string.Empty;
 
-                public string ViewJudgeType { get; set; } = string.Empty;
+                public IReadOnlyList<JudgeTemplateOption> JudgeTemplateOptions => DefaultJudgeTemplateOptions;
 
-                public string ViewJudgeCondition { get; set; } = string.Empty;
+                public string ViewJudgeType
+                {
+                    get => _viewJudgeType;
+                    set
+                    {
+                        string normalizedValue = value?.Trim() ?? string.Empty;
+                        bool wasRangeTemplate = IsRangeJudgeTemplate;
+                        if (string.Equals(_viewJudgeType, normalizedValue, StringComparison.Ordinal))
+                        {
+                            return;
+                        }
+
+                        _viewJudgeType = normalizedValue;
+                        if (!IsRangeJudgeTemplate && wasRangeTemplate)
+                        {
+                            _firstJudgeConditionValue = BuildRangeConditionValue();
+                            _secondJudgeConditionValue = string.Empty;
+                        }
+                        else if (IsRangeJudgeTemplate && !wasRangeTemplate)
+                        {
+                            ParseRangeConditionValue(_firstJudgeConditionValue);
+                        }
+
+                        OnPropertyChanged(nameof(ViewJudgeType));
+                        OnPropertyChanged(nameof(ViewJudgeCondition));
+                        OnPropertyChanged(nameof(IsRangeJudgeTemplate));
+                        OnPropertyChanged(nameof(FirstJudgeConditionValue));
+                        OnPropertyChanged(nameof(SecondJudgeConditionValue));
+                    }
+                }
+
+                public string ViewJudgeCondition
+                {
+                    get => IsRangeJudgeTemplate
+                        ? BuildRangeConditionValue()
+                        : _firstJudgeConditionValue.Trim();
+                    set => ApplyJudgeCondition(value);
+                }
+
+                public string FirstJudgeConditionValue
+                {
+                    get => _firstJudgeConditionValue;
+                    set
+                    {
+                        string normalizedValue = value?.Trim() ?? string.Empty;
+                        if (string.Equals(_firstJudgeConditionValue, normalizedValue, StringComparison.Ordinal))
+                        {
+                            return;
+                        }
+
+                        _firstJudgeConditionValue = normalizedValue;
+                        OnPropertyChanged(nameof(FirstJudgeConditionValue));
+                        OnPropertyChanged(nameof(ViewJudgeCondition));
+                    }
+                }
+
+                public string SecondJudgeConditionValue
+                {
+                    get => _secondJudgeConditionValue;
+                    set
+                    {
+                        string normalizedValue = value?.Trim() ?? string.Empty;
+                        if (string.Equals(_secondJudgeConditionValue, normalizedValue, StringComparison.Ordinal))
+                        {
+                            return;
+                        }
+
+                        _secondJudgeConditionValue = normalizedValue;
+                        OnPropertyChanged(nameof(SecondJudgeConditionValue));
+                        OnPropertyChanged(nameof(ViewJudgeCondition));
+                    }
+                }
+
+                public bool IsRangeJudgeTemplate =>
+                    string.Equals(ViewJudgeType, "<{0}<", StringComparison.Ordinal) ||
+                    string.Equals(ViewJudgeType, "<={0}<=", StringComparison.Ordinal);
+
+                private void ApplyJudgeCondition(string? value)
+                {
+                    string normalizedValue = value?.Trim() ?? string.Empty;
+                    if (string.IsNullOrWhiteSpace(ViewJudgeType))
+                    {
+                        string inferredTemplate = InferJudgeTemplate(normalizedValue);
+                        if (!string.IsNullOrWhiteSpace(inferredTemplate))
+                        {
+                            _viewJudgeType = inferredTemplate;
+                            OnPropertyChanged(nameof(ViewJudgeType));
+                            OnPropertyChanged(nameof(IsRangeJudgeTemplate));
+                        }
+                    }
+
+                    if (IsRangeJudgeTemplate)
+                    {
+                        ParseRangeConditionValue(normalizedValue);
+                    }
+                    else
+                    {
+                        _firstJudgeConditionValue = StripSimpleTemplate(normalizedValue, ViewJudgeType);
+                        _secondJudgeConditionValue = string.Empty;
+                    }
+
+                    OnPropertyChanged(nameof(FirstJudgeConditionValue));
+                    OnPropertyChanged(nameof(SecondJudgeConditionValue));
+                    OnPropertyChanged(nameof(ViewJudgeCondition));
+                }
+
+                private string BuildRangeConditionValue()
+                {
+                    string firstValue = _firstJudgeConditionValue.Trim();
+                    string secondValue = _secondJudgeConditionValue.Trim();
+                    if (string.IsNullOrWhiteSpace(firstValue) && string.IsNullOrWhiteSpace(secondValue))
+                    {
+                        return string.Empty;
+                    }
+
+                    return $"{firstValue}|{secondValue}";
+                }
+
+                private void ParseRangeConditionValue(string value)
+                {
+                    string normalizedValue = value?.Trim() ?? string.Empty;
+                    if (string.IsNullOrWhiteSpace(normalizedValue))
+                    {
+                        _firstJudgeConditionValue = string.Empty;
+                        _secondJudgeConditionValue = string.Empty;
+                        return;
+                    }
+
+                    string[] placeholderParts = normalizedValue.Split(
+                        new[] { "{0}" },
+                        StringSplitOptions.None);
+                    if (placeholderParts.Length >= 2)
+                    {
+                        _firstJudgeConditionValue = TrimRangeBoundary(placeholderParts[0]);
+                        _secondJudgeConditionValue = TrimRangeBoundary(placeholderParts[1]);
+                        return;
+                    }
+
+                    string[] delimiterParts = normalizedValue.Split(
+                        new[] { '|', ',', ';', '，', '；' },
+                        2,
+                        StringSplitOptions.TrimEntries);
+                    _firstJudgeConditionValue = delimiterParts.ElementAtOrDefault(0)?.Trim() ?? string.Empty;
+                    _secondJudgeConditionValue = delimiterParts.ElementAtOrDefault(1)?.Trim() ?? string.Empty;
+                }
+
+                private static string InferJudgeTemplate(string condition)
+                {
+                    string normalizedCondition = condition?.Trim() ?? string.Empty;
+                    if (string.IsNullOrWhiteSpace(normalizedCondition))
+                    {
+                        return string.Empty;
+                    }
+
+                    if (normalizedCondition.Contains("{0}", StringComparison.Ordinal))
+                    {
+                        return normalizedCondition.Contains("<={0}<=", StringComparison.Ordinal)
+                            ? "<={0}<="
+                            : "<{0}<";
+                    }
+
+                    foreach (JudgeTemplateOption template in DefaultJudgeTemplateOptions
+                                 .Where(template => !IsRangeTemplate(template.Value))
+                                 .OrderByDescending(template => template.Value.Length))
+                    {
+                        if (normalizedCondition.StartsWith(template.Value, StringComparison.OrdinalIgnoreCase))
+                        {
+                            return template.Value;
+                        }
+                    }
+
+                    return string.Empty;
+                }
+
+                private static bool IsRangeTemplate(string template)
+                {
+                    return string.Equals(template, "<{0}<", StringComparison.Ordinal) ||
+                           string.Equals(template, "<={0}<=", StringComparison.Ordinal);
+                }
+
+                private static string StripSimpleTemplate(string condition, string template)
+                {
+                    string normalizedCondition = condition?.Trim() ?? string.Empty;
+                    string normalizedTemplate = template?.Trim() ?? string.Empty;
+                    if (string.IsNullOrWhiteSpace(normalizedCondition) ||
+                        string.IsNullOrWhiteSpace(normalizedTemplate))
+                    {
+                        return normalizedCondition;
+                    }
+
+                    if (normalizedCondition.StartsWith("{0}", StringComparison.Ordinal))
+                    {
+                        normalizedCondition = normalizedCondition[3..].Trim();
+                    }
+
+                    if (normalizedCondition.StartsWith(normalizedTemplate, StringComparison.OrdinalIgnoreCase))
+                    {
+                        normalizedCondition = normalizedCondition[normalizedTemplate.Length..].Trim();
+                    }
+
+                    return normalizedCondition;
+                }
+
+                private static string TrimRangeBoundary(string value)
+                {
+                    return (value ?? string.Empty).Trim().Trim('<', '>', '=', ' ');
+                }
+
+                private void OnPropertyChanged(string propertyName)
+                {
+                    PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+                }
             }
 
             private static bool IsSendOnlyProtocolCommand(JsonElement? command)
@@ -1015,10 +1362,7 @@ namespace Module.Business.Views
 
         private void OperationDrawerBackdrop_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
-            if (ViewModel?.SchemeStepEditor.CloseOperationDrawerCommand.CanExecute(null) == true)
-            {
-                ViewModel.SchemeStepEditor.CloseOperationDrawerCommand.Execute(null);
-            }
+            ViewModel?.CloseStepEditor();
         }
 
         /// <summary>
@@ -1031,7 +1375,7 @@ namespace Module.Business.Views
                 return;
             }
 
-            bool isOpen = ViewModel?.SchemeStepEditor.IsOperationDrawerOpen == true;
+            bool isOpen = ViewModel?.IsStepEditorOpen == true;
             double targetOpacity = isOpen ? 1d : 0d;
             double targetOffset = isOpen ? 0d : -OperationDrawerClosedOffset;
 
@@ -1059,7 +1403,7 @@ namespace Module.Business.Views
             {
                 opacityAnimation.Completed += (_, _) =>
                 {
-                    if (ViewModel?.SchemeStepEditor.IsOperationDrawerOpen != true)
+                    if (ViewModel?.IsStepEditorOpen != true)
                     {
                         OperationDrawerHost.IsHitTestVisible = false;
                     }

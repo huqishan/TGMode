@@ -1,4 +1,6 @@
+using System;
 using System.Windows.Controls;
+using Module.Test.ViewModels;
 
 namespace Module.Test.Views
 {
@@ -10,6 +12,17 @@ namespace Module.Test.Views
         public TestView()
         {
             InitializeComponent();
+        }
+
+        public TestView(TestMaxViewModel viewModel)
+        {
+            InitializeComponent();
+            if (MinView.DataContext is TestMaxViewModel oldViewModel)
+            {
+                oldViewModel.Dispose();
+            }
+
+            MinView.DataContext = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
         }
     }
 }

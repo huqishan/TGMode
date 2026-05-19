@@ -1,24 +1,26 @@
-﻿using ControlLibrary;
-using ControlLibrary.Models.TestBusiness;
+using ControlLibrary;
+using ControlLibrary.Models.EventsModels.TestBusiness;
 using Shared.Infrastructure.Events;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using Shared.Infrastructure.Mediator;
 
-namespace Module.Business.Services
+namespace Module.Business.Services;
+
+public class BusinessService : ModuleService
 {
-    public class BusinessService: ModuleService
+    public BusinessService(
+        IEventAggregator eventAggregator,
+        IMediator mediator)
     {
-        public BusinessService(IEventAggregator eventAggregator)
-        {
-            _EventAggregator = eventAggregator;
-            _EventAggregator.GetEvent<ShemeExecutionMessage>().Subscribe(ShemeExecutionHandle);
-        }
-        private void ShemeExecutionHandle(ShemeExecutionMessage obj)
-        {
-            _ = SchemeExecutionService.ExecuteAsync(obj.StationName, obj.SchemeName);
-        }
+        _EventAggregator = eventAggregator;
+        SchemeExecutionService.ConfigureEventAggregator(eventAggregator);
+        SchemeExecutionService.ConfigureMediator(mediator);
+        _EventAggregator.GetEvent<ShemeExecutionMessage>().Subscribe(ShemeExecutionHandle);
+    }
+
+    private void ShemeExecutionHandle(ShemeExecutionMessage obj)
+    {
+        _ = SchemeExecutionService.ExecuteAsync(
+            obj.StationName ?? string.Empty,
+            obj.SchemeName ?? string.Empty);
     }
 }

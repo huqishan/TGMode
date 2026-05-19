@@ -1,4 +1,5 @@
 using Module.Communication.Models;
+using Module.Communication.ViewModels.PropertyVMs;
 using System.Text.Json;
 
 namespace TestProject;

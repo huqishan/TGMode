@@ -8,12 +8,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Folder Include="ViewModels\Commands\" />
-    <Folder Include="ViewModels\Properties\" />
-  </ItemGroup>
-
-  <ItemGroup>
     <ProjectReference Include="..\ControlLibrary\ControlLibrary.csproj" />
+    <ProjectReference Include="..\Shared\Shared.csproj" />
   </ItemGroup>
 
 </Project>

@@ -1,3 +1,4 @@
+using Module.Communication.ViewModels.PropertyVMs;
 using Shared.Abstractions.Enum;
 using Shared.Models.Communication;
 using System;
@@ -81,65 +82,6 @@ namespace Module.Communication.Models
                 ProtocolName = ProtocolName ?? string.Empty,
                 ProtocolFilePath = ProtocolFilePath ?? string.Empty
             };
-        }
-    }
-
-    public sealed class DeviceSupportedProtocol : INotifyPropertyChanged
-    {
-        private string _protocolName = string.Empty;
-        private string _protocolFilePath = string.Empty;
-
-        public event PropertyChangedEventHandler? PropertyChanged;
-
-        public string ProtocolName
-        {
-            get => _protocolName;
-            set
-            {
-                if (SetField(ref _protocolName, value?.Trim() ?? string.Empty))
-                {
-                    OnPropertyChanged(nameof(DisplayProtocolName));
-                }
-            }
-        }
-
-        public string ProtocolFilePath
-        {
-            get => _protocolFilePath;
-            set
-            {
-                if (SetField(ref _protocolFilePath, value?.Trim() ?? string.Empty))
-                {
-                    OnPropertyChanged(nameof(DisplayProtocolFilePath));
-                }
-            }
-        }
-
-        public string DisplayProtocolName =>
-            string.IsNullOrWhiteSpace(ProtocolName) ? "未选择协议" : ProtocolName;
-
-        public string DisplayProtocolFilePath =>
-            string.IsNullOrWhiteSpace(ProtocolFilePath) ? "点击加载协议文件" : ProtocolFilePath;
-
-        public bool IsEmpty =>
-            string.IsNullOrWhiteSpace(ProtocolName) &&
-            string.IsNullOrWhiteSpace(ProtocolFilePath);
-
-        private bool SetField<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
-        {
-            if (Equals(field, value))
-            {
-                return false;
-            }
-
-            field = value;
-            OnPropertyChanged(propertyName);
-            return true;
-        }
-
-        private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
-        {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
     }
 

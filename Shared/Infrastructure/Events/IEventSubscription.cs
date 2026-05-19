@@ -16,6 +16,8 @@ namespace Shared.Infrastructure.Events
         /// <value>A token that identifies this <see cref="IEventSubscription"/>.</value>
         SubscriptionToken SubscriptionToken { get; set; }
 
+        Action<Exception>? PublicationExceptionHandler { get; set; }
+
         /// <summary>
         /// Gets the execution strategy to publish this event.
         /// </summary>

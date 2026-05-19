@@ -1,5 +1,6 @@
 using Module.Communication.Models;
 using Module.Communication.ViewModels;
+using Module.Communication.ViewModels.PropertyVMs;
 using System;
 using System.ComponentModel;
 using System.Windows;
@@ -59,7 +60,12 @@ namespace Module.Communication.Views
         public DeviceCommunicationConfigView()
         {
             InitializeComponent();
-            DataContext = new DeviceCommunicationConfigViewModel();
+        }
+
+        public DeviceCommunicationConfigView(DeviceCommunicationConfigViewModel viewModel)
+        {
+            InitializeComponent();
+            DataContext = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
             AttachViewModelEvents();
             DataContextChanged += DeviceCommunicationConfigView_DataContextChanged;
             Loaded += DeviceCommunicationConfigView_Loaded;

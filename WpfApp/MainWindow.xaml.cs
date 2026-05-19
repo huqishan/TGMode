@@ -1,6 +1,7 @@
 ﻿using ControlLibrary;
 using ControlLibrary.Controls.Navigation.Models;
 using Module.User.Services;
+using Shared.Infrastructure.Events;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -11,6 +12,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
+using WpfApp.Infrastructure;
 
 namespace WpfApp
 {
@@ -26,10 +28,17 @@ namespace WpfApp
         private const int WmNclButtonDown = 0x00A1;
         private const int HtCaption = 0x02;
         // The window keeps menu data and tab hosting only.
-        private readonly List<ControlInfoDataItem> _navigationInfo;
+        private readonly List<ControlInfoDataItem> _navigationInfo = [];
+        private readonly IViewFactory? _viewFactory;
 
         public MainWindow()
         {
+            InitializeComponent();
+        }
+
+        public MainWindow(IViewFactory viewFactory)
+        {
+            _viewFactory = viewFactory ?? throw new ArgumentNullException(nameof(viewFactory));
             InitializeComponent();
             CommandBindings.Add(new CommandBinding(CloseTabCommand, CloseTabExecuted, CanCloseTabExecuted));
             StateChanged += (_, _) => UpdateMaximizeRestoreButton();
@@ -200,11 +209,10 @@ namespace WpfApp
                 }
             }
 
-            SettingsView settingsView = new SettingsView
-            {
-                HorizontalAlignment = HorizontalAlignment.Stretch,
-                VerticalAlignment = VerticalAlignment.Stretch
-            };
+            SettingsView settingsView = _viewFactory?.Create(typeof(SettingsView)) as SettingsView
+                ?? throw new InvalidOperationException("SettingsView was not registered in the view factory.");
+            settingsView.HorizontalAlignment = HorizontalAlignment.Stretch;
+            settingsView.VerticalAlignment = VerticalAlignment.Stretch;
             UiPermissionRuntime.Attach(settingsView);
 
             TabItem tabItem = new TabItem
@@ -252,7 +260,7 @@ namespace WpfApp
                 return;
             }
 
-            if (Activator.CreateInstance(targetType) is not FrameworkElement content)
+            if (CreateContentInstance(targetType) is not FrameworkElement content)
             {
                 MessageBox.Show(
                     this,
@@ -304,6 +312,11 @@ namespace WpfApp
             {
                 return null;
             }
+        }
+
+        private FrameworkElement? CreateContentInstance(Type targetType)
+        {
+            return _viewFactory?.Create(targetType);
         }
 
         private void UpdateTabHeaders()

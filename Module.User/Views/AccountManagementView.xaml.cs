@@ -12,7 +12,12 @@ public partial class AccountManagementView : UserControl
     public AccountManagementView()
     {
         InitializeComponent();
-        DataContext = new AccountManagementViewModel();
+    }
+
+    public AccountManagementView(AccountManagementViewModel viewModel)
+    {
+        InitializeComponent();
+        DataContext = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
 
         if (ViewModel is not null)
         {

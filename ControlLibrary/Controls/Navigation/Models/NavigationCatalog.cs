@@ -11,7 +11,7 @@ public static class NavigationCatalog
         return new List<ControlInfoDataItem>
         {
             new("首页", IconFactory.House, null, null, description: "概览"),
-            new("测试界面", IconFactory.FlaskConical, "Module.Test.Views.TestMinView, Module.Test", null, description: "测试"),
+            new("测试界面", IconFactory.FlaskConical, "Module.Test.Views.TestView, Module.Test", null, description: "测试"),
             new("MES", IconFactory.Boxes, null,
                 new ObservableCollection<ControlInfoDataItem>
                 {
@@ -31,7 +31,7 @@ public static class NavigationCatalog
                 new ObservableCollection<ControlInfoDataItem>
                 {
                     new("方案配置", IconFactory.FileCog, "Module.Business.Views.SchemeConfigurationView, Module.Business", null),
-                    new("流程图", IconFactory.Workflow, "Module.Business.Views.FlowchartView, Module.Business", null),
+                    new("工位配置", IconFactory.Cpu, "Module.Business.Views.StationConfigurationView, Module.Business", null),
                     new("脚本管理", IconFactory.Workflow, "Module.Business.Views.LuaScriptView, Module.Business", null),
                 },
                 description: "业务"),

@@ -1,50 +1,28 @@
-using Module.User.Models;
-using Module.User.Services;
-using System.ComponentModel;
-using System.Runtime.CompilerServices;
+using System;
 using System.Windows;
 using System.Windows.Input;
-using System.Windows.Media;
+using WpfApp.ViewModels;
 
 namespace WpfApp;
 
-public partial class LoginWindow : Window, INotifyPropertyChanged
+public partial class LoginWindow : Window
 {
-    private static readonly Brush SuccessBrush =
-        new SolidColorBrush((Color)ColorConverter.ConvertFromString("#16A34A"));
-
-    private static readonly Brush WarningBrush =
-        new SolidColorBrush((Color)ColorConverter.ConvertFromString("#EA580C"));
-
-    private static readonly Brush NeutralBrush =
-        new SolidColorBrush((Color)ColorConverter.ConvertFromString("#64748B"));
-
-    private string _statusText = "默认管理员：账号 10086，密码 10086";
-    private Brush _statusBrush = NeutralBrush;
-
     public LoginWindow()
     {
         InitializeComponent();
-        DataContext = this;
+    }
+
+    public LoginWindow(LoginWindowViewModel viewModel)
+    {
+        InitializeComponent();
+        DataContext = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
         Loaded += (_, _) =>
         {
             PasswordInput.Focus();
         };
     }
 
-    public event PropertyChangedEventHandler? PropertyChanged;
-
-    public string StatusText
-    {
-        get => _statusText;
-        private set => SetField(ref _statusText, value);
-    }
-
-    public Brush StatusBrush
-    {
-        get => _statusBrush;
-        private set => SetField(ref _statusBrush, value);
-    }
+    private LoginWindowViewModel ViewModel => (LoginWindowViewModel)DataContext;
 
     private void LoginButton_Click(object sender, RoutedEventArgs e)
     {
@@ -70,12 +48,10 @@ public partial class LoginWindow : Window, INotifyPropertyChanged
 
     private void WindowDragArea_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
-        if (e.ButtonState != MouseButtonState.Pressed)
+        if (e.ButtonState == MouseButtonState.Pressed)
         {
-            return;
+            DragMove();
         }
-
-        DragMove();
     }
 
     private void PasswordInput_KeyDown(object sender, KeyEventArgs e)
@@ -89,42 +65,14 @@ public partial class LoginWindow : Window, INotifyPropertyChanged
 
     private void TryLogin()
     {
-        if (!AccountConfigurationStore.TryAuthenticate(
-                AccountInput.Text,
-                PasswordInput.Password,
-                out AuthenticatedUser? user,
-                out string message))
+        if (ViewModel.TryLogin(PasswordInput.Password))
         {
-            StatusText = message;
-            StatusBrush = WarningBrush;
-            PasswordInput.SelectAll();
-            PasswordInput.Focus();
+            DialogResult = true;
+            Close();
             return;
         }
 
-        if (user is null)
-        {
-            StatusText = "登录状态异常，请重新登录";
-            StatusBrush = WarningBrush;
-            return;
-        }
-
-        CurrentUserSession.SignIn(user);
-        StatusText = $"{user.Name} 登录成功";
-        StatusBrush = SuccessBrush;
-        DialogResult = true;
-        Close();
-    }
-
-    private bool SetField<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
-    {
-        if (Equals(field, value))
-        {
-            return false;
-        }
-
-        field = value;
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-        return true;
+        PasswordInput.SelectAll();
+        PasswordInput.Focus();
     }
 }

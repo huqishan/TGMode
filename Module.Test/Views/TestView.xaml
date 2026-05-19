@@ -7,5 +7,5 @@
              mc:Ignorable="d"
              d:DesignHeight="768"
              d:DesignWidth="1366">
-    <local:TestMinView />
+    <local:TestMaxView x:Name="MinView" />
 </UserControl>

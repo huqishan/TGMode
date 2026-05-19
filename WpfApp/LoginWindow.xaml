@@ -244,7 +244,7 @@
                                    Text="{DynamicResource 账号}" />
                         <TextBox x:Name="AccountInput"
                                  Style="{StaticResource LoginInputTextBoxStyle}"
-                                 Text="10086" />
+                                 Text="{Binding Account, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                     </StackPanel>
 
                     <StackPanel Grid.Row="4">

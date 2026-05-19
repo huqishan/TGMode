@@ -1,6 +1,7 @@
 using ControlLibrary.ControlViews.LuaScrip;
 using Module.Communication.Models;
 using Module.Communication.ViewModels;
+using Module.Communication.ViewModels.PropertyVMs;
 using System;
 using System.ComponentModel;
 using System.Windows;
@@ -30,7 +31,12 @@ namespace Module.Communication.Views
         public ProtocolConfigView()
         {
             InitializeComponent();
-            DataContext = new ProtocolConfigViewModel();
+        }
+
+        public ProtocolConfigView(ProtocolConfigViewModel viewModel)
+        {
+            InitializeComponent();
+            DataContext = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
 
             AttachViewModelEvents();
             DataContextChanged += ProtocolConfigView_DataContextChanged;

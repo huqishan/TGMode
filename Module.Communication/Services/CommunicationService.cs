@@ -1,4 +1,5 @@
 using ControlLibrary;
+using ControlLibrary.Models.MediatorModels.Communication;
 using Module.Communication.Models;
 using Shared.Abstractions;
 using Shared.Abstractions.Enum;
@@ -14,6 +15,9 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
+using System.Threading;
+using System.Threading.Tasks;
+using Module.Communication.ViewModels.PropertyVMs;
 
 namespace Module.Communication.Services
 {
@@ -149,7 +153,7 @@ namespace Module.Communication.Services
         /// <param name="readWriteModel">读写数据模型。</param>
         /// <param name="isWait">是否等待设备回复。</param>
         /// <returns>发送结果。</returns>
-        public DeviceExecutionActionResult SendData(string deviceName, ReadWriteModel readWriteModel, bool isWait = false)
+        public DeviceExecutionActionResult SendData(string deviceName, SendReceiveModel readWriteModel, bool isWait = false)
         {
             if (readWriteModel is null)
             {
@@ -164,6 +168,49 @@ namespace Module.Communication.Services
             }
 
             return ExecuteSend(context, readWriteModel, isWait);
+        }
+
+        public async Task<DeviceExecutionActionResult> SendDataAsync(
+            string deviceName,
+            SendReceiveModel readWriteModel,
+            CancellationToken cancellationToken = default)
+        {
+            if (readWriteModel is null)
+            {
+                return DeviceExecutionActionResult.CreateFailure(
+                    "ReadWriteModel is required.",
+                    NormalizeRequiredText(deviceName));
+            }
+
+            if (!TryGetDevice(deviceName, out DeviceRuntimeContext? context, out DeviceExecutionActionResult failure))
+            {
+                return failure;
+            }
+
+            try
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                bool isSuccess = await context.Communication.SendAsync(readWriteModel).ConfigureAwait(false);
+                cancellationToken.ThrowIfCancellationRequested();
+
+                return DeviceExecutionActionResult.Create(
+                    isSuccess,
+                    isSuccess
+                        ? $"Device '{context.DeviceName}' send succeeded."
+                        : $"Device '{context.DeviceName}' send failed.",
+                    context.DeviceName,
+                    readWriteModel.Result);
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                return DeviceExecutionActionResult.CreateFailure(
+                    $"Device '{context.DeviceName}' send exception: {ex.Message}",
+                    context.DeviceName);
+            }
         }
 
         /// <summary>
@@ -835,13 +882,13 @@ namespace Module.Communication.Services
         /// <returns>发送结果。</returns>
         private static DeviceExecutionActionResult ExecuteSend(
             DeviceRuntimeContext context,
-            ReadWriteModel readWriteModel,
+            SendReceiveModel readWriteModel,
             bool isWait)
         {
             try
             {
-                ReadWriteModel model = readWriteModel;
-                bool isSuccess = context.Communication.Write(ref model, isWait);
+                SendReceiveModel model = readWriteModel;
+                bool isSuccess = context.Communication.Send(ref model, isWait);
 
                 return DeviceExecutionActionResult.Create(
                     isSuccess,
@@ -1016,237 +1063,4 @@ namespace Module.Communication.Services
         #endregion
     }
 
-    #region 结果模型
-
-    /// <summary>
-    /// 设备连接状态变化事件参数。
-    /// </summary>
-    public sealed class DeviceConnectionStateChangedEventArgs : EventArgs
-    {
-        /// <summary>
-        /// 初始化设备连接状态变化事件参数。
-        /// </summary>
-        /// <param name="deviceName">设备名称。</param>
-        /// <param name="connectState">连接状态。</param>
-        /// <param name="changedAt">状态变更时间。</param>
-        public DeviceConnectionStateChangedEventArgs(string deviceName, ConnectState connectState, DateTime changedAt)
-        {
-            DeviceName = deviceName;
-            ConnectState = connectState;
-            ChangedAt = changedAt;
-        }
-
-        /// <summary>
-        /// 设备名称。
-        /// </summary>
-        public string DeviceName { get; }
-
-        /// <summary>
-        /// 连接状态。
-        /// </summary>
-        public ConnectState ConnectState { get; }
-
-        /// <summary>
-        /// 状态变更时间。
-        /// </summary>
-        public DateTime ChangedAt { get; }
-    }
-
-    /// <summary>
-    /// 批量初始化设备后的汇总结果。
-    /// </summary>
-    public sealed class DeviceInitializationResult
-    {
-        /// <summary>
-        /// 初始化批量设备执行结果。
-        /// </summary>
-        /// <param name="deviceResults">各设备执行结果集合。</param>
-        public DeviceInitializationResult(IReadOnlyList<DeviceExecutionActionResult> deviceResults)
-        {
-            DeviceResults = deviceResults;
-        }
-
-        /// <summary>
-        /// 各设备执行结果集合。
-        /// </summary>
-        public IReadOnlyList<DeviceExecutionActionResult> DeviceResults { get; }
-
-        /// <summary>
-        /// 设备总数。
-        /// </summary>
-        public int TotalCount => DeviceResults.Count;
-
-        /// <summary>
-        /// 成功数量。
-        /// </summary>
-        public int SuccessCount => DeviceResults.Count(item => item.IsSuccess);
-
-        /// <summary>
-        /// 是否全部成功。
-        /// </summary>
-        public bool IsSuccess => TotalCount > 0 && SuccessCount == TotalCount;
-    }
-
-    /// <summary>
-    /// 单个设备操作的执行结果。
-    /// </summary>
-    public sealed class DeviceExecutionActionResult
-    {
-        /// <summary>
-        /// 初始化设备操作结果。
-        /// </summary>
-        /// <param name="isSuccess">是否执行成功。</param>
-        /// <param name="message">结果说明。</param>
-        /// <param name="deviceName">设备名称。</param>
-        /// <param name="result">附加结果对象。</param>
-        public DeviceExecutionActionResult(
-            bool isSuccess,
-            string message,
-            string deviceName = "",
-            object? result = null)
-        {
-            IsSuccess = isSuccess;
-            Message = message ?? string.Empty;
-            DeviceName = deviceName ?? string.Empty;
-            Result = result;
-        }
-
-        /// <summary>
-        /// 是否执行成功。
-        /// </summary>
-        public bool IsSuccess { get; }
-
-        /// <summary>
-        /// 结果说明。
-        /// </summary>
-        public string Message { get; }
-
-        /// <summary>
-        /// 设备名称。
-        /// </summary>
-        public string DeviceName { get; }
-
-        /// <summary>
-        /// 附加结果对象。
-        /// </summary>
-        public object? Result { get; }
-
-        /// <summary>
-        /// 创建一个设备操作结果实例。
-        /// </summary>
-        /// <param name="isSuccess">是否执行成功。</param>
-        /// <param name="message">结果说明。</param>
-        /// <param name="deviceName">设备名称。</param>
-        /// <param name="result">附加结果对象。</param>
-        /// <returns>设备操作结果。</returns>
-        public static DeviceExecutionActionResult Create(
-            bool isSuccess,
-            string message,
-            string deviceName = "",
-            object? result = null)
-        {
-            return new DeviceExecutionActionResult(isSuccess, message, deviceName, result);
-        }
-
-        /// <summary>
-        /// 创建一个成功的设备操作结果。
-        /// </summary>
-        /// <param name="message">结果说明。</param>
-        /// <param name="deviceName">设备名称。</param>
-        /// <param name="result">附加结果对象。</param>
-        /// <returns>成功结果。</returns>
-        public static DeviceExecutionActionResult CreateSuccess(
-            string message,
-            string deviceName = "",
-            object? result = null)
-        {
-            return new DeviceExecutionActionResult(true, message, deviceName, result);
-        }
-
-        /// <summary>
-        /// 创建一个失败的设备操作结果。
-        /// </summary>
-        /// <param name="message">结果说明。</param>
-        /// <param name="deviceName">设备名称。</param>
-        /// <param name="result">附加结果对象。</param>
-        /// <returns>失败结果。</returns>
-        public static DeviceExecutionActionResult CreateFailure(
-            string message,
-            string deviceName = "",
-            object? result = null)
-        {
-            return new DeviceExecutionActionResult(false, message, deviceName, result);
-        }
-    }
-
-    /// <summary>
-    /// 设备协议消息解析后的缓存数据实体。
-    /// </summary>
-    public sealed class ParsedDeviceDataEntity
-    {
-        /// <summary>
-        /// 初始化解析结果缓存实体。
-        /// </summary>
-        /// <param name="deviceName">设备名称。</param>
-        /// <param name="key">解析结果键。</param>
-        /// <param name="value">解析结果值。</param>
-        /// <param name="data">完整原始报文。</param>
-        /// <param name="protocolName">协议名称。</param>
-        /// <param name="commandName">指令名称。</param>
-        /// <param name="parsedAt">解析时间。</param>
-        public ParsedDeviceDataEntity(
-            string deviceName,
-            string key,
-            string value,
-            string data,
-            string protocolName,
-            string commandName,
-            DateTime parsedAt)
-        {
-            DeviceName = deviceName;
-            Key = key;
-            Value = value;
-            Data = data;
-            ProtocolName = protocolName;
-            CommandName = commandName;
-            ParsedAt = parsedAt;
-        }
-
-        /// <summary>
-        /// 设备名称。
-        /// </summary>
-        public string DeviceName { get; }
-
-        /// <summary>
-        /// 解析结果键。
-        /// </summary>
-        public string Key { get; }
-
-        /// <summary>
-        /// 解析结果值。
-        /// </summary>
-        public string Value { get; }
-
-        /// <summary>
-        /// 完整原始报文。
-        /// </summary>
-        public string Data { get; }
-
-        /// <summary>
-        /// 协议名称。
-        /// </summary>
-        public string ProtocolName { get; }
-
-        /// <summary>
-        /// 指令名称。
-        /// </summary>
-        public string CommandName { get; }
-
-        /// <summary>
-        /// 解析时间。
-        /// </summary>
-        public DateTime ParsedAt { get; }
-    }
-
-    #endregion
 }

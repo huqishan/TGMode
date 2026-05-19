@@ -24,5 +24,25 @@ namespace TestProject
             _eventAggregator.GetEvent<MyMessage>().Publish(new MyMessage() { Name = "Test", Type = "TestType", Value = "TestValue", Judge = "TestJudge" });
             Assert.Pass();
         }
+
+        [Test]
+        public void Publish_Continues_WhenSubscriberThrows()
+        {
+            int handledCount = 0;
+            int exceptionCount = 0;
+            MyMessage messageEvent = _eventAggregator.GetEvent<MyMessage>();
+            messageEvent.PublicationException += (_, args) =>
+            {
+                exceptionCount++;
+                Assert.That(args.Exception, Is.TypeOf<InvalidOperationException>());
+            };
+
+            messageEvent.Subscribe(_ => throw new InvalidOperationException("subscriber failed"), true);
+            messageEvent.Subscribe(_ => handledCount++, true);
+
+            Assert.DoesNotThrow(() => messageEvent.Publish(new MyMessage()));
+            Assert.That(handledCount, Is.EqualTo(1));
+            Assert.That(exceptionCount, Is.EqualTo(1));
+        }
     }
 }

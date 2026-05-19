@@ -7,13 +7,13 @@ using System.Threading.Tasks;
 
 namespace Shared.Models.Communication
 {
-    public class ReadWriteModel
+    public class SendReceiveModel
     {
         /// <summary>
         /// TCP Client/UDP Client
         /// </summary>
         /// <param name="message"></param>
-        public ReadWriteModel(string message, int waitTime = 10000)
+        public SendReceiveModel(string message, int waitTime = 10000)
         {
             this.Message = message;
             WaitTime=waitTime;
@@ -23,7 +23,7 @@ namespace Shared.Models.Communication
         /// </summary>
         /// <param name="message"></param>
         /// <param name="recciveObj"></param>
-        public ReadWriteModel(string message, object recciveObj)
+        public SendReceiveModel(string message, object recciveObj)
         {
             this.Message = message;
             this.ClientId = recciveObj;
@@ -35,7 +35,7 @@ namespace Shared.Models.Communication
         /// <param name="plcAddress"></param>
         /// <param name="lenght"></param>
         /// <param name="type"></param>
-        public ReadWriteModel(string message, object plcAddress, int lenght, DataType type = DataType.Decimal)
+        public SendReceiveModel(string message, object plcAddress, int lenght, DataType type = DataType.Decimal)
         {
             this.Message = message;
             this.PLCAddress = plcAddress;

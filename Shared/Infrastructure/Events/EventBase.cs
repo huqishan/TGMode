@@ -12,10 +12,12 @@ namespace Shared.Infrastructure.Events
     {
         private readonly List<IEventSubscription> _subscriptions = new List<IEventSubscription>();
 
+        public event EventHandler<EventPublicationExceptionEventArgs>? PublicationException;
+
         /// <summary>
         /// Allows the SynchronizationContext to be set by the EventAggregator for UI Thread Dispatching
         /// </summary>
-        public SynchronizationContext SynchronizationContext { get; set; }
+        public SynchronizationContext? SynchronizationContext { get; set; }
 
         /// <summary>
         /// Gets the list of current subscriptions.
@@ -39,6 +41,7 @@ namespace Shared.Infrastructure.Events
             if (eventSubscription == null) throw new ArgumentNullException(nameof(eventSubscription));
 
             eventSubscription.SubscriptionToken = new SubscriptionToken(Unsubscribe);
+            eventSubscription.PublicationExceptionHandler = HandlePublicationException;
 
             lock (Subscriptions)
             {
@@ -59,7 +62,14 @@ namespace Shared.Infrastructure.Events
             List<Action<object[]>> executionStrategies = PruneAndReturnStrategies();
             foreach (var executionStrategy in executionStrategies)
             {
-                executionStrategy(arguments);
+                try
+                {
+                    executionStrategy(arguments);
+                }
+                catch (Exception ex)
+                {
+                    HandlePublicationException(ex);
+                }
             }
         }
 
@@ -132,6 +142,34 @@ namespace Shared.Infrastructure.Events
                     {
                         _subscriptions.RemoveAt(i);
                     }
+                }
+            }
+        }
+
+        protected virtual void HandlePublicationException(Exception exception)
+        {
+            if (exception == null)
+            {
+                return;
+            }
+
+            EventHandler<EventPublicationExceptionEventArgs>? handlers = PublicationException;
+            if (handlers is null)
+            {
+                return;
+            }
+
+            EventPublicationExceptionEventArgs args =
+                new EventPublicationExceptionEventArgs(GetType(), exception, DateTime.Now);
+            foreach (EventHandler<EventPublicationExceptionEventArgs> handler in handlers.GetInvocationList())
+            {
+                try
+                {
+                    handler(this, args);
+                }
+                catch
+                {
+                    // Exception reporting must not break event publication.
                 }
             }
         }

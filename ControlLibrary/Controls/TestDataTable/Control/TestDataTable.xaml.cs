@@ -13,12 +13,10 @@ namespace ControlLibrary.Controls.TestDataTable.Control;
 
 public partial class TestDataTable : UserControl
 {
-    private const double WorkStepWidth = 220;
-    private const double NameWidth = 220;
-    private const double TestValueWidth = 100;
+    private const double MinFieldWidth = 100;
     private const double ResultWidth = 80;
-    private const double MinJudgmentConditionWidth = 220;
-    private const double FixedColumnWidth = WorkStepWidth + NameWidth + TestValueWidth + ResultWidth;
+    private const int FlexibleColumnCount = 4;
+    private const double MinimumTableWidth = MinFieldWidth * FlexibleColumnCount + ResultWidth;
     private const double HeaderHeight = 30;
     private const double RowHeight = 32;
     private const double WorkStepMaxHeight = 400;
@@ -235,7 +233,13 @@ public partial class TestDataTable : UserControl
 
     private Grid CreateHeaderGrid()
     {
-        Grid headerGrid = CreateGrid(WorkStepWidth, NameWidth, TestValueWidth, ResultWidth, GetJudgmentConditionWidth());
+        ColumnWidths columnWidths = GetColumnWidths();
+        Grid headerGrid = CreateGrid(
+            columnWidths.WorkStep,
+            columnWidths.Name,
+            columnWidths.TestValue,
+            columnWidths.Result,
+            columnWidths.JudgmentCondition);
         headerGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(HeaderHeight) });
 
         AddHeaderCell(headerGrid, 0, "工步");
@@ -248,7 +252,13 @@ public partial class TestDataTable : UserControl
 
     private Grid CreateEmptyGrid()
     {
-        Grid emptyGrid = CreateGrid(WorkStepWidth, NameWidth, TestValueWidth, ResultWidth, GetJudgmentConditionWidth());
+        ColumnWidths columnWidths = GetColumnWidths();
+        Grid emptyGrid = CreateGrid(
+            columnWidths.WorkStep,
+            columnWidths.Name,
+            columnWidths.TestValue,
+            columnWidths.Result,
+            columnWidths.JudgmentCondition);
         emptyGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(RowHeight) });
 
         Border emptyCell = CreateCellBorder(0, 0, 1, 5, false);
@@ -261,13 +271,14 @@ public partial class TestDataTable : UserControl
 
     private Grid CreateWorkStepGroupGrid(WorkStepGroup group)
     {
+        ColumnWidths columnWidths = GetColumnWidths();
         Grid groupGrid = new()
         {
-            Width = GetTableWidth(),
+            Width = columnWidths.Total,
             HorizontalAlignment = HorizontalAlignment.Left
         };
-        groupGrid.ColumnDefinitions.Add(CreateColumn(WorkStepWidth));
-        groupGrid.ColumnDefinitions.Add(CreateColumn(GetDetailWidth()));
+        groupGrid.ColumnDefinitions.Add(CreateColumn(columnWidths.WorkStep));
+        groupGrid.ColumnDefinitions.Add(CreateColumn(columnWidths.Detail));
 
         double groupHeight = Math.Min(group.Rows.Count * RowHeight, WorkStepMaxHeight);
         groupGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(groupHeight) });
@@ -283,7 +294,7 @@ public partial class TestDataTable : UserControl
             MaxHeight = WorkStepMaxHeight,
             HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
             VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
-            Content = CreateDetailGrid(group.Rows)
+            Content = CreateDetailGrid(group.Rows, columnWidths)
         };
         detailScrollViewer.PreviewMouseWheel += ScrollViewer_PreviewMouseWheel;
 
@@ -388,9 +399,13 @@ public partial class TestDataTable : UserControl
         }
     }
 
-    private Grid CreateDetailGrid(IReadOnlyList<TableRowData> rows)
+    private Grid CreateDetailGrid(IReadOnlyList<TableRowData> rows, ColumnWidths columnWidths)
     {
-        Grid detailGrid = CreateGrid(NameWidth, TestValueWidth, ResultWidth, GetJudgmentConditionWidth());
+        Grid detailGrid = CreateGrid(
+            columnWidths.Name,
+            columnWidths.TestValue,
+            columnWidths.Result,
+            columnWidths.JudgmentCondition);
         for (int i = 0; i < rows.Count; i++)
         {
             detailGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(RowHeight) });
@@ -436,25 +451,24 @@ public partial class TestDataTable : UserControl
         };
     }
 
-    private double GetJudgmentConditionWidth()
+    private ColumnWidths GetColumnWidths()
     {
         double availableWidth = ActualWidth;
         if (double.IsNaN(availableWidth) || availableWidth <= 0)
         {
-            return MinJudgmentConditionWidth;
+            availableWidth = MinimumTableWidth;
         }
 
-        return Math.Max(MinJudgmentConditionWidth, availableWidth - FixedColumnWidth);
-    }
+        double flexibleColumnWidth = Math.Max(
+            MinFieldWidth,
+            (availableWidth - ResultWidth) / FlexibleColumnCount);
 
-    private double GetDetailWidth()
-    {
-        return NameWidth + TestValueWidth + ResultWidth + GetJudgmentConditionWidth();
-    }
-
-    private double GetTableWidth()
-    {
-        return FixedColumnWidth + GetJudgmentConditionWidth();
+        return new ColumnWidths(
+            flexibleColumnWidth,
+            flexibleColumnWidth,
+            flexibleColumnWidth,
+            ResultWidth,
+            flexibleColumnWidth);
     }
 
     private void AddHeaderCell(Grid targetGrid, int column, string text)
@@ -675,4 +689,16 @@ public partial class TestDataTable : UserControl
         string JudgmentCondition,
         string Result,
         string WorkStepElapsedTime);
+
+    private readonly record struct ColumnWidths(
+        double WorkStep,
+        double Name,
+        double TestValue,
+        double Result,
+        double JudgmentCondition)
+    {
+        public double Detail => Name + TestValue + Result + JudgmentCondition;
+
+        public double Total => WorkStep + Detail;
+    }
 }

@@ -69,7 +69,7 @@ namespace Shared.Infrastructure.Communication
             return true;
         }
 
-        public bool Read(ref ReadWriteModel readWriteModel)
+        public bool Receive(ref SendReceiveModel readWriteModel)
         {
             throw new NotImplementedException();
         }
@@ -96,7 +96,7 @@ namespace Shared.Infrastructure.Communication
             return _SerialPort.IsOpen;
         }
 
-        public bool Write(ref ReadWriteModel readWriteModel, bool isWait = false)
+        public bool Send(ref SendReceiveModel readWriteModel, bool isWait = false)
         {
             if (_SerialPort.IsOpen)
             {
@@ -111,9 +111,9 @@ namespace Shared.Infrastructure.Communication
             IsConnected = _SerialPort.IsOpen ? ConnectState.Connected : ConnectState.DisConnected;
             return _SerialPort.IsOpen;
         }
-        public Task<bool> WriteAsync(ReadWriteModel readWriteModel)
+        public Task<bool> SendAsync(SendReceiveModel readWriteModel)
         {
-            return Task.Run(() => { return Write(ref readWriteModel); });
+            return Task.Run(() => { return Send(ref readWriteModel); });
         }
 
         #endregion

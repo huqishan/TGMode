@@ -1,4 +1,5 @@
 using Module.User.ViewModels;
+using System;
 using System.Windows.Controls;
 
 namespace Module.User.Views;
@@ -10,7 +11,12 @@ public partial class PermissionConfigurationView : UserControl
     public PermissionConfigurationView()
     {
         InitializeComponent();
-        DataContext = new PermissionConfigurationViewModel();
+    }
+
+    public PermissionConfigurationView(PermissionConfigurationViewModel viewModel)
+    {
+        InitializeComponent();
+        DataContext = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
         ApplySourceColumnVisibility();
     }
 

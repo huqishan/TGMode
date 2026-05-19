@@ -1,4 +1,7 @@
+using ControlLibrary.Controls.FlowchartEditor.Models;
 using Module.Business.Models;
+using Module.Business.ViewModels;
+using Module.Business.ViewModels.PropertyVMs;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -6,6 +9,7 @@ using System.IO;
 using System.Linq;
 using System.Text.Encodings.Web;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Module.Business.Services;
 
@@ -14,72 +18,57 @@ namespace Module.Business.Services;
 /// </summary>
 public static class BusinessConfigurationStore
 {
-    private static readonly string ConfigDirectory =
-        Path.Combine(AppContext.BaseDirectory, "Config", "Business");
-
-    private static readonly string WorkStepDirectory =
-        Path.Combine(ConfigDirectory, "WorkStep");
+    private static readonly string RootConfigDirectory =
+        Path.Combine(AppContext.BaseDirectory, "Config");
 
     private static readonly string SchemeDirectory =
-        Path.Combine(ConfigDirectory, "Scheme");
+        Path.Combine(RootConfigDirectory, "Scheme");
 
-    private const string WorkStepFileSearchPattern = "*.workstep.json";
+    private static readonly string StationDirectory =
+        Path.Combine(RootConfigDirectory, "Station");
+
     private const string SchemeFileSearchPattern = "*.scheme.json";
+    private const string StationFileSearchPattern = "*.station.json";
+    private const double DefaultNodeWidth = 150;
+    private const double DefaultNodeHeight = 70;
 
-    private static readonly JsonSerializerOptions JsonOptions = new()
+    private static readonly JsonSerializerOptions SchemeJsonOptions = new()
     {
         WriteIndented = true,
         Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
     };
 
-    public static BusinessConfigurationCatalog LoadCatalog()
+    public static SchemeConfigurationCatalog LoadCatalog()
     {
-        BusinessConfigurationCatalog catalog = new()
+        SchemeConfigurationCatalog catalog = new()
         {
-            WorkSteps = LoadWorkSteps(),
             Schemes = LoadSchemes()
         };
 
         return NormalizeCatalog(catalog);
     }
 
-    public static SchemeProfile? LoadSchemeByName(string schemeName)
+    public static void SaveCatalog(SchemeConfigurationCatalog catalog)
     {
-        if (string.IsNullOrWhiteSpace(schemeName))
-        {
-            return null;
-        }
+        SchemeConfigurationCatalog normalized = NormalizeCatalog(catalog);
 
-        string normalizedSchemeName = schemeName.Trim();
-        return LoadCatalog().Schemes
-            .FirstOrDefault(scheme => string.Equals(
-                scheme.SchemeName?.Trim(),
-                normalizedSchemeName,
-                StringComparison.OrdinalIgnoreCase))
-            ?.Clone();
-    }
-
-    public static void SaveCatalog(BusinessConfigurationCatalog catalog)
-    {
-        BusinessConfigurationCatalog normalized = NormalizeCatalog(catalog);
-
-        SaveWorkSteps(normalized.WorkSteps);
         SaveSchemes(normalized.Schemes);
     }
 
-    private static ObservableCollection<WorkStepProfile> LoadWorkSteps()
+    public static StationConfigurationCatalog LoadStationCatalog()
     {
-        ObservableCollection<WorkStepProfile> workSteps = new();
-        foreach (string filePath in EnumerateConfigFiles(WorkStepDirectory, WorkStepFileSearchPattern))
+        StationConfigurationCatalog catalog = new()
         {
-            WorkStepProfile? workStep = ReadJson<WorkStepProfile>(filePath);
-            if (workStep is not null)
-            {
-                workSteps.Add(workStep);
-            }
-        }
+            Stations = LoadStations()
+        };
 
-        return workSteps;
+        return NormalizeStationCatalog(catalog);
+    }
+
+    public static void SaveStationCatalog(StationConfigurationCatalog catalog)
+    {
+        StationConfigurationCatalog normalized = NormalizeStationCatalog(catalog);
+        SaveStations(normalized.Stations);
     }
 
     private static ObservableCollection<SchemeProfile> LoadSchemes()
@@ -87,7 +76,7 @@ public static class BusinessConfigurationStore
         ObservableCollection<SchemeProfile> schemes = new();
         foreach (string filePath in EnumerateConfigFiles(SchemeDirectory, SchemeFileSearchPattern))
         {
-            SchemeProfile? scheme = ReadJson<SchemeProfile>(filePath);
+            SchemeProfile? scheme = ReadJson<SchemeProfile>(filePath, SchemeJsonOptions);
             if (scheme is not null)
             {
                 schemes.Add(scheme);
@@ -95,21 +84,6 @@ public static class BusinessConfigurationStore
         }
 
         return schemes;
-    }
-
-    private static void SaveWorkSteps(ObservableCollection<WorkStepProfile> workSteps)
-    {
-        Directory.CreateDirectory(WorkStepDirectory);
-        HashSet<string> currentFilePaths = new(StringComparer.OrdinalIgnoreCase);
-
-        foreach (WorkStepProfile workStep in workSteps)
-        {
-            string filePath = BuildWorkStepFilePath(workStep);
-            WriteJson(filePath, workStep);
-            currentFilePaths.Add(filePath);
-        }
-
-        DeleteStaleFiles(WorkStepDirectory, WorkStepFileSearchPattern, currentFilePaths);
     }
 
     private static void SaveSchemes(ObservableCollection<SchemeProfile> schemes)
@@ -120,16 +94,46 @@ public static class BusinessConfigurationStore
         foreach (SchemeProfile scheme in schemes)
         {
             string filePath = BuildSchemeFilePath(scheme);
-            WriteJson(filePath, scheme);
+            WriteJson(filePath, scheme, SchemeJsonOptions);
             currentFilePaths.Add(filePath);
         }
 
         DeleteStaleFiles(SchemeDirectory, SchemeFileSearchPattern, currentFilePaths);
     }
 
-    private static BusinessConfigurationCatalog NormalizeCatalog(BusinessConfigurationCatalog? catalog)
+    private static ObservableCollection<StationProfile> LoadStations()
     {
-        BusinessConfigurationCatalog normalized = new()
+        ObservableCollection<StationProfile> stations = new();
+        foreach (string filePath in EnumerateConfigFiles(StationDirectory, StationFileSearchPattern))
+        {
+            StationProfile? station = ReadJson<StationProfile>(filePath, SchemeJsonOptions);
+            if (station is not null)
+            {
+                stations.Add(station);
+            }
+        }
+
+        return stations;
+    }
+
+    private static void SaveStations(ObservableCollection<StationProfile> stations)
+    {
+        Directory.CreateDirectory(StationDirectory);
+        HashSet<string> currentFilePaths = new(StringComparer.OrdinalIgnoreCase);
+
+        foreach (StationProfile station in stations)
+        {
+            string filePath = BuildStationFilePath(station);
+            WriteJson(filePath, station, SchemeJsonOptions);
+            currentFilePaths.Add(filePath);
+        }
+
+        DeleteStaleFiles(StationDirectory, StationFileSearchPattern, currentFilePaths);
+    }
+
+    private static SchemeConfigurationCatalog NormalizeCatalog(SchemeConfigurationCatalog? catalog)
+    {
+        SchemeConfigurationCatalog normalized = new()
         {
             WorkSteps = new ObservableCollection<WorkStepProfile>(
                 (catalog?.WorkSteps ?? new ObservableCollection<WorkStepProfile>())
@@ -143,6 +147,20 @@ public static class BusinessConfigurationStore
 
         NormalizeWorkSteps(normalized.WorkSteps);
         NormalizeSchemes(normalized.Schemes, normalized.WorkSteps);
+        return normalized;
+    }
+
+    private static StationConfigurationCatalog NormalizeStationCatalog(StationConfigurationCatalog? catalog)
+    {
+        StationConfigurationCatalog normalized = new()
+        {
+            Stations = new ObservableCollection<StationProfile>(
+                (catalog?.Stations ?? new ObservableCollection<StationProfile>())
+                    .Where(station => station is not null)
+                    .Select(station => station.Clone()))
+        };
+
+        NormalizeStations(normalized.Stations);
         return normalized;
     }
 
@@ -312,6 +330,112 @@ public static class BusinessConfigurationStore
         }
     }
 
+    private static void NormalizeFlowcharts(ObservableCollection<FlowchartProfile> flowcharts)
+    {
+        HashSet<string> usedIds = new(StringComparer.Ordinal);
+        HashSet<string> usedNames = new(StringComparer.OrdinalIgnoreCase);
+        int index = 1;
+
+        foreach (FlowchartProfile flowchart in flowcharts)
+        {
+            flowchart.Id = EnsureUniqueId(flowchart.Id, usedIds);
+            flowchart.Name = BuildUniqueName(
+                string.IsNullOrWhiteSpace(flowchart.Name) ? $"流程图{index}" : flowchart.Name.Trim(),
+                usedNames);
+            flowchart.Document = NormalizeFlowchartDocument(flowchart.Document);
+            index++;
+        }
+    }
+
+    private static void NormalizeStations(ObservableCollection<StationProfile> stations)
+    {
+        HashSet<string> usedIds = new(StringComparer.Ordinal);
+        HashSet<string> usedNames = new(StringComparer.OrdinalIgnoreCase);
+        HashSet<string> usedCodes = new(StringComparer.OrdinalIgnoreCase);
+        int index = 1;
+
+        foreach (StationProfile station in stations)
+        {
+            station.Id = EnsureUniqueId(station.Id, usedIds);
+            station.StationName = BuildUniqueName(
+                string.IsNullOrWhiteSpace(station.StationName) ? $"工位 {index}" : station.StationName.Trim(),
+                usedNames);
+            station.StationCode = BuildUniqueStationCode(station.StationCode, usedCodes, index);
+            station.LastModifiedAt = station.LastModifiedAt == default ? DateTime.Now : station.LastModifiedAt;
+            station.FlowchartDocument = NormalizeFlowchartDocument(station.FlowchartDocument);
+            index++;
+        }
+    }
+
+    private static FlowchartDocument NormalizeFlowchartDocument(FlowchartDocument? document)
+    {
+        if (document is null)
+        {
+            return new FlowchartDocument();
+        }
+
+        HashSet<Guid> usedNodeIds = new();
+        Dictionary<Guid, Guid> nodeIdMap = new();
+        List<FlowchartNodeDocument> nodes = new();
+
+        foreach (FlowchartNodeDocument node in document.Nodes ?? new List<FlowchartNodeDocument>())
+        {
+            Guid originalId = node.Id;
+            Guid nodeId = EnsureUniqueGuid(originalId, usedNodeIds);
+
+            if (originalId != Guid.Empty)
+            {
+                nodeIdMap[originalId] = nodeId;
+            }
+
+            nodes.Add(new FlowchartNodeDocument
+            {
+                Id = nodeId,
+                Text = string.IsNullOrWhiteSpace(node.Text) ? "处理" : node.Text.Trim(),
+                MetadataJson = node.MetadataJson ?? string.Empty,
+                Kind = Enum.IsDefined(typeof(FlowchartNodeKind), node.Kind) ? node.Kind : FlowchartNodeKind.Process,
+                X = NormalizeCoordinate(node.X),
+                Y = NormalizeCoordinate(node.Y),
+                Width = NormalizeSize(node.Width, DefaultNodeWidth),
+                Height = NormalizeSize(node.Height, DefaultNodeHeight)
+            });
+        }
+
+        HashSet<Guid> usedConnectionIds = new();
+        List<FlowchartConnectionDocument> connections = new();
+        foreach (FlowchartConnectionDocument connection in document.Connections ?? new List<FlowchartConnectionDocument>())
+        {
+            if (!nodeIdMap.TryGetValue(connection.SourceNodeId, out Guid sourceNodeId) ||
+                !nodeIdMap.TryGetValue(connection.TargetNodeId, out Guid targetNodeId) ||
+                sourceNodeId == targetNodeId)
+            {
+                continue;
+            }
+
+            if (!Enum.IsDefined(typeof(FlowchartAnchor), connection.SourceAnchor) ||
+                !Enum.IsDefined(typeof(FlowchartAnchor), connection.TargetAnchor))
+            {
+                continue;
+            }
+
+            connections.Add(new FlowchartConnectionDocument
+            {
+                Id = EnsureUniqueGuid(connection.Id, usedConnectionIds),
+                SourceNodeId = sourceNodeId,
+                SourceAnchor = connection.SourceAnchor,
+                TargetNodeId = targetNodeId,
+                TargetAnchor = connection.TargetAnchor
+            });
+        }
+
+        return new FlowchartDocument
+        {
+            Version = document.Version <= 0 ? 1 : document.Version,
+            Nodes = nodes,
+            Connections = connections
+        };
+    }
+
     private static bool IsLegacySystemOperationType(string? operationType)
     {
         return string.Equals(operationType?.Trim(), "系统", StringComparison.OrdinalIgnoreCase);
@@ -358,6 +482,17 @@ public static class BusinessConfigurationStore
         return candidate;
     }
 
+    private static Guid EnsureUniqueGuid(Guid id, HashSet<Guid> usedIds)
+    {
+        Guid candidate = id == Guid.Empty ? Guid.NewGuid() : id;
+        while (!usedIds.Add(candidate))
+        {
+            candidate = Guid.NewGuid();
+        }
+
+        return candidate;
+    }
+
     private static string BuildUniqueName(string name, HashSet<string> usedNames)
     {
         string baseName = string.IsNullOrWhiteSpace(name) ? "名称" : name.Trim();
@@ -368,6 +503,21 @@ public static class BusinessConfigurationStore
         {
             candidate = $"{baseName} {index}";
             index++;
+        }
+
+        return candidate;
+    }
+
+    private static string BuildUniqueStationCode(string? code, HashSet<string> usedCodes, int index)
+    {
+        string baseCode = string.IsNullOrWhiteSpace(code) ? $"ST-{index:00}" : code.Trim().ToUpperInvariant();
+        string candidate = baseCode;
+        int suffix = 2;
+
+        while (!usedCodes.Add(candidate))
+        {
+            candidate = $"{baseCode}-{suffix:00}";
+            suffix++;
         }
 
         return candidate;
@@ -385,12 +535,22 @@ public static class BusinessConfigurationStore
             .OrderBy(Path.GetFileName, StringComparer.OrdinalIgnoreCase);
     }
 
-    private static T? ReadJson<T>(string filePath)
+    private static double NormalizeCoordinate(double value)
+    {
+        return double.IsNaN(value) || double.IsInfinity(value) ? 0 : value;
+    }
+
+    private static double NormalizeSize(double value, double fallback)
+    {
+        return double.IsNaN(value) || double.IsInfinity(value) || value <= 0 ? fallback : value;
+    }
+
+    private static T? ReadJson<T>(string filePath, JsonSerializerOptions options)
     {
         try
         {
             string json = File.ReadAllText(filePath);
-            return JsonSerializer.Deserialize<T>(json, JsonOptions);
+            return JsonSerializer.Deserialize<T>(json, options);
         }
         catch
         {
@@ -398,9 +558,9 @@ public static class BusinessConfigurationStore
         }
     }
 
-    private static void WriteJson<T>(string filePath, T value)
+    private static void WriteJson<T>(string filePath, T value, JsonSerializerOptions options)
     {
-        string json = JsonSerializer.Serialize(value, JsonOptions);
+        string json = JsonSerializer.Serialize(value, options);
         File.WriteAllText(filePath, json);
     }
 
@@ -415,16 +575,15 @@ public static class BusinessConfigurationStore
         }
     }
 
-    private static string BuildWorkStepFilePath(WorkStepProfile workStep)
-    {
-        return Path.Combine(
-            WorkStepDirectory,
-            $"{SanitizeFileName(workStep.StepName)}_{SanitizeFileName(workStep.Id)}.workstep.json");
-    }
-
+    
     private static string BuildSchemeFilePath(SchemeProfile scheme)
     {
         return Path.Combine(SchemeDirectory, $"{SanitizeFileName(scheme.SchemeName)}_{SanitizeFileName(scheme.Id)}.scheme.json");
+    }
+
+    private static string BuildStationFilePath(StationProfile station)
+    {
+        return Path.Combine(StationDirectory, $"{SanitizeFileName(station.StationName)}_{SanitizeFileName(station.Id)}.station.json");
     }
 
     private static string SanitizeFileName(string fileName)

@@ -1,17 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using Module.Test.ViewModels;
+using System;
+using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
 
 namespace Module.Test.Views
 {
@@ -22,7 +13,30 @@ namespace Module.Test.Views
     {
         public TestMaxView()
         {
+            InitializeView();
+        }
+
+        public TestMaxView(TestMaxViewModel viewModel)
+        {
+            InitializeView();
+            if (!DesignerProperties.GetIsInDesignMode(this))
+            {
+                DataContext = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
+            }
+        }
+
+        private void InitializeView()
+        {
             InitializeComponent();
+            Unloaded += TestMinView_Unloaded;
+        }
+
+        private void TestMinView_Unloaded(object sender, RoutedEventArgs e)
+        {
+            if (DataContext is TestMaxViewModel viewModel)
+            {
+                viewModel.Dispose();
+            }
         }
     }
 }

@@ -1,5 +1,7 @@
 using ControlLibrary.Controls.FlowchartEditor.Models;
 using Module.Business.Models;
+using Module.Business.ViewModels;
+using Module.Business.ViewModels.PropertyVMs;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -67,10 +69,9 @@ public static class FlowchartExecutionService
     /// <summary>
     /// 根据工位名称和流程图名称读取流程图文件并执行；同一工位同时只允许一个流程图运行。
     /// </summary>
-    public static async Task<FlowchartExecutionServiceResult> ExecuteAsync(string stationName, string flowchartName)
+    public static async Task<FlowchartExecutionServiceResult> ExecuteAsync(string stationName)
     {
         string normalizedStationName = NormalizeRequiredText(stationName);
-        string normalizedFlowchartName = NormalizeRequiredText(flowchartName);
         DateTime startTime = DateTime.Now;
 
         if (string.IsNullOrWhiteSpace(normalizedStationName))
@@ -78,53 +79,59 @@ public static class FlowchartExecutionService
             return FlowchartExecutionServiceResult.CreateFailure("Station name is required.", startTime: startTime, endTime: DateTime.Now);
         }
 
-        if (string.IsNullOrWhiteSpace(normalizedFlowchartName))
+        StationConfigurationCatalog catalog = BusinessConfigurationStore.LoadStationCatalog();
+        StationProfile? station = catalog.Stations.FirstOrDefault(item =>
+            string.Equals(item.StationName?.Trim(), normalizedStationName, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(item.StationCode?.Trim(), normalizedStationName, StringComparison.OrdinalIgnoreCase));
+        if (station is null)
         {
-            return FlowchartExecutionServiceResult.CreateFailure("Flowchart name is required.", startTime: startTime, endTime: DateTime.Now);
+            return FlowchartExecutionServiceResult.CreateFailure(
+                $"Station '{normalizedStationName}' was not found.",
+                startTime: startTime,
+                endTime: DateTime.Now);
         }
 
-        FlowchartExecutionKey key = new(normalizedStationName, normalizedFlowchartName);
-        FlowchartExecutionContext context = new(key, startTime);
-        if (!ActiveExecutions.TryAdd(normalizedStationName, context))
+        if (!station.IsEnabled)
         {
-            string runningFlowchartName = ActiveExecutions.TryGetValue(normalizedStationName, out FlowchartExecutionContext? runningContext)
+            return FlowchartExecutionServiceResult.CreateFailure(
+                $"Station '{station.StationName}' is disabled.",
+                startTime: startTime,
+                endTime: DateTime.Now);
+        }
+
+        string flowchartName = station.StationName;
+        FlowchartDocument flowchartDocument = StationProfile.CloneFlowchartDocument(station.FlowchartDocument);
+        FlowchartExecutionKey key = new(station.StationName, flowchartName);
+        FlowchartExecutionContext context = new(key, startTime);
+        if (!ActiveExecutions.TryAdd(station.StationName, context))
+        {
+            string runningFlowchartName = ActiveExecutions.TryGetValue(station.StationName, out FlowchartExecutionContext? runningContext)
                 ? runningContext.Key.FlowchartName
                 : string.Empty;
             context.Dispose();
             return FlowchartExecutionServiceResult.CreateFailure(
                 string.IsNullOrWhiteSpace(runningFlowchartName)
-                    ? $"Station '{normalizedStationName}' already has a running flowchart."
-                    : $"Station '{normalizedStationName}' is already running flowchart '{runningFlowchartName}'.",
+                    ? $"Station '{station.StationName}' already has a running flowchart."
+                    : $"Station '{station.StationName}' is already running flowchart '{runningFlowchartName}'.",
                 startTime: startTime,
                 endTime: DateTime.Now);
         }
 
         try
         {
-            FlowchartConfigurationCatalog catalog = FlowchartConfigurationStore.LoadCatalog();
-            FlowchartProfile? flowchart = catalog.Flowcharts.FirstOrDefault(item =>
-                string.Equals(item.Name?.Trim(), normalizedFlowchartName, StringComparison.OrdinalIgnoreCase));
-            if (flowchart is null)
-            {
-                return FlowchartExecutionServiceResult.CreateFailure(
-                    $"Flowchart '{normalizedFlowchartName}' was not found.",
-                    startTime: startTime,
-                    endTime: DateTime.Now);
-            }
-
-            return await ExecuteFlowchartAsync(context, flowchart.Clone()).ConfigureAwait(false);
+            return await ExecuteFlowchartAsync(context, flowchartName, flowchartDocument).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
             DateTime endTime = DateTime.Now;
             FlowchartExecutionServiceResult result = FlowchartExecutionServiceResult.CreateCanceled(
-                $"Flowchart '{normalizedFlowchartName}' on station '{normalizedStationName}' was stopped.",
+                $"Flowchart '{flowchartName}' on station '{station.StationName}' was stopped.",
                 context.LogsSnapshot,
                 startTime,
                 endTime);
             Raise(AfterFlowchartExecuted, FlowchartExecutionEventArgs.CreateFlowchart(
-                normalizedStationName,
-                normalizedFlowchartName,
+                station.StationName,
+                flowchartName,
                 false,
                 result.Message,
                 startTime,
@@ -135,13 +142,13 @@ public static class FlowchartExecutionService
         {
             DateTime endTime = DateTime.Now;
             FlowchartExecutionServiceResult result = FlowchartExecutionServiceResult.CreateFailure(
-                $"Flowchart '{normalizedFlowchartName}' on station '{normalizedStationName}' failed: {ex.Message}",
+                $"Flowchart '{flowchartName}' on station '{station.StationName}' failed: {ex.Message}",
                 context.LogsSnapshot,
                 startTime,
                 endTime);
             Raise(AfterFlowchartExecuted, FlowchartExecutionEventArgs.CreateFlowchart(
-                normalizedStationName,
-                normalizedFlowchartName,
+                station.StationName,
+                flowchartName,
                 false,
                 result.Message,
                 startTime,
@@ -150,7 +157,7 @@ public static class FlowchartExecutionService
         }
         finally
         {
-            ActiveExecutions.TryRemove(normalizedStationName, out _);
+            ActiveExecutions.TryRemove(station.StationName, out _);
             context.Dispose();
         }
     }
@@ -218,12 +225,13 @@ public static class FlowchartExecutionService
 
     private static async Task<FlowchartExecutionServiceResult> ExecuteFlowchartAsync(
         FlowchartExecutionContext context,
-        FlowchartProfile flowchart)
+        string flowchartName,
+        FlowchartDocument flowchartDocument)
     {
         DateTime startTime = DateTime.Now;
         FlowchartExecutionEventArgs beforeArgs = FlowchartExecutionEventArgs.CreateFlowchart(
             context.Key.StationName,
-            flowchart.Name,
+            flowchartName,
             startTime: startTime);
         Raise(BeforeFlowchartExecuting, beforeArgs);
         if (beforeArgs.Cancel)
@@ -236,7 +244,7 @@ public static class FlowchartExecutionService
                 canceledAt);
             Raise(AfterFlowchartExecuted, FlowchartExecutionEventArgs.CreateFlowchart(
                 context.Key.StationName,
-                flowchart.Name,
+                flowchartName,
                 false,
                 canceledResult.Message,
                 startTime,
@@ -244,14 +252,14 @@ public static class FlowchartExecutionService
             return canceledResult;
         }
 
-        context.AddLog($"Start flowchart '{flowchart.Name}' on station '{context.Key.StationName}'.");
+        context.AddLog($"Start flowchart '{flowchartName}' on station '{context.Key.StationName}'.");
         Raise(FlowchartExecuting, FlowchartExecutionEventArgs.CreateFlowchart(
             context.Key.StationName,
-            flowchart.Name,
+            flowchartName,
             message: "Flowchart is executing.",
             startTime: startTime));
 
-        FlowchartDocument document = FlowchartProfile.CloneDocument(flowchart.Document);
+        FlowchartDocument document = StationProfile.CloneFlowchartDocument(flowchartDocument);
         Dictionary<Guid, FlowchartNodeDocument> nodesById = document.Nodes
             .Where(node => node is not null)
             .GroupBy(node => node.Id)
@@ -259,7 +267,7 @@ public static class FlowchartExecutionService
         FlowchartNodeDocument? currentNode = GetExecutionStartNode(document);
         if (currentNode is null)
         {
-            return FinishFlowchart(context, flowchart.Name, false, "Flowchart is empty.", startTime);
+            return FinishFlowchart(context, flowchartName, false, "Flowchart is empty.", startTime);
         }
 
         Dictionary<string, string> returnValues = new(StringComparer.OrdinalIgnoreCase);
@@ -270,24 +278,24 @@ public static class FlowchartExecutionService
 
             FlowchartNodeExecutionResult nodeResult = await ExecuteNodeAsync(
                     context,
-                    flowchart.Name,
+                    flowchartName,
                     currentNode,
                     stepIndex,
                     returnValues)
                 .ConfigureAwait(false);
             if (nodeResult.IsCanceled)
             {
-                return FinishFlowchart(context, flowchart.Name, false, nodeResult.Message, startTime, isCanceled: true);
+                return FinishFlowchart(context, flowchartName, false, nodeResult.Message, startTime, isCanceled: true);
             }
 
             if (!nodeResult.IsSuccess)
             {
-                return FinishFlowchart(context, flowchart.Name, false, nodeResult.Message, startTime);
+                return FinishFlowchart(context, flowchartName, false, nodeResult.Message, startTime);
             }
 
             if (currentNode.Kind == FlowchartNodeKind.End)
             {
-                return FinishFlowchart(context, flowchart.Name, true, $"Flowchart '{flowchart.Name}' finished in {stepIndex} node(s).", startTime);
+                return FinishFlowchart(context, flowchartName, true, $"Flowchart '{flowchartName}' finished in {stepIndex} node(s).", startTime);
             }
 
             FlowchartConnectionDocument? nextConnection = GetNextExecutionConnection(
@@ -296,18 +304,18 @@ public static class FlowchartExecutionService
                 nodeResult.DecisionState);
             if (nextConnection is null)
             {
-                return FinishFlowchart(context, flowchart.Name, true, $"Flowchart stopped at node '{ResolveNodeName(currentNode)}' because no outgoing connection was found.", startTime);
+                return FinishFlowchart(context, flowchartName, true, $"Flowchart stopped at node '{ResolveNodeName(currentNode)}' because no outgoing connection was found.", startTime);
             }
 
             if (!nodesById.TryGetValue(nextConnection.TargetNodeId, out FlowchartNodeDocument? nextNode))
             {
-                return FinishFlowchart(context, flowchart.Name, false, $"Next node of '{ResolveNodeName(currentNode)}' was not found.", startTime);
+                return FinishFlowchart(context, flowchartName, false, $"Next node of '{ResolveNodeName(currentNode)}' was not found.", startTime);
             }
 
             currentNode = nextNode;
         }
 
-        return FinishFlowchart(context, flowchart.Name, false, $"Flowchart stopped after reaching max step count {MaxExecutionSteps}.", startTime);
+        return FinishFlowchart(context, flowchartName, false, $"Flowchart stopped after reaching max step count {MaxExecutionSteps}.", startTime);
     }
 
     private static async Task<FlowchartNodeExecutionResult> ExecuteNodeAsync(
@@ -625,16 +633,38 @@ public static class FlowchartExecutionService
             return false;
         }
 
-        if (!ActiveExecutions.TryGetValue(normalizedStationName, out FlowchartExecutionContext? runningContext))
+        if (ActiveExecutions.TryGetValue(normalizedStationName, out FlowchartExecutionContext? runningContext))
         {
-            context = null!;
-            message = $"No flowchart is running on station '{normalizedStationName}'.";
-            return false;
+            context = runningContext;
+            message = string.Empty;
+            return true;
         }
 
-        context = runningContext;
-        message = string.Empty;
-        return true;
+        string? canonicalStationName = ResolveStationName(normalizedStationName);
+        if (!string.IsNullOrWhiteSpace(canonicalStationName) &&
+            ActiveExecutions.TryGetValue(canonicalStationName, out runningContext))
+        {
+            context = runningContext;
+            message = string.Empty;
+            return true;
+        }
+
+        string displayName = string.IsNullOrWhiteSpace(canonicalStationName)
+            ? normalizedStationName
+            : canonicalStationName;
+        context = null!;
+        message = $"No flowchart is running on station '{displayName}'.";
+        return false;
+    }
+
+    private static string? ResolveStationName(string stationNameOrCode)
+    {
+        StationConfigurationCatalog catalog = BusinessConfigurationStore.LoadStationCatalog();
+        StationProfile? station = catalog.Stations.FirstOrDefault(item =>
+            string.Equals(item.StationName?.Trim(), stationNameOrCode, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(item.StationCode?.Trim(), stationNameOrCode, StringComparison.OrdinalIgnoreCase));
+
+        return station?.StationName;
     }
 
     private static void Raise(EventHandler<FlowchartExecutionEventArgs>? handler, FlowchartExecutionEventArgs args)

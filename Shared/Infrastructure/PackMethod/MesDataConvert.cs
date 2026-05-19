@@ -195,9 +195,9 @@ namespace Shared.Infrastructure.PackMethod
                         _MESObj[ipPort].Start();
                     }
                     Thread.Sleep(100);
-                    ReadWriteModel write = new ReadWriteModel(data + (apiConfig.IsEnter ? "\r\n" : ""), mesSystemConfig.TimeOut * 1000);
-                    sendSta = _MESObj[ipPort].Write(ref write, !string.IsNullOrWhiteSpace(apiConfig.ResultCheck)) ? 200 : 500;
-                    mesResult.Message = write.Result == null ? "" : write.Result.ToString();
+                    SendReceiveModel send = new SendReceiveModel(data + (apiConfig.IsEnter ? "\r\n" : ""), mesSystemConfig.TimeOut * 1000);
+                    sendSta = _MESObj[ipPort].Send(ref send, !string.IsNullOrWhiteSpace(apiConfig.ResultCheck)) ? 200 : 500;
+                    mesResult.Message = send.Result == null ? "" : send.Result.ToString();
                     if (!apiConfig.IsEnabledTCPKeepAlive) _MESObj[ipPort].Close();
                     break;
                 case "FTP":

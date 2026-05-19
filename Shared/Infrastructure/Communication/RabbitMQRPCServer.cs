@@ -124,16 +124,16 @@ namespace Shared.Infrastructure.Communication
             return true;
         }
 
-        public bool Read(ref ReadWriteModel readWriteModel)
+        public bool Receive(ref SendReceiveModel readWriteModel)
         {
             throw new NotImplementedException();
         }
-        public bool Write(ref ReadWriteModel readWriteModel, bool isWait = false)
+        public bool Send(ref SendReceiveModel readWriteModel, bool isWait = false)
         {
             throw new NotImplementedException();
         }
 
-        public Task<bool> WriteAsync(ReadWriteModel readWriteModel)
+        public Task<bool> SendAsync(SendReceiveModel readWriteModel)
         {
             throw new NotImplementedException();
         }

@@ -1,4 +1,5 @@
 using Module.MES.ViewModels;
+using Module.MES.ViewModels.PropertyVMs;
 using System;
 using System.ComponentModel;
 using System.Windows;
@@ -32,7 +33,12 @@ namespace Module.MES.Views
         public DataStructureConfigView()
         {
             InitializeComponent();
-            DataContext = new DataStructureConfigViewModel();
+        }
+
+        public DataStructureConfigView(DataStructureConfigViewModel viewModel)
+        {
+            InitializeComponent();
+            DataContext = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
 
             if (ViewModel is not null)
             {

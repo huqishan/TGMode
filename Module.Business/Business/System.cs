@@ -9,6 +9,13 @@ namespace Module.Business.Business
 {
     public static class System
     {
+        private static IEventAggregator? _eventAggregator;
+
+        public static void ConfigureEventAggregator(IEventAggregator eventAggregator)
+        {
+            _eventAggregator = eventAggregator ?? throw new ArgumentNullException(nameof(eventAggregator));
+        }
+
         /// <summary>
         /// 十六进制字符串转换为普通字符串
         /// </summary>
@@ -69,7 +76,7 @@ namespace Module.Business.Business
         /// <param name="judge">判断条件</param>
         public static void SendDataToView(string name, string type, string value, string judge)
         {
-            EventAggregator.Current.GetEvent<MessageShowView>().Publish(new MessageShowView
+            _eventAggregator?.GetEvent<MessageShowView>().Publish(new MessageShowView
             {
                 Name = name,
                 Type = type,

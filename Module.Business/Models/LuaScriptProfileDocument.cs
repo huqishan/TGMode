@@ -1,3 +1,4 @@
+using Module.Business.ViewModels.PropertyVMs;
 using System;
 
 namespace Module.Business.Models

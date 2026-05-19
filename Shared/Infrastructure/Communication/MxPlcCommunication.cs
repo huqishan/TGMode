@@ -102,7 +102,7 @@ namespace Shared.Infrastructure.Communication
             }
         }
 
-        public bool Write(ref ReadWriteModel readWriteModel, bool isWait = false)
+        public bool Send(ref SendReceiveModel readWriteModel, bool isWait = false)
         {
             lock (_syncRoot)
             {
@@ -143,12 +143,12 @@ namespace Shared.Infrastructure.Communication
             }
         }
 
-        public Task<bool> WriteAsync(ReadWriteModel readWriteModel)
+        public Task<bool> SendAsync(SendReceiveModel readWriteModel)
         {
-            return Task.Run(() => Write(ref readWriteModel));
+            return Task.Run(() => Send(ref readWriteModel));
         }
 
-        public bool Read(ref ReadWriteModel readWriteModel)
+        public bool Receive(ref SendReceiveModel readWriteModel)
         {
             lock (_syncRoot)
             {

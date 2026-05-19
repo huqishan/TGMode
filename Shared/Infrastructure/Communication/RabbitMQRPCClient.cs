@@ -62,7 +62,7 @@ namespace Shared.Infrastructure.Communication
             return true;
         }
 
-        public bool Read(ref ReadWriteModel readWriteModel)
+        public bool Receive(ref SendReceiveModel readWriteModel)
         {
             return true;
         }
@@ -93,7 +93,7 @@ namespace Shared.Infrastructure.Communication
             return true;
         }
 
-        public bool Write(ref ReadWriteModel readWriteModel, bool isWait = false)
+        public bool Send(ref SendReceiveModel readWriteModel, bool isWait = false)
         {
             try
             {
@@ -119,9 +119,9 @@ namespace Shared.Infrastructure.Communication
             return true;
         }
 
-        public Task<bool> WriteAsync(ReadWriteModel readWriteModel)
+        public Task<bool> SendAsync(SendReceiveModel readWriteModel)
         {
-            return Task.FromResult(Write(ref readWriteModel));
+            return Task.FromResult(Send(ref readWriteModel));
         }
         #endregion
         #region 事件

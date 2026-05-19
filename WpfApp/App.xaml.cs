@@ -1,6 +1,7 @@
+using Autofac;
 using ControlLibrary;
 using Module.User.Services;
-using Shared.Infrastructure.Events;
+using Shared.Infrastructure.DependencyInjection;
 using System;
 using System.Reflection;
 using System.Windows;
@@ -12,15 +13,18 @@ namespace WpfApp
     /// </summary>
     public partial class App : Application
     {
+        private IContainer? _container;
+
         protected override void OnStartup(StartupEventArgs e)
         {
             base.OnStartup(e);
-            EventAggregator.Current = new EventAggregator();
+            _container = ServiceCollectionHelper.Build(WpfAppComposition.Register);
+            ServiceCollectionHelper.Initialize(_container, WpfAppComposition.Initialize);
             AppLanguageManager.ApplyLanguage(AppLanguageManager.CurrentLanguage);
 
             ShutdownMode = ShutdownMode.OnExplicitShutdown;
 
-            LoginWindow loginWindow = new();
+            LoginWindow loginWindow = _container.Resolve<LoginWindow>();
             bool? loginResult = loginWindow.ShowDialog();
             if (loginResult != true)
             {
@@ -29,10 +33,16 @@ namespace WpfApp
                 return;
             }
 
-            MainWindow mainWindow = new();
+            MainWindow mainWindow = _container.Resolve<MainWindow>();
             MainWindow = mainWindow;
             ShutdownMode = ShutdownMode.OnMainWindowClose;
             mainWindow.Show();
+        }
+
+        protected override void OnExit(ExitEventArgs e)
+        {
+            _container?.Dispose();
+            base.OnExit(e);
         }
 
         public static TEnum GetEnum<TEnum>(string text) where TEnum : struct

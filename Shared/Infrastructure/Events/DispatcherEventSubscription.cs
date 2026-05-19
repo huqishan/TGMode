@@ -30,7 +30,19 @@ namespace Shared.Infrastructure.Events
         /// <param name="action">The action to execute.</param>
         protected override void InvokeAction(Action action)
         {
-            syncContext.Post((o) => action(), null);
+            syncContext.Post(
+                _ =>
+                {
+                    try
+                    {
+                        action();
+                    }
+                    catch (Exception ex)
+                    {
+                        HandlePublicationException(ex);
+                    }
+                },
+                null);
         }
     }
 
@@ -65,7 +77,20 @@ namespace Shared.Infrastructure.Events
         /// <param name="argument">The payload to pass <paramref name="action"/> while invoking it.</param>
         public override void InvokeAction(Action<TPayload> action, TPayload argument)
         {
-            syncContext.Post((o) => action((TPayload)o), argument);
+            syncContext.Post(
+                o =>
+                {
+                    try
+                    {
+                        TPayload argument = o is null ? default! : (TPayload)o;
+                        action(argument);
+                    }
+                    catch (Exception ex)
+                    {
+                        HandlePublicationException(ex);
+                    }
+                },
+                argument);
         }
     }
 }

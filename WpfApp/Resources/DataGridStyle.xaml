@@ -69,6 +69,8 @@
     <Style x:Key="CellTextBoxStyle" TargetType="{x:Type TextBox}">
         <Setter Property="Padding" Value="8,4" />
         <Setter Property="Margin" Value="0" />
+        <Setter Property="Height" Value="33" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
         <Setter Property="Background" Value="{DynamicResource TabCardBackgroundBrush}" />
         <Setter Property="BorderBrush" Value="{DynamicResource TabItemBorderBrush}" />
         <Setter Property="BorderThickness" Value="1" />

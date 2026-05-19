@@ -34,16 +34,16 @@
 
                 <UniformGrid Grid.Row="1" Columns="4" Margin="0,18,0,16">
                     <Button Content="{DynamicResource 新建}"
-                            Click="AddConfigurationButton_Click"
+                            Command="{Binding AddConfigurationCommand}"
                             Style="{StaticResource PrimaryActionButtonStyle}" />
                     <Button Content="{DynamicResource 复制}"
-                            Click="DuplicateConfigurationButton_Click"
+                            Command="{Binding DuplicateConfigurationCommand}"
                             Style="{StaticResource ActionButtonStyle}" />
                     <Button Content="{DynamicResource 删除}"
-                            Click="DeleteConfigurationButton_Click"
+                            Command="{Binding DeleteConfigurationCommand}"
                             Style="{StaticResource ActionButtonStyle}" />
                     <Button Content="{DynamicResource 保存}"
-                            Click="SaveButton_Click"
+                            Command="{Binding SaveCommand}"
                             Style="{StaticResource ActionButtonStyle}" />
                 </UniformGrid>
 
@@ -121,7 +121,7 @@
                                            Text="{Binding PageStatusText}" />
                             </Border>
                             <Button Content="{DynamicResource 启用当前}"
-                                    Click="EnableConfigurationButton_Click"
+                                    Command="{Binding EnableConfigurationCommand}"
                                     Style="{StaticResource PrimaryActionButtonStyle}" />
                         </StackPanel>
                         <TextBlock Style="{StaticResource SectionTitleStyle}" Text="{DynamicResource 当前配置}" />
@@ -173,7 +173,7 @@
 
                         <Button Margin="0,14,0,0"
                                 Content="{DynamicResource 启用当前配置}"
-                                Click="EnableConfigurationButton_Click"
+                                Command="{Binding EnableConfigurationCommand}"
                                 Style="{StaticResource PrimaryActionButtonStyle}" />
 
                         <Border Height="1"
@@ -193,21 +193,21 @@
 
                         <UniformGrid Columns="2" Margin="0,14,0,0">
                             <Button Content="{DynamicResource 新增列}"
-                                    Click="AddColumnButton_Click"
+                                    Command="{Binding AddColumnCommand}"
                                     Style="{StaticResource ActionButtonStyle}" />
                             <Button Content="{DynamicResource 删除列}"
-                                    Click="DeleteColumnButton_Click"
+                                    Command="{Binding DeleteColumnCommand}"
                                     Style="{StaticResource ActionButtonStyle}" />
                             <Button Content="{DynamicResource 上移}"
-                                    Click="MoveUpButton_Click"
+                                    Command="{Binding MoveUpCommand}"
                                     Style="{StaticResource ActionButtonStyle}" />
                             <Button Content="{DynamicResource 下移}"
-                                    Click="MoveDownButton_Click"
+                                    Command="{Binding MoveDownCommand}"
                                     Style="{StaticResource ActionButtonStyle}" />
                         </UniformGrid>
 
                         <Button Content="{DynamicResource 重置字段}"
-                                Click="ResetButton_Click"
+                                Command="{Binding ResetCommand}"
                                 Style="{StaticResource ActionButtonStyle}" />
                     </StackPanel>
                 </Border>
@@ -232,13 +232,13 @@
                             <StackPanel DockPanel.Dock="Right"
                                         Orientation="Horizontal">
                                 <Button Content="{DynamicResource 重置字段}"
-                                        Click="ResetButton_Click"
+                                        Command="{Binding ResetCommand}"
                                         Style="{StaticResource ActionButtonStyle}" />
                                 <Button Content="{DynamicResource 预览}"
-                                        Click="OpenPreviewDrawerButton_Click"
+                                        Command="{Binding OpenPreviewDrawerCommand}"
                                         Style="{StaticResource ActionButtonStyle}" />
                                 <Button Content="{DynamicResource 保存}"
-                                        Click="SaveButton_Click"
+                                        Command="{Binding SaveCommand}"
                                         Style="{StaticResource PrimaryActionButtonStyle}" />
                             </StackPanel>
                         </DockPanel>
@@ -303,7 +303,7 @@
                             </Border>
                             <Button DockPanel.Dock="Right"
                                     Content="{DynamicResource 打开预览}"
-                                    Click="OpenPreviewDrawerButton_Click"
+                                    Command="{Binding OpenPreviewDrawerCommand}"
                                     Style="{StaticResource PrimaryActionButtonStyle}" />
                         </DockPanel>
                     </Grid>
@@ -355,7 +355,7 @@
                                            Text="{Binding VisibleColumnCountText}" />
                             </Border>
                             <Button Content="{DynamicResource 关闭}"
-                                    Click="ClosePreviewDrawerButton_Click"
+                                    Command="{Binding ClosePreviewDrawerCommand}"
                                     Style="{StaticResource ActionButtonStyle}" />
                         </StackPanel>
                     </DockPanel>

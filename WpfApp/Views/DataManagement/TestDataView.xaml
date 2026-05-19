@@ -109,10 +109,10 @@
                                   SelectedItem="{Binding SelectedConfiguration, Mode=TwoWay}" />
                     </StackPanel>
                     <Button Content="{DynamicResource 刷新配置}"
-                            Click="RefreshConfigButton_Click"
+                            Command="{Binding RefreshConfigCommand}"
                             Style="{StaticResource ActionButtonStyle}" />
                     <Button Content="{DynamicResource 刷新数据}"
-                            Click="RefreshDataButton_Click"
+                            Command="{Binding RefreshDataCommand}"
                             Style="{StaticResource PrimaryActionButtonStyle}" />
                     <Border Padding="12,6"
                             VerticalAlignment="Top"
