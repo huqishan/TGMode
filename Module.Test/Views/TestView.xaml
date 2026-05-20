@@ -5,30 +5,56 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:local="clr-namespace:Module.Test.Views"
              mc:Ignorable="d"
-             d:DesignHeight="768"
-             d:DesignWidth="1366">
+             d:DesignHeight="900"
+             d:DesignWidth="1600">
     <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="12" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <Border Grid.Row="0"
+                Style="{StaticResource CardBorderStyle}"
+                Padding="18,14">
+            <DockPanel LastChildFill="True">
+                <StackPanel DockPanel.Dock="Left">
+                    <TextBlock FontSize="22"
+                               FontWeight="SemiBold"
+                               Foreground="{DynamicResource AppContentTextBrush}"
+                               Text="多工位测试总览" />
+                    <TextBlock Margin="0,6,0,0"
+                               Style="{StaticResource AppMutedTextBlockStyle}"
+                               Text="同屏查看每个工位的方案、操作、工步流程、测试数据、日志、运行状态和执行时间。" />
+                </StackPanel>
+                <TextBlock DockPanel.Dock="Right"
+                           VerticalAlignment="Center"
+                           FontSize="14"
+                           FontWeight="SemiBold"
+                           Foreground="{DynamicResource AppMutedTextBrush}"
+                           Text="{Binding StationCountText}" />
+            </DockPanel>
+        </Border>
+
         <ScrollViewer x:Name="StationsScrollViewer"
-                      HorizontalScrollBarVisibility="Auto"
-                      VerticalScrollBarVisibility="Disabled"
-                      SizeChanged="StationsScrollViewer_SizeChanged">
-            <ItemsControl Height="{Binding ActualHeight, ElementName=StationsScrollViewer}"
-                          ItemsSource="{Binding Stations}">
+                      Grid.Row="2"
+                      HorizontalScrollBarVisibility="Disabled"
+                      VerticalScrollBarVisibility="Auto">
+            <ItemsControl ItemsSource="{Binding Stations}">
                 <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>
-                        <StackPanel Orientation="Horizontal" />
+                        <UniformGrid Columns="2" />
                     </ItemsPanelTemplate>
                 </ItemsControl.ItemsPanel>
                 <ItemsControl.ItemContainerStyle>
                     <Style TargetType="{x:Type ContentPresenter}">
-                        <Setter Property="Margin" Value="0,0,12,0" />
-                        <Setter Property="Height" Value="{Binding ActualHeight, RelativeSource={RelativeSource AncestorType={x:Type ItemsControl}}}" />
+                        <Setter Property="Margin" Value="0,0,12,12" />
                     </Style>
                 </ItemsControl.ItemContainerStyle>
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
-                        <local:TestMaxView Width="{Binding DataContext.StationItemWidth, RelativeSource={RelativeSource AncestorType={x:Type ItemsControl}}}"
-                                           Height="{Binding ActualHeight, RelativeSource={RelativeSource AncestorType={x:Type ContentPresenter}}}"/>
+                        <local:TestMaxView MinWidth="560"
+                                           Height="{Binding ActualHeight, RelativeSource={RelativeSource AncestorType={x:Type ScrollViewer}}}" />
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>

@@ -1,4 +1,4 @@
-using ControlLibrary;
+﻿using ControlLibrary;
 using ControlLibrary.Controls.TestDataTable.Models;
 using ControlLibrary.Models.MediatorModels.Business;
 using Shared.Infrastructure.Events;
@@ -17,26 +17,29 @@ namespace Module.Test.ViewModels;
 
 public sealed class TestMaxViewModel : ViewModelProperties, IDisposable
 {
-    private static readonly Brush WaitingBrush = CreateBrush("#1A69FF");
-    private static readonly Brush RunningBrush = CreateBrush("#2F80ED");
+    private static readonly Brush IdleBrush = CreateBrush("#24C8F2");
+    private static readonly Brush RunningBrush = CreateBrush("#F59E0B");
     private static readonly Brush SuccessBrush = CreateBrush("#18A058");
     private static readonly Brush FailureBrush = CreateBrush("#D14343");
 
     private readonly IEventAggregator _eventAggregator;
     private readonly IMediator _mediator;
+    private readonly Stopwatch _elapsedStopwatch = new();
     private string _stationName;
     private string _lineName;
-    private string _testStatus = "待配置";
+    private string _testStatus = "待机";
     private string _productName = "产品名称";
     private string _productBarcode = "未读码";
     private string _schemeName = "未选择方案";
     private string _workOrderNo = "未下发";
     private string _selectedProductName = string.Empty;
     private TestProfileOption? _selectedProfile;
+    private TestDataDisplayItem? _selectedWorkStep;
     private string _runStateText = "待机";
     private string _elapsedTimeText = "0.0 s";
-    private Brush _statusBrush = WaitingBrush;
-    private readonly Stopwatch _elapsedStopwatch = new();
+    private string _currentWorkStepName = "等待启动";
+    private string _currentWorkStepElapsedTimeText = "0.0 s";
+    private Brush _statusBrush = IdleBrush;
     private bool _disposed;
 
     public TestMaxViewModel(IEventAggregator eventAggregator, IMediator mediator)
@@ -44,10 +47,7 @@ public sealed class TestMaxViewModel : ViewModelProperties, IDisposable
     {
     }
 
-    public TestMaxViewModel(
-        string stationName,
-        IEventAggregator eventAggregator,
-        IMediator mediator)
+    public TestMaxViewModel(string stationName, IEventAggregator eventAggregator, IMediator mediator)
     {
         _stationName = string.IsNullOrWhiteSpace(stationName) ? "未命名工位" : stationName.Trim();
         _lineName = "线体 A";
@@ -64,9 +64,14 @@ public sealed class TestMaxViewModel : ViewModelProperties, IDisposable
         WorkSteps = new ObservableCollection<TestDataDisplayItem>();
         ProductOptions = new ObservableCollection<string>(CreateDefaultProductOptions());
         ProfilesView = new ObservableCollection<TestProfileOption>();
+        RunningLogs = new ObservableCollection<string>();
+        MesLogs = new ObservableCollection<string>();
+        ExceptionLogs = new ObservableCollection<string>();
+        FunctionLogs = new ObservableCollection<string>();
         _selectedProductName = ProductOptions.Count > 0 ? ProductOptions[0] : string.Empty;
 
         LoadDefaultTestData();
+        LoadDefaultLogs();
 
         _eventAggregator
             .GetEvent<TestExecutionStatusChangedEvent>()
@@ -157,13 +162,48 @@ public sealed class TestMaxViewModel : ViewModelProperties, IDisposable
         private set => SetField(ref _elapsedTimeText, value);
     }
 
+    public string CurrentWorkStepName
+    {
+        get => _currentWorkStepName;
+        private set
+        {
+            if (SetField(ref _currentWorkStepName, value))
+            {
+                RefreshCurrentWorkStepMarkers();
+            }
+        }
+    }
+
+    public string CurrentWorkStepElapsedTimeText
+    {
+        get => _currentWorkStepElapsedTimeText;
+        private set => SetField(ref _currentWorkStepElapsedTimeText, value);
+    }
+
     public ObservableCollection<TestDataDisplayItem> TestData { get; }
 
     public ObservableCollection<TestDataDisplayItem> WorkSteps { get; }
 
+    public TestDataDisplayItem? SelectedWorkStep
+    {
+        get => _selectedWorkStep;
+        set
+        {
+            SelectWorkStep(value);
+        }
+    }
+
     public ObservableCollection<string> ProductOptions { get; }
 
     public ObservableCollection<TestProfileOption> ProfilesView { get; }
+
+    public ObservableCollection<string> RunningLogs { get; }
+
+    public ObservableCollection<string> MesLogs { get; }
+
+    public ObservableCollection<string> ExceptionLogs { get; }
+
+    public ObservableCollection<string> FunctionLogs { get; }
 
     public ICommand SingleStepTestCommand { get; }
 
@@ -227,33 +267,41 @@ public sealed class TestMaxViewModel : ViewModelProperties, IDisposable
         UpdateElapsedTime();
         ApplyCurrentWorkStepElapsedTime(ElapsedTimeText);
         _elapsedStopwatch.Reset();
-        TestStatus = "已停止";
+        TestStatus = "待机";
         RunStateText = "待机";
-        StatusBrush = WaitingBrush;
+        StatusBrush = IdleBrush;
+        CurrentWorkStepElapsedTimeText = "0.0 s";
+        AddLog(RunningLogs, $"{DateTime.Now:HH:mm:ss} {StationName} 已停止，进入待机。");
     }
 
     private void StartTest(string statusText)
     {
         TestStatus = statusText;
-        RunStateText = "运行中";
+        RunStateText = "测试中";
         StatusBrush = RunningBrush;
+        CurrentWorkStepName = ResolveCurrentWorkStepName();
         _elapsedStopwatch.Restart();
         UpdateElapsedTime();
         ApplyCurrentWorkStepElapsedTime(ElapsedTimeText);
+        AddLog(RunningLogs, $"{DateTime.Now:HH:mm:ss} {StationName} 开始{statusText}，执行 {CurrentWorkStepName}。");
     }
 
     private void UpdateElapsedTime()
     {
         ElapsedTimeText = $"{_elapsedStopwatch.Elapsed.TotalSeconds:0.0} s";
+        CurrentWorkStepElapsedTimeText = ElapsedTimeText;
     }
 
     private void ApplyCurrentWorkStepElapsedTime(string elapsedTimeText)
     {
-        string workStepName = SelectedProfile?.WorkStepName ?? string.Empty;
+        string workStepName = ResolveCurrentWorkStepName();
         if (string.IsNullOrWhiteSpace(workStepName))
         {
             return;
         }
+
+        CurrentWorkStepName = workStepName;
+        CurrentWorkStepElapsedTimeText = elapsedTimeText;
 
         for (int i = 0; i < TestData.Count; i++)
         {
@@ -303,7 +351,28 @@ public sealed class TestMaxViewModel : ViewModelProperties, IDisposable
         ProductName = UseFallback(message.ProductName, ProductName);
         ProductBarcode = UseFallback(message.ProductBarcode, ProductBarcode);
         SchemeName = UseFallback(message.SchemeName, SchemeName);
-        StatusBrush = ResolveStatusBrush(message);
+
+        if (message.IsSuccess == true)
+        {
+            RunStateText = "测试OK";
+            StatusBrush = SuccessBrush;
+        }
+        else if (message.IsSuccess == false)
+        {
+            RunStateText = "测试NG";
+            StatusBrush = FailureBrush;
+            AddLog(ExceptionLogs, $"{DateTime.Now:HH:mm:ss} {StationName} 测试结果 NG，请检查异常项。");
+        }
+        else if (IsRunningStatus(message.TestStatus))
+        {
+            RunStateText = "测试中";
+            StatusBrush = RunningBrush;
+        }
+        else
+        {
+            RunStateText = "待机";
+            StatusBrush = IdleBrush;
+        }
     }
 
     private void ApplySelectedProfile()
@@ -334,6 +403,19 @@ public sealed class TestMaxViewModel : ViewModelProperties, IDisposable
             WorkSteps.Add(item);
             TestData.Add(item);
         }
+
+        CurrentWorkStepName = ResolveCurrentWorkStepName();
+        RefreshCurrentWorkStepMarkers();
+        CurrentWorkStepElapsedTimeText = "0.0 s";
+    }
+
+    private string ResolveCurrentWorkStepName()
+    {
+        return WorkSteps.FirstOrDefault(step =>
+                   !string.Equals(step.Result, "OK", StringComparison.OrdinalIgnoreCase))?.WorkStep ??
+               WorkSteps.FirstOrDefault()?.WorkStep ??
+               TestData.FirstOrDefault()?.WorkStep ??
+               "等待启动";
     }
 
     private void LoadDefaultTestData()
@@ -341,43 +423,82 @@ public sealed class TestMaxViewModel : ViewModelProperties, IDisposable
         WorkSteps.Clear();
         TestData.Clear();
 
-        foreach (TestDataDisplayItem item in CreateDefaultTestData())
+        foreach (TestDataDisplayItem item in CreateDefaultWorkSteps())
         {
             WorkSteps.Add(item);
+        }
+
+        foreach (TestDataDisplayItem item in CreateDefaultTestData())
+        {
             TestData.Add(item);
         }
 
-        for (int i = 0; i < 10; i++)
-        {
-            TestDataDisplayItem item = new()
-            {
-                WorkStep = "单体电压",
-                Name = $"单体电压{i}",
-                TestValue = "23.8V",
-                JudgmentCondition = "电压 > 22V",
-                Result = "OK"
-            };
+        CurrentWorkStepName = ResolveCurrentWorkStepName();
+        RefreshCurrentWorkStepMarkers();
+        CurrentWorkStepElapsedTimeText = "0.0 s";
+    }
 
-            TestData.Add(item);
+    private void RefreshCurrentWorkStepMarkers()
+    {
+        TestDataDisplayItem? currentWorkStep = _selectedWorkStep is not null && WorkSteps.Contains(_selectedWorkStep)
+            ? _selectedWorkStep
+            : WorkSteps.FirstOrDefault(item =>
+                string.Equals(item.WorkStep, CurrentWorkStepName, StringComparison.Ordinal));
+
+        foreach (TestDataDisplayItem item in WorkSteps)
+        {
+            item.IsCurrent = ReferenceEquals(item, currentWorkStep);
+        }
+
+        SetField(ref _selectedWorkStep, currentWorkStep, nameof(SelectedWorkStep));
+    }
+
+    private void SelectWorkStep(TestDataDisplayItem? workStep)
+    {
+        if (workStep is null)
+        {
+            SetField(ref _selectedWorkStep, null, nameof(SelectedWorkStep));
+            RefreshCurrentWorkStepMarkers();
+            return;
+        }
+
+        SetField(ref _selectedWorkStep, workStep, nameof(SelectedWorkStep));
+        SetField(ref _currentWorkStepName, workStep.WorkStep, nameof(CurrentWorkStepName));
+        CurrentWorkStepElapsedTimeText = string.IsNullOrWhiteSpace(workStep.WorkStepElapsedTime)
+            ? "0.0 s"
+            : workStep.WorkStepElapsedTime;
+        RefreshCurrentWorkStepMarkers();
+    }
+
+    private void LoadDefaultLogs()
+    {
+        RunningLogs.Clear();
+        MesLogs.Clear();
+        ExceptionLogs.Clear();
+        FunctionLogs.Clear();
+
+        RunningLogs.Add($"{DateTime.Now:HH:mm:ss} {StationName} 已加载默认方案，等待启动。");
+        RunningLogs.Add($"{DateTime.Now:HH:mm:ss} 当前工步：{CurrentWorkStepName}。");
+        MesLogs.Add($"{DateTime.Now:HH:mm:ss} MES 连接正常，等待上传。");
+        ExceptionLogs.Add($"{DateTime.Now:HH:mm:ss} 暂无异常。");
+        FunctionLogs.Add($"{DateTime.Now:HH:mm:ss} 测试模块初始化完成。");
+    }
+
+    private static void AddLog(ObservableCollection<string> logs, string message)
+    {
+        logs.Insert(0, message);
+        while (logs.Count > 50)
+        {
+            logs.RemoveAt(logs.Count - 1);
         }
     }
 
-    private static Brush ResolveStatusBrush(TestExecutionStatusMessage message)
+    private static bool IsRunningStatus(string status)
     {
-        if (message.IsSuccess == true)
-        {
-            return SuccessBrush;
-        }
-
-        if (message.IsSuccess == false)
-        {
-            return FailureBrush;
-        }
-
-        return message.TestStatus.Contains("测试中", StringComparison.OrdinalIgnoreCase) ||
-               message.TestStatus.Contains("执行中", StringComparison.OrdinalIgnoreCase)
-            ? RunningBrush
-            : WaitingBrush;
+        return !string.IsNullOrWhiteSpace(status) &&
+               (status.Contains("测试", StringComparison.OrdinalIgnoreCase) ||
+                status.Contains("执行", StringComparison.OrdinalIgnoreCase) ||
+                status.Contains("运行", StringComparison.OrdinalIgnoreCase));
     }
 
     private static Brush CreateBrush(string colorText)
@@ -396,35 +517,66 @@ public sealed class TestMaxViewModel : ViewModelProperties, IDisposable
         [
             new()
             {
-                WorkStep = "上电检查",
-                Name = "电压采样",
-                TestValue = "23.8V",
-                JudgmentCondition = "电压 > 22V",
+                WorkStep = "绝缘耐压",
+                Name = "输入电压",
+                TestValue = "24.1V",
+                JudgmentCondition = "23.0V - 25.5V",
                 Result = "OK"
             },
             new()
             {
-                WorkStep = "上电检查",
-                Name = "电流采样",
-                TestValue = "1.2A",
-                JudgmentCondition = "电压 > 22V",
+                WorkStep = "绝缘耐压",
+                Name = "绝缘电阻",
+                TestValue = "36.8MΩ",
+                JudgmentCondition = "> 20MΩ",
                 Result = "OK"
             },
             new()
             {
-                WorkStep = "上电检查",
-                Name = "PLC握手",
-                TestValue = "286ms",
-                JudgmentCondition = "响应时间 < 200ms",
+                WorkStep = "绝缘耐压",
+                Name = "漏电流",
+                TestValue = "2.4mA",
+                JudgmentCondition = "< 3.0mA",
+                Result = "OK"
+            },
+            new()
+            {
+                WorkStep = "温度复测",
+                Name = "NTC 复测",
+                TestValue = "41.8℃",
+                JudgmentCondition = "20℃ - 38℃",
                 Result = "NG"
+            }
+        ];
+    }
+
+    private static TestDataDisplayItem[] CreateDefaultWorkSteps()
+    {
+        return
+        [
+            new()
+            {
+                WorkStep = "上电自检",
+                Name = "上电自检",
+                Result = "OK"
             },
             new()
             {
-                WorkStep = "通讯测试",
-                Name = "读取条码",
-                TestValue = "A2405060001",
-                JudgmentCondition = "条码不为空",
+                WorkStep = "条码绑定",
+                Name = "条码绑定",
                 Result = "OK"
+            },
+            new()
+            {
+                WorkStep = "绝缘耐压",
+                Name = "绝缘耐压",
+                Result = "待测"
+            },
+            new()
+            {
+                WorkStep = "结果上传",
+                Name = "结果上传",
+                Result = "待测"
             }
         ];
     }

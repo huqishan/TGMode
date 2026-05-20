@@ -17,8 +17,6 @@ namespace Module.Business.Views;
 /// </summary>
 public partial class StationConfigurationView : UserControl
 {
-    private Button? _dragSourceButton;
-    private Point _dragStartPoint;
     private SchemeConfigurationViewModel? _nodeOperationEditorViewModel;
     private Guid? _editingNodeId;
 
@@ -34,49 +32,6 @@ public partial class StationConfigurationView : UserControl
     }
 
     private StationConfigurationViewModel? ViewModel => DataContext as StationConfigurationViewModel;
-
-    private void PaletteItem_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
-    {
-        _dragSourceButton = sender as Button;
-        _dragStartPoint = e.GetPosition(this);
-    }
-
-    private void PaletteItem_PreviewMouseMove(object sender, MouseEventArgs e)
-    {
-        if (_dragSourceButton is null || e.LeftButton != MouseButtonState.Pressed)
-        {
-            return;
-        }
-
-        Point currentPoint = e.GetPosition(this);
-        if (Math.Abs(currentPoint.X - _dragStartPoint.X) < SystemParameters.MinimumHorizontalDragDistance &&
-            Math.Abs(currentPoint.Y - _dragStartPoint.Y) < SystemParameters.MinimumVerticalDragDistance)
-        {
-            return;
-        }
-
-        if (_dragSourceButton.Tag is not FlowchartNodeTemplate template)
-        {
-            _dragSourceButton = null;
-            return;
-        }
-
-        Button dragSourceButton = _dragSourceButton;
-        _dragSourceButton = null;
-
-        DataObject dataObject = new();
-        dataObject.SetData(DataFormats.StringFormat, template.NodeText);
-        dataObject.SetData(FlowchartDragDataFormats.PaletteText, template.NodeText);
-        dataObject.SetData(FlowchartDragDataFormats.PaletteNodeKind, template.NodeKind.ToString());
-        dataObject.SetData(FlowchartDragDataFormats.DragId, Guid.NewGuid().ToString("N"));
-
-        DragDrop.DoDragDrop(dragSourceButton, dataObject, DragDropEffects.Copy);
-    }
-
-    private void PaletteItem_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
-    {
-        _dragSourceButton = null;
-    }
 
     private void Editor_NodeDoubleClick(object sender, FlowchartNodeInteractionEventArgs e)
     {
@@ -101,7 +56,7 @@ public partial class StationConfigurationView : UserControl
             return;
         }
 
-        FlowchartDocument document = Editor.CreateDocumentSnapshot();
+        FlowchartDocument document = FlowchartPanel.CreateDocumentSnapshot();
         FlowchartNodeDocument? node = document.Nodes.FirstOrDefault(item => item.Id == _editingNodeId.Value);
         if (node is null)
         {
@@ -113,7 +68,7 @@ public partial class StationConfigurationView : UserControl
         node.Text = BuildNodeText(node.Kind, operation);
 
         ViewModel.SelectedStation.FlowchartDocument = document;
-        Editor.LoadDocumentSnapshot(document);
+        FlowchartPanel.LoadDocumentSnapshot(document);
 
         CloseNodeOperationEditor(cancelChanges: false);
     }
@@ -191,7 +146,7 @@ public partial class StationConfigurationView : UserControl
 
         _nodeOperationEditorViewModel = new SchemeConfigurationViewModel();
         _nodeOperationEditorViewModel.SetStandaloneReturnValueOptions(
-            GetFlowchartReturnValueOptions(Editor.CreateDocumentSnapshot(), _nodeOperationEditorViewModel));
+            GetFlowchartReturnValueOptions(FlowchartPanel.CreateDocumentSnapshot(), _nodeOperationEditorViewModel));
         _nodeOperationEditorViewModel.BeginStandaloneOperationEdit(
             operation,
             GetNodeEditorTitle(e.NodeKind),

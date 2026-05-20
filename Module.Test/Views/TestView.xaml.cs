@@ -38,9 +38,5 @@ namespace Module.Test.Views
             ViewModel?.Dispose();
         }
 
-        private void StationsScrollViewer_SizeChanged(object sender, SizeChangedEventArgs e)
-        {
-            ViewModel?.UpdateStationDisplayWidth(e.NewSize.Width);
-        }
     }
 }

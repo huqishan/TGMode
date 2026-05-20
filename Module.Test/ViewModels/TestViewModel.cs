@@ -16,8 +16,6 @@ public sealed class TestViewModel : ViewModelProperties, IDisposable
     private int _nextStationIndex = 1;
     private readonly IEventAggregator _eventAggregator;
     private readonly IMediator _mediator;
-    private double _stationDisplayWidth;
-    private double _stationItemWidth;
     private bool _disposed;
 
     public TestViewModel(IEventAggregator eventAggregator, IMediator mediator)
@@ -37,23 +35,6 @@ public sealed class TestViewModel : ViewModelProperties, IDisposable
     public ICommand RefreshStationsCommand { get; }
 
     public string StationCountText => $"共 {Stations.Count} 个工位";
-
-    public double StationItemWidth
-    {
-        get => _stationItemWidth;
-        private set => SetField(ref _stationItemWidth, value);
-    }
-
-    public void UpdateStationDisplayWidth(double width)
-    {
-        if (double.IsNaN(width) || double.IsInfinity(width) || width <= 0)
-        {
-            return;
-        }
-
-        _stationDisplayWidth = width;
-        RefreshStationItemWidth();
-    }
 
     public async Task LoadStationsAsync()
     {
@@ -106,14 +87,12 @@ public sealed class TestViewModel : ViewModelProperties, IDisposable
             .Max();
         _nextStationIndex = Math.Max(maxNumericSuffix + 1, Stations.Count + 1);
         OnPropertyChanged(nameof(StationCountText));
-        RefreshStationItemWidth();
     }
 
     private void AddStation()
     {
         Stations.Add(CreateStationViewModel($"工位 {_nextStationIndex++}"));
         OnPropertyChanged(nameof(StationCountText));
-        RefreshStationItemWidth();
     }
 
     private TestMaxViewModel CreateStationViewModel(string stationName)
@@ -143,16 +122,5 @@ public sealed class TestViewModel : ViewModelProperties, IDisposable
 
         return start < end &&
                int.TryParse(value.Substring(start + 1, end - start), out number);
-    }
-
-    private void RefreshStationItemWidth()
-    {
-        if (_stationDisplayWidth <= 0)
-        {
-            return;
-        }
-
-        int divisor = Math.Clamp(Stations.Count, 1, 3);
-        StationItemWidth = _stationDisplayWidth / divisor;
     }
 }

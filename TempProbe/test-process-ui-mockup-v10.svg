@@ -1,0 +1,137 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="980" viewBox="0 0 1600 980">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#08111D"/>
+      <stop offset="0.46" stop-color="#0C1521"/>
+      <stop offset="1" stop-color="#09101A"/>
+    </linearGradient>
+    <linearGradient id="card" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#142235"/>
+      <stop offset="1" stop-color="#101D2D"/>
+    </linearGradient>
+    <linearGradient id="primary" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#4FFFD2"/>
+      <stop offset="1" stop-color="#2CB7FF"/>
+    </linearGradient>
+    <linearGradient id="secondary" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#26354C"/>
+      <stop offset="1" stop-color="#1A2434"/>
+    </linearGradient>
+    <filter id="shadow" x="-15%" y="-15%" width="130%" height="130%">
+      <feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="#02060C" flood-opacity="0.28"/>
+    </filter>
+    <style>
+      .pageTitle{font:600 22px "Microsoft YaHei UI","Segoe UI",sans-serif;fill:#F4FBFF}
+      .title{font:600 18px "Microsoft YaHei UI","Segoe UI",sans-serif;fill:#F4FBFF}
+      .section{font:600 14px "Microsoft YaHei UI","Segoe UI",sans-serif;fill:#F4FBFF}
+      .label{font:12px "Microsoft YaHei UI","Segoe UI",sans-serif;fill:#A9BAD0}
+      .small{font:11px "Microsoft YaHei UI","Segoe UI",sans-serif;fill:#8CB1CF}
+      .text{font:12px "Microsoft YaHei UI","Segoe UI",sans-serif;fill:#E7F7FF}
+      .strong{font:600 13px "Microsoft YaHei UI","Segoe UI",sans-serif;fill:#F4FBFF}
+      .mono{font:600 16px Consolas,monospace;fill:#F4FBFF}
+      .card{fill:url(#card);stroke:#23374E;stroke-width:1}
+      .subtle{fill:#101D2D;stroke:#23374E;stroke-width:1}
+      .selected{fill:#163B56;stroke:#38BDF8;stroke-width:1}
+      .header{fill:#163B56;stroke:#38BDF8;stroke-width:1}
+      .rowA{fill:#101D2D}
+      .rowB{fill:#142235}
+      .ok{fill:#18A058}
+      .warn{fill:#F59E0B}
+      .idle{fill:#223044}
+    </style>
+  </defs>
+
+  <rect width="1600" height="980" fill="url(#bg)"/>
+
+  <rect x="28" y="24" width="1544" height="74" rx="16" class="card" filter="url(#shadow)"/>
+  <text x="56" y="58" class="pageTitle">多工位测试总览</text>
+  <text x="56" y="84" class="label">每个工位独立展示方案、操作、工步流程、测试数据、运行状态、执行时间和日志</text>
+  <g transform="translate(1046 42)">
+    <rect x="0" y="0" width="108" height="34" rx="17" fill="#101D2D" stroke="#23374E"/>
+    <circle cx="18" cy="17" r="5" class="idle"/><text x="32" y="22" class="small">待机 1</text>
+    <rect x="124" y="0" width="108" height="34" rx="17" fill="#101D2D" stroke="#23374E"/>
+    <circle cx="142" cy="17" r="5" class="warn"/><text x="156" y="22" class="small">测试中 1</text>
+    <rect x="248" y="0" width="108" height="34" rx="17" fill="#101D2D" stroke="#23374E"/>
+    <circle cx="266" cy="17" r="5" class="ok"/><text x="280" y="22" class="small">OK 1</text>
+    <rect x="372" y="0" width="108" height="34" rx="17" fill="url(#primary)" stroke="#4FFFD2"/>
+    <text x="398" y="22" font-family="Microsoft YaHei UI,Segoe UI,sans-serif" font-size="12" font-weight="700" fill="#041018">刷新</text>
+  </g>
+
+  <g id="station1" transform="translate(28 114)">
+    <rect width="758" height="410" rx="16" class="card" filter="url(#shadow)"/>
+    <rect x="18" y="16" width="722" height="40" rx="8" fill="#F59E0B"/>
+    <text x="34" y="42" class="title" fill="#FFFFFF">工位 1</text>
+    <text x="116" y="42" font-family="Microsoft YaHei UI,Segoe UI,sans-serif" font-size="16" font-weight="700" fill="#06101A">测试中</text>
+    <text x="620" y="42" font-family="Microsoft YaHei UI,Segoe UI,sans-serif" font-size="12" font-weight="600" fill="#06101A">执行时间</text>
+    <text x="682" y="42" font-family="Consolas,monospace" font-size="17" font-weight="700" fill="#06101A">18.6s</text>
+
+    <rect x="18" y="68" width="272" height="38" rx="6" class="subtle"/>
+    <text x="32" y="84" class="label">方案</text><text x="32" y="101" class="strong">PACK_EOL_标准_V2.3</text>
+    <path d="M264 86 l7 7 l7 -7" fill="none" stroke="#F4FBFF" stroke-width="2" stroke-linecap="round"/>
+    <rect x="304" y="68" width="72" height="38" rx="8" fill="url(#primary)" stroke="#4FFFD2"/><text x="328" y="92" font-family="Microsoft YaHei UI,Segoe UI,sans-serif" font-size="12" font-weight="700" fill="#041018">单步</text>
+    <rect x="386" y="68" width="72" height="38" rx="8" fill="url(#primary)" stroke="#4FFFD2" opacity="0.92"/><text x="410" y="92" font-family="Microsoft YaHei UI,Segoe UI,sans-serif" font-size="12" font-weight="700" fill="#041018">连续</text>
+    <rect x="468" y="68" width="72" height="38" rx="8" fill="url(#secondary)" stroke="#22FFFFFF"/><text x="492" y="92" class="strong">暂停</text>
+    <rect x="550" y="68" width="72" height="38" rx="8" fill="url(#secondary)" stroke="#22FFFFFF"/><text x="574" y="92" class="strong">停止</text>
+
+    <rect x="18" y="120" width="182" height="154" rx="10" class="subtle"/>
+    <text x="34" y="145" class="section">工步流程</text>
+    <line x1="44" y1="166" x2="44" y2="252" stroke="#24384F" stroke-width="2"/>
+    <circle cx="44" cy="166" r="6" class="ok"/><text x="60" y="170" class="text">上电自检</text>
+    <circle cx="44" cy="195" r="6" class="ok"/><text x="60" y="199" class="text">条码绑定</text>
+    <rect x="32" y="210" width="140" height="28" rx="7" class="selected"/><circle cx="44" cy="224" r="6" fill="url(#primary)"/><text x="60" y="228" class="strong">绝缘耐压</text>
+    <circle cx="44" cy="254" r="6" fill="#223044" stroke="#4A5B72"/><text x="60" y="258" class="text">结果上传</text>
+
+    <rect x="214" y="120" width="526" height="154" rx="10" class="subtle"/>
+    <text x="230" y="145" class="section">绝缘耐压</text><text x="316" y="145" class="label">工步执行时间</text><text x="394" y="146" class="mono">8.2s</text>
+    <rect x="230" y="158" width="494" height="26" rx="5" class="header"/>
+    <text x="244" y="176" class="small" fill="#F4FBFF">测试项</text><text x="382" y="176" class="small" fill="#F4FBFF">范围</text><text x="512" y="176" class="small" fill="#F4FBFF">值</text><text x="620" y="176" class="small" fill="#F4FBFF">结果</text>
+    <rect x="230" y="184" width="494" height="26" class="rowA"/><text x="244" y="202" class="text">输入电压</text><text x="382" y="202" class="small">23.0-25.5</text><text x="512" y="202" class="strong">24.1V</text><rect x="618" y="190" width="46" height="18" rx="9" class="ok"/><text x="632" y="203" class="small" fill="#fff">OK</text>
+    <rect x="230" y="210" width="494" height="26" class="rowB"/><text x="244" y="228" class="text">绝缘电阻</text><text x="382" y="228" class="small">&gt;20</text><text x="512" y="228" class="strong">36.8MΩ</text><rect x="618" y="216" width="46" height="18" rx="9" class="ok"/><text x="632" y="229" class="small" fill="#fff">OK</text>
+    <rect x="230" y="236" width="494" height="26" class="rowA"/><text x="244" y="254" class="text">漏电流</text><text x="382" y="254" class="small">&lt;3.0</text><text x="512" y="254" class="strong">2.4mA</text><rect x="618" y="242" width="46" height="18" rx="9" class="ok"/><text x="632" y="255" class="small" fill="#fff">OK</text>
+
+    <rect x="18" y="288" width="722" height="104" rx="10" class="subtle"/>
+    <text x="34" y="312" class="section">工位日志</text>
+    <rect x="108" y="295" width="72" height="26" rx="7" class="selected"/><text x="122" y="313" class="small" fill="#F4FBFF">运行日志</text>
+    <rect x="188" y="295" width="72" height="26" rx="7" class="subtle"/><text x="205" y="313" class="small">MES日志</text>
+    <rect x="268" y="295" width="72" height="26" rx="7" class="subtle"/><text x="282" y="313" class="small">异常日志</text>
+    <rect x="348" y="295" width="72" height="26" rx="7" class="subtle"/><text x="362" y="313" class="small">功能日志</text>
+    <text x="34" y="342" class="text">10:28:20  绝缘耐压工步完成漏电流采集：2.4mA，判定 OK。</text>
+    <text x="34" y="370" class="text">10:28:21  当前工步继续执行，等待结果上传。</text>
+  </g>
+
+  <g id="station2" transform="translate(814 114)">
+    <rect width="758" height="410" rx="16" class="card" filter="url(#shadow)"/>
+    <rect x="18" y="16" width="722" height="40" rx="8" fill="#18A058"/>
+    <text x="34" y="42" class="title" fill="#FFFFFF">工位 2</text><text x="116" y="42" font-family="Microsoft YaHei UI,Segoe UI,sans-serif" font-size="16" font-weight="700" fill="#FFFFFF">测试OK</text><text x="620" y="42" font-family="Microsoft YaHei UI,Segoe UI,sans-serif" font-size="12" font-weight="600" fill="#FFFFFF">执行时间</text><text x="682" y="42" font-family="Consolas,monospace" font-size="17" font-weight="700" fill="#FFFFFF">42.1s</text>
+    <rect x="18" y="68" width="272" height="38" rx="6" class="subtle"/><text x="32" y="84" class="label">方案</text><text x="32" y="101" class="strong">PACK_EOL_快速_V1.8</text><path d="M264 86 l7 7 l7 -7" fill="none" stroke="#F4FBFF" stroke-width="2" stroke-linecap="round"/>
+    <rect x="304" y="68" width="72" height="38" rx="8" fill="url(#primary)" stroke="#4FFFD2"/><text x="328" y="92" font-family="Microsoft YaHei UI,Segoe UI,sans-serif" font-size="12" font-weight="700" fill="#041018">单步</text><rect x="386" y="68" width="72" height="38" rx="8" fill="url(#primary)" stroke="#4FFFD2" opacity="0.92"/><text x="410" y="92" font-family="Microsoft YaHei UI,Segoe UI,sans-serif" font-size="12" font-weight="700" fill="#041018">连续</text><rect x="468" y="68" width="72" height="38" rx="8" fill="url(#secondary)" stroke="#22FFFFFF"/><text x="492" y="92" class="strong">暂停</text><rect x="550" y="68" width="72" height="38" rx="8" fill="url(#secondary)" stroke="#22FFFFFF"/><text x="574" y="92" class="strong">停止</text>
+    <rect x="18" y="120" width="182" height="154" rx="10" class="subtle"/><text x="34" y="145" class="section">工步流程</text><line x1="44" y1="166" x2="44" y2="252" stroke="#24384F" stroke-width="2"/><circle cx="44" cy="166" r="6" class="ok"/><text x="60" y="170" class="text">上电自检</text><circle cx="44" cy="195" r="6" class="ok"/><text x="60" y="199" class="text">绝缘耐压</text><rect x="32" y="210" width="140" height="28" rx="7" class="selected"/><circle cx="44" cy="224" r="6" fill="url(#primary)"/><text x="60" y="228" class="strong">CAN 通讯</text><circle cx="44" cy="254" r="6" fill="#223044" stroke="#4A5B72"/><text x="60" y="258" class="text">MES 上传</text>
+    <rect x="214" y="120" width="526" height="154" rx="10" class="subtle"/><text x="230" y="145" class="section">CAN 通讯</text><text x="316" y="145" class="label">工步执行时间</text><text x="394" y="146" class="mono">12.7s</text><rect x="230" y="158" width="494" height="26" rx="5" class="header"/><text x="244" y="176" class="small" fill="#F4FBFF">测试项</text><text x="382" y="176" class="small" fill="#F4FBFF">范围</text><text x="512" y="176" class="small" fill="#F4FBFF">值</text><text x="620" y="176" class="small" fill="#F4FBFF">结果</text>
+    <rect x="230" y="184" width="494" height="26" class="rowA"/><text x="244" y="202" class="text">输入电压</text><text x="382" y="202" class="small">23.0-25.5</text><text x="512" y="202" class="strong">24.0V</text><rect x="618" y="190" width="46" height="18" rx="9" class="ok"/><text x="632" y="203" class="small" fill="#fff">OK</text><rect x="230" y="210" width="494" height="26" class="rowB"/><text x="244" y="228" class="text">CAN 应答</text><text x="382" y="228" class="small">&lt;100</text><text x="512" y="228" class="strong">62ms</text><rect x="618" y="216" width="46" height="18" rx="9" class="ok"/><text x="632" y="229" class="small" fill="#fff">OK</text><rect x="230" y="236" width="494" height="26" class="rowA"/><text x="244" y="254" class="text">MES 上传</text><text x="382" y="254" class="small">返回=0</text><text x="512" y="254" class="strong">--</text><rect x="618" y="242" width="46" height="18" rx="9" fill="#223044" stroke="#4A5B72"/><text x="629" y="255" class="small">等待</text>
+    <rect x="18" y="288" width="722" height="104" rx="10" class="subtle"/><text x="34" y="312" class="section">工位日志</text><rect x="108" y="295" width="72" height="26" rx="7" class="subtle"/><text x="122" y="313" class="small">运行日志</text><rect x="188" y="295" width="72" height="26" rx="7" class="selected"/><text x="205" y="313" class="small" fill="#F4FBFF">MES日志</text><rect x="268" y="295" width="72" height="26" rx="7" class="subtle"/><text x="282" y="313" class="small">异常日志</text><rect x="348" y="295" width="72" height="26" rx="7" class="subtle"/><text x="362" y="313" class="small">功能日志</text><text x="34" y="342" class="text">10:29:04  MES 上传队列已创建，等待当前 CAN 通讯完成。</text><text x="34" y="370" class="text">10:29:05  当前工位产品 SN 已绑定工单 WO-20260520-07。</text>
+  </g>
+
+  <g id="station3" transform="translate(28 540)">
+    <rect width="758" height="410" rx="16" class="card" filter="url(#shadow)"/>
+    <rect x="18" y="16" width="722" height="40" rx="8" fill="#D14343"/>
+    <text x="34" y="42" class="title" fill="#FFFFFF">工位 3</text><text x="116" y="42" font-family="Microsoft YaHei UI,Segoe UI,sans-serif" font-size="16" font-weight="700" fill="#FFFFFF">测试NG</text><text x="620" y="42" font-family="Microsoft YaHei UI,Segoe UI,sans-serif" font-size="12" font-weight="600" fill="#FFFFFF">执行时间</text><text x="682" y="42" font-family="Consolas,monospace" font-size="17" font-weight="700" fill="#FFFFFF">67.4s</text>
+    <rect x="18" y="68" width="272" height="38" rx="6" class="subtle"/><text x="32" y="84" class="label">方案</text><text x="32" y="101" class="strong">PACK_EOL_标准_V2.3</text><path d="M264 86 l7 7 l7 -7" fill="none" stroke="#F4FBFF" stroke-width="2" stroke-linecap="round"/>
+    <rect x="304" y="68" width="72" height="38" rx="8" fill="url(#primary)" stroke="#4FFFD2"/><text x="328" y="92" font-family="Microsoft YaHei UI,Segoe UI,sans-serif" font-size="12" font-weight="700" fill="#041018">单步</text><rect x="386" y="68" width="72" height="38" rx="8" fill="url(#primary)" stroke="#4FFFD2" opacity="0.92"/><text x="410" y="92" font-family="Microsoft YaHei UI,Segoe UI,sans-serif" font-size="12" font-weight="700" fill="#041018">连续</text><rect x="468" y="68" width="72" height="38" rx="8" fill="url(#secondary)" stroke="#22FFFFFF"/><text x="492" y="92" class="strong">暂停</text><rect x="550" y="68" width="72" height="38" rx="8" fill="url(#secondary)" stroke="#22FFFFFF"/><text x="574" y="92" class="strong">停止</text>
+    <rect x="18" y="120" width="182" height="154" rx="10" class="subtle"/><text x="34" y="145" class="section">工步流程</text><line x1="44" y1="166" x2="44" y2="252" stroke="#24384F" stroke-width="2"/><circle cx="44" cy="166" r="6" class="ok"/><text x="60" y="170" class="text">上电自检</text><circle cx="44" cy="195" r="6" class="ng"/><text x="60" y="199" fill="#D14343" font-family="Microsoft YaHei UI,Segoe UI,sans-serif" font-size="12">温度首测</text><rect x="32" y="210" width="140" height="28" rx="7" fill="#3A1620" stroke="#D14343"/><circle cx="44" cy="224" r="6" class="ng"/><text x="60" y="228" fill="#D14343" font-family="Microsoft YaHei UI,Segoe UI,sans-serif" font-size="13" font-weight="600">温度复测</text><circle cx="44" cy="254" r="6" class="ng"/><text x="60" y="258" fill="#D14343" font-family="Microsoft YaHei UI,Segoe UI,sans-serif" font-size="12">最终判定</text>
+    <rect x="214" y="120" width="526" height="154" rx="10" class="subtle"/><text x="230" y="145" class="section">温度复测</text><text x="316" y="145" class="label">工步执行时间</text><text x="394" y="146" class="mono">21.8s</text><rect x="230" y="158" width="494" height="26" rx="5" class="header"/><text x="244" y="176" class="small" fill="#F4FBFF">测试项</text><text x="382" y="176" class="small" fill="#F4FBFF">范围</text><text x="512" y="176" class="small" fill="#F4FBFF">值</text><text x="620" y="176" class="small" fill="#F4FBFF">结果</text>
+    <rect x="230" y="184" width="494" height="26" class="rowA"/><text x="244" y="202" class="text">NTC 首测</text><text x="382" y="202" class="small">20-38</text><text x="512" y="202" class="strong">39.2℃</text><rect x="618" y="190" width="46" height="18" rx="9" class="warn"/><text x="629" y="203" class="small" fill="#06101A">复测</text><rect x="230" y="210" width="494" height="26" class="rowB"/><text x="244" y="228" fill="#D14343" font-family="Microsoft YaHei UI,Segoe UI,sans-serif" font-size="12">NTC 复测</text><text x="382" y="228" fill="#D14343" font-family="Microsoft YaHei UI,Segoe UI,sans-serif" font-size="11">20-38</text><text x="512" y="228" fill="#D14343" font-family="Microsoft YaHei UI,Segoe UI,sans-serif" font-size="13" font-weight="600">41.8℃</text><rect x="618" y="216" width="46" height="18" rx="9" class="ng"/><text x="632" y="229" class="small" fill="#fff">NG</text><rect x="230" y="236" width="494" height="26" class="rowA"/><text x="244" y="254" fill="#D14343" font-family="Microsoft YaHei UI,Segoe UI,sans-serif" font-size="12">最终判定</text><text x="382" y="254" fill="#D14343" font-family="Microsoft YaHei UI,Segoe UI,sans-serif" font-size="11">存在NG项</text><text x="512" y="254" fill="#D14343" font-family="Microsoft YaHei UI,Segoe UI,sans-serif" font-size="13" font-weight="600">NG</text><rect x="618" y="242" width="46" height="18" rx="9" class="ng"/><text x="632" y="255" class="small" fill="#fff">NG</text>
+    <rect x="18" y="288" width="722" height="104" rx="10" class="subtle"/><text x="34" y="312" class="section">工位日志</text><rect x="108" y="295" width="72" height="26" rx="7" class="subtle"/><text x="122" y="313" class="small">运行日志</text><rect x="188" y="295" width="72" height="26" rx="7" class="subtle"/><text x="205" y="313" class="small">MES日志</text><rect x="268" y="295" width="72" height="26" rx="7" fill="#3A1620" stroke="#D14343"/><text x="282" y="313" class="small" fill="#FFFFFF">异常日志</text><rect x="348" y="295" width="72" height="26" rx="7" class="subtle"/><text x="362" y="313" class="small">功能日志</text><text x="34" y="342" fill="#D14343" font-family="Microsoft YaHei UI,Segoe UI,sans-serif" font-size="12">10:30:40  NTC 首测超出范围，自动进入复测流程。</text><text x="34" y="370" fill="#D14343" font-family="Microsoft YaHei UI,Segoe UI,sans-serif" font-size="12">10:31:02  复测仍异常，工位判定为测试NG。</text>
+  </g>
+
+  <g id="station4" transform="translate(814 540)">
+    <rect width="758" height="410" rx="16" class="card" filter="url(#shadow)"/>
+    <rect x="18" y="16" width="722" height="40" rx="8" fill="#223044" stroke="#4A5B72"/>
+    <text x="34" y="42" class="title" fill="#FFFFFF">工位 4</text><text x="116" y="42" font-family="Microsoft YaHei UI,Segoe UI,sans-serif" font-size="16" font-weight="700" fill="#FFFFFF">待机</text><text x="620" y="42" font-family="Microsoft YaHei UI,Segoe UI,sans-serif" font-size="12" font-weight="600" fill="#FFFFFF">执行时间</text><text x="688" y="42" font-family="Consolas,monospace" font-size="17" font-weight="700" fill="#FFFFFF">0.0s</text>
+    <rect x="18" y="68" width="272" height="38" rx="6" class="subtle"/><text x="32" y="84" class="label">方案</text><text x="32" y="101" class="strong">PACK_EOL_标准_V2.3</text><path d="M264 86 l7 7 l7 -7" fill="none" stroke="#F4FBFF" stroke-width="2" stroke-linecap="round"/>
+    <rect x="304" y="68" width="72" height="38" rx="8" fill="url(#primary)" stroke="#4FFFD2"/><text x="328" y="92" font-family="Microsoft YaHei UI,Segoe UI,sans-serif" font-size="12" font-weight="700" fill="#041018">单步</text><rect x="386" y="68" width="72" height="38" rx="8" fill="url(#primary)" stroke="#4FFFD2" opacity="0.92"/><text x="410" y="92" font-family="Microsoft YaHei UI,Segoe UI,sans-serif" font-size="12" font-weight="700" fill="#041018">连续</text><rect x="468" y="68" width="72" height="38" rx="8" fill="url(#secondary)" stroke="#22FFFFFF"/><text x="492" y="92" class="strong">暂停</text><rect x="550" y="68" width="72" height="38" rx="8" fill="url(#secondary)" stroke="#22FFFFFF"/><text x="574" y="92" class="strong">停止</text>
+    <rect x="18" y="120" width="182" height="154" rx="10" class="subtle"/><text x="34" y="145" class="section">工步流程</text><line x1="44" y1="166" x2="44" y2="252" stroke="#24384F" stroke-width="2"/><rect x="32" y="152" width="140" height="28" rx="7" class="selected"/><circle cx="44" cy="166" r="6" fill="url(#primary)"/><text x="60" y="170" class="strong">等待启动</text><circle cx="44" cy="195" r="6" fill="#223044" stroke="#4A5B72"/><text x="60" y="199" class="text">上电自检</text><circle cx="44" cy="224" r="6" fill="#223044" stroke="#4A5B72"/><text x="60" y="228" class="text">绝缘耐压</text><circle cx="44" cy="254" r="6" fill="#223044" stroke="#4A5B72"/><text x="60" y="258" class="text">结果上传</text>
+    <rect x="214" y="120" width="526" height="154" rx="10" class="subtle"/><text x="230" y="145" class="section">等待启动</text><text x="316" y="145" class="label">工步执行时间</text><text x="394" y="146" class="mono">0.0s</text><rect x="230" y="158" width="494" height="26" rx="5" class="header"/><text x="244" y="176" class="small" fill="#F4FBFF">测试项</text><text x="382" y="176" class="small" fill="#F4FBFF">范围</text><text x="512" y="176" class="small" fill="#F4FBFF">值</text><text x="620" y="176" class="small" fill="#F4FBFF">结果</text>
+    <rect x="230" y="184" width="494" height="26" class="rowA"/><text x="244" y="202" class="text">输入电压</text><text x="382" y="202" class="small">23.0-25.5</text><text x="512" y="202" class="strong">--</text><rect x="618" y="190" width="46" height="18" rx="9" fill="#12365A" stroke="#2F80ED"/><text x="629" y="203" fill="#2F80ED" font-family="Microsoft YaHei UI,Segoe UI,sans-serif" font-size="11">等待</text><rect x="230" y="210" width="494" height="26" class="rowB"/><text x="244" y="228" class="text">绝缘电阻</text><text x="382" y="228" class="small">&gt;20</text><text x="512" y="228" class="strong">--</text><rect x="618" y="216" width="46" height="18" rx="9" fill="#12365A" stroke="#2F80ED"/><text x="629" y="229" fill="#2F80ED" font-family="Microsoft YaHei UI,Segoe UI,sans-serif" font-size="11">等待</text><rect x="230" y="236" width="494" height="26" class="rowA"/><text x="244" y="254" class="text">MES 上传</text><text x="382" y="254" class="small">返回=0</text><text x="512" y="254" class="strong">--</text><rect x="618" y="242" width="46" height="18" rx="9" fill="#12365A" stroke="#2F80ED"/><text x="629" y="255" fill="#2F80ED" font-family="Microsoft YaHei UI,Segoe UI,sans-serif" font-size="11">等待</text>
+    <rect x="18" y="288" width="722" height="104" rx="10" class="subtle"/><text x="34" y="312" class="section">工位日志</text><rect x="108" y="295" width="72" height="26" rx="7" class="subtle"/><text x="122" y="313" class="small">运行日志</text><rect x="188" y="295" width="72" height="26" rx="7" class="subtle"/><text x="205" y="313" class="small">MES日志</text><rect x="268" y="295" width="72" height="26" rx="7" class="subtle"/><text x="282" y="313" class="small">异常日志</text><rect x="348" y="295" width="72" height="26" rx="7" class="selected"/><text x="362" y="313" class="small" fill="#F4FBFF">功能日志</text><text x="34" y="342" class="text">10:31:10  工位空闲，等待条码扫码或启动命令。</text><text x="34" y="370" class="text">10:31:11  已加载默认方案，可直接启动测试。</text>
+  </g>
+</svg>
