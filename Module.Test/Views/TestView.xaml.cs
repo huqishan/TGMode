@@ -1,6 +1,7 @@
-using System;
-using System.Windows.Controls;
 using Module.Test.ViewModels;
+using System;
+using System.Windows;
+using System.Windows.Controls;
 
 namespace Module.Test.Views
 {
@@ -14,15 +15,32 @@ namespace Module.Test.Views
             InitializeComponent();
         }
 
-        public TestView(TestMaxViewModel viewModel)
+        public TestView(TestViewModel viewModel)
         {
             InitializeComponent();
-            if (MinView.DataContext is TestMaxViewModel oldViewModel)
-            {
-                oldViewModel.Dispose();
-            }
+            DataContext = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
+            Loaded += TestView_Loaded;
+            Unloaded += TestView_Unloaded;
+        }
 
-            MinView.DataContext = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
+        private TestViewModel? ViewModel => DataContext as TestViewModel;
+
+        private async void TestView_Loaded(object sender, RoutedEventArgs e)
+        {
+            if (ViewModel is not null)
+            {
+                await ViewModel.LoadStationsAsync();
+            }
+        }
+
+        private void TestView_Unloaded(object sender, RoutedEventArgs e)
+        {
+            ViewModel?.Dispose();
+        }
+
+        private void StationsScrollViewer_SizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            ViewModel?.UpdateStationDisplayWidth(e.NewSize.Width);
         }
     }
 }

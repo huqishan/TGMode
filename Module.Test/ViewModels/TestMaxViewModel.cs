@@ -1,10 +1,15 @@
 using ControlLibrary;
 using ControlLibrary.Controls.TestDataTable.Models;
+using ControlLibrary.Models.MediatorModels.Business;
 using Shared.Infrastructure.Events;
+using Shared.Infrastructure.Mediator;
 using Shared.Models.Test;
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.Linq;
+using System.Threading.Tasks;
 using System.Windows.Input;
 using System.Windows.Media;
 
@@ -18,6 +23,7 @@ public sealed class TestMaxViewModel : ViewModelProperties, IDisposable
     private static readonly Brush FailureBrush = CreateBrush("#D14343");
 
     private readonly IEventAggregator _eventAggregator;
+    private readonly IMediator _mediator;
     private string _stationName;
     private string _lineName;
     private string _testStatus = "待配置";
@@ -33,43 +39,34 @@ public sealed class TestMaxViewModel : ViewModelProperties, IDisposable
     private readonly Stopwatch _elapsedStopwatch = new();
     private bool _disposed;
 
-    public TestMaxViewModel(IEventAggregator eventAggregator)
-        : this("工位 1", eventAggregator)
+    public TestMaxViewModel(IEventAggregator eventAggregator, IMediator mediator)
+        : this("工位 1", eventAggregator, mediator)
     {
     }
 
-    public TestMaxViewModel(string stationName, IEventAggregator eventAggregator)
+    public TestMaxViewModel(
+        string stationName,
+        IEventAggregator eventAggregator,
+        IMediator mediator)
     {
         _stationName = string.IsNullOrWhiteSpace(stationName) ? "未命名工位" : stationName.Trim();
         _lineName = "线体 A";
-        _eventAggregator = eventAggregator;
+        _eventAggregator = eventAggregator ?? throw new ArgumentNullException(nameof(eventAggregator));
+        _mediator = mediator ?? throw new ArgumentNullException(nameof(mediator));
 
         SingleStepTestCommand = new RelayCommand(_ => StartSingleStepTest());
         ContinuousTestCommand = new RelayCommand(_ => StartContinuousTest());
         StopTestCommand = new RelayCommand(_ => StopTest());
         RefreshProductsCommand = new RelayCommand(_ => RefreshProducts());
+        RefreshSchemesCommand = new AsyncRelayCommand(_ => LoadSchemesAsync());
 
-        TestData = new ObservableCollection<TestDataDisplayItem>(CreateDefaultTestData());
+        TestData = new ObservableCollection<TestDataDisplayItem>();
+        WorkSteps = new ObservableCollection<TestDataDisplayItem>();
         ProductOptions = new ObservableCollection<string>(CreateDefaultProductOptions());
-        ProfilesView = new ObservableCollection<TestProfileOption>(CreateDefaultProfiles());
+        ProfilesView = new ObservableCollection<TestProfileOption>();
         _selectedProductName = ProductOptions.Count > 0 ? ProductOptions[0] : string.Empty;
-        _selectedProfile = ProfilesView.Count > 0 ? ProfilesView[0] : null;
-        if (_selectedProfile is not null)
-        {
-            _schemeName = _selectedProfile.WorkStepName;
-        }
 
-        for (int i = 0; i < 10; i++)
-        {
-            TestData.Add(new()
-            {
-                WorkStep = "单体电压",
-                Name = $"单体电压{i}",
-                TestValue = "23.8V",
-                JudgmentCondition = "电压 > 22V",
-                Result = "OK"
-            });
-        }
+        LoadDefaultTestData();
 
         _eventAggregator
             .GetEvent<TestExecutionStatusChangedEvent>()
@@ -137,7 +134,7 @@ public sealed class TestMaxViewModel : ViewModelProperties, IDisposable
         {
             if (SetField(ref _selectedProfile, value))
             {
-                SchemeName = value?.WorkStepName ?? "未选择方案";
+                ApplySelectedProfile();
             }
         }
     }
@@ -162,6 +159,8 @@ public sealed class TestMaxViewModel : ViewModelProperties, IDisposable
 
     public ObservableCollection<TestDataDisplayItem> TestData { get; }
 
+    public ObservableCollection<TestDataDisplayItem> WorkSteps { get; }
+
     public ObservableCollection<string> ProductOptions { get; }
 
     public ObservableCollection<TestProfileOption> ProfilesView { get; }
@@ -173,6 +172,31 @@ public sealed class TestMaxViewModel : ViewModelProperties, IDisposable
     public ICommand StopTestCommand { get; }
 
     public ICommand RefreshProductsCommand { get; }
+
+    public ICommand RefreshSchemesCommand { get; }
+
+    public async Task LoadSchemesAsync()
+    {
+        GetBusinessSchemesResponse response = await _mediator.Send(new GetBusinessSchemesRequest());
+        string? selectedSchemeId = SelectedProfile?.SchemeId;
+
+        ProfilesView.Clear();
+        foreach (BusinessSchemeInfo scheme in response.Schemes)
+        {
+            ProfilesView.Add(TestProfileOption.FromScheme(scheme));
+        }
+
+        SelectedProfile = ProfilesView.FirstOrDefault(profile =>
+                              string.Equals(profile.SchemeId, selectedSchemeId, StringComparison.Ordinal)) ??
+                          ProfilesView.FirstOrDefault();
+
+        if (SelectedProfile is null)
+        {
+            SchemeName = "未选择方案";
+            WorkSteps.Clear();
+            LoadDefaultTestData();
+        }
+    }
 
     public void Dispose()
     {
@@ -282,6 +306,62 @@ public sealed class TestMaxViewModel : ViewModelProperties, IDisposable
         StatusBrush = ResolveStatusBrush(message);
     }
 
+    private void ApplySelectedProfile()
+    {
+        SchemeName = SelectedProfile?.WorkStepName ?? "未选择方案";
+        WorkSteps.Clear();
+        TestData.Clear();
+
+        if (SelectedProfile is null)
+        {
+            LoadDefaultTestData();
+            return;
+        }
+
+        foreach (TestProfileWorkStepOption workStep in SelectedProfile.WorkSteps)
+        {
+            TestDataDisplayItem item = new()
+            {
+                WorkStep = workStep.StepName,
+                Name = workStep.WorkStepName,
+                TestValue = string.Empty,
+                JudgmentCondition = workStep.OperationCount > 0
+                    ? $"{workStep.OperationCount} 个步骤"
+                    : "无步骤",
+                Result = "待测"
+            };
+
+            WorkSteps.Add(item);
+            TestData.Add(item);
+        }
+    }
+
+    private void LoadDefaultTestData()
+    {
+        WorkSteps.Clear();
+        TestData.Clear();
+
+        foreach (TestDataDisplayItem item in CreateDefaultTestData())
+        {
+            WorkSteps.Add(item);
+            TestData.Add(item);
+        }
+
+        for (int i = 0; i < 10; i++)
+        {
+            TestDataDisplayItem item = new()
+            {
+                WorkStep = "单体电压",
+                Name = $"单体电压{i}",
+                TestValue = "23.8V",
+                JudgmentCondition = "电压 > 22V",
+                Result = "OK"
+            };
+
+            TestData.Add(item);
+        }
+    }
+
     private static Brush ResolveStatusBrush(TestExecutionStatusMessage message)
     {
         if (message.IsSuccess == true)
@@ -358,39 +438,89 @@ public sealed class TestMaxViewModel : ViewModelProperties, IDisposable
             "产线样件"
         ];
     }
-
-    private static TestProfileOption[] CreateDefaultProfiles()
-    {
-        return
-        [
-            new(
-                "上电检查",
-                "单步",
-                "校验电压、电流和 PLC 握手状态。"),
-            new(
-                "通讯测试",
-                "连续",
-                "循环读取条码、工单和 MES 返回结果。"),
-            new(
-                "结果复核",
-                "判定",
-                "汇总测试数据并刷新判定状态。")
-        ];
-    }
 }
 
 public sealed class TestProfileOption
 {
-    public TestProfileOption(string workStepName, string typeDisplayName, string summary)
+    private TestProfileOption(
+        string schemeId,
+        string workStepName,
+        string typeDisplayName,
+        string summary,
+        IReadOnlyList<TestProfileWorkStepOption> workSteps)
     {
+        SchemeId = schemeId;
         WorkStepName = workStepName;
         TypeDisplayName = typeDisplayName;
         Summary = summary;
+        WorkSteps = workSteps;
     }
+
+    public string SchemeId { get; }
 
     public string WorkStepName { get; }
 
     public string TypeDisplayName { get; }
 
     public string Summary { get; }
+
+    public IReadOnlyList<TestProfileWorkStepOption> WorkSteps { get; }
+
+    public static TestProfileOption FromScheme(BusinessSchemeInfo scheme)
+    {
+        TestProfileWorkStepOption[] workSteps = scheme.WorkSteps
+            .OrderBy(step => step.DisplayOrder)
+            .Select(TestProfileWorkStepOption.FromWorkStep)
+            .ToArray();
+
+        return new TestProfileOption(
+            scheme.Id,
+            scheme.SchemeName,
+            $"{workSteps.Length} 个工步",
+            workSteps.Length == 0
+                ? "未配置工步。"
+                : string.Join(" / ", workSteps.Select(step => step.StepName)),
+            workSteps);
+    }
+}
+
+public sealed class TestProfileWorkStepOption
+{
+    private TestProfileWorkStepOption(
+        string id,
+        int displayOrder,
+        string workStepName,
+        string stepName,
+        int operationCount)
+    {
+        Id = id;
+        DisplayOrder = displayOrder;
+        WorkStepName = workStepName;
+        StepName = stepName;
+        OperationCount = operationCount;
+    }
+
+    public string Id { get; }
+
+    public int DisplayOrder { get; }
+
+    public string WorkStepName { get; }
+
+    public string StepName { get; }
+
+    public int OperationCount { get; }
+
+    public static TestProfileWorkStepOption FromWorkStep(BusinessSchemeWorkStepInfo workStep)
+    {
+        string stepName = string.IsNullOrWhiteSpace(workStep.StepName)
+            ? workStep.WorkStepName
+            : workStep.StepName;
+
+        return new TestProfileWorkStepOption(
+            workStep.Id,
+            workStep.DisplayOrder,
+            string.IsNullOrWhiteSpace(workStep.WorkStepName) ? stepName : workStep.WorkStepName,
+            stepName,
+            workStep.OperationCount);
+    }
 }

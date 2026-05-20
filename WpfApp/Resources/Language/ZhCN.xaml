@@ -19,6 +19,7 @@
     <sys:String x:Key="WindowCloseToolTip">关闭</sys:String>
     <sys:String x:Key="Home">首页</sys:String>
     <sys:String x:Key="Overview">概览</sys:String>
+    <sys:String x:Key="测试界面">测试界面</sys:String>
     <sys:String x:Key="Settings">设置</sys:String>
     <sys:String x:Key="Modern Navigation">现代导航</sys:String>
     <sys:String x:Key="Toggle navigation pane">切换导航栏</sys:String>
@@ -51,6 +52,7 @@
     <sys:String x:Key="左侧维护当前方案的工步顺序，选中工步后可在右侧维护该内置工步的方案参数。右键菜单 增加/删除/刷新 工步">左侧维护当前方案的工步顺序，选中工步后可在右侧维护该内置工步的方案参数。右键菜单 增加/删除/刷新 工步</sys:String>
     <sys:String x:Key="这里显示当前内置工步中调用方法参数里类型为“工步值”的参数，以及勾选“显示到界面”的返回数据。显示到界面的数据会按工步里配置的判断类型生成，参数名称取判断类型，判断类型下拉也来自当前工步的显示配置。">这里显示当前内置工步中调用方法参数里类型为“工步值”的参数，以及勾选“显示到界面”的返回数据。显示到界面的数据会按工步里配置的判断类型生成，参数名称取判断类型，判断类型下拉也来自当前工步的显示配置。</sys:String>
     <sys:String x:Key="结构配置">结构配置</sys:String>
+    <sys:String x:Key="方案选择">方案选择</sys:String>
     <sys:String x:Key="等待编辑">等待编辑</sys:String>
     <sys:String x:Key="等待输入">等待输入</sys:String>
     <sys:String x:Key="等待初始化">等待初始化</sys:String>

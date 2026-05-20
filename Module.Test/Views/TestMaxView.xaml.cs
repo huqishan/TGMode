@@ -28,7 +28,16 @@ namespace Module.Test.Views
         private void InitializeView()
         {
             InitializeComponent();
+            Loaded += TestMaxView_Loaded;
             Unloaded += TestMinView_Unloaded;
+        }
+
+        private async void TestMaxView_Loaded(object sender, RoutedEventArgs e)
+        {
+            if (DataContext is TestMaxViewModel viewModel)
+            {
+                await viewModel.LoadSchemesAsync();
+            }
         }
 
         private void TestMinView_Unloaded(object sender, RoutedEventArgs e)
