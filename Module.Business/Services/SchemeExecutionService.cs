@@ -1,4 +1,5 @@
-﻿using ControlLibrary.Models.MediatorModels.Communication;
+﻿using ControlLibrary.Models.EventsModels.Test;
+using ControlLibrary.Models.MediatorModels.Communication;
 using Module.Business.Models;
 using Module.Business.ViewModels.PropertyVMs;
 using Shared.Abstractions;
@@ -7,7 +8,6 @@ using Shared.Infrastructure.Extensions;
 using Shared.Infrastructure.Lua;
 using Shared.Infrastructure.Mediator;
 using Shared.Models.Communication;
-using Shared.Models.Test;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;

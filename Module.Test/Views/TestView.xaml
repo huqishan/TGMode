@@ -39,8 +39,10 @@
         <ScrollViewer x:Name="StationsScrollViewer"
                       Grid.Row="2"
                       HorizontalScrollBarVisibility="Disabled"
-                      VerticalScrollBarVisibility="Auto">
-            <ItemsControl ItemsSource="{Binding Stations}">
+                      VerticalScrollBarVisibility="Auto"
+                      SizeChanged="StationsScrollViewer_SizeChanged">
+            <ItemsControl x:Name="StationsItemsControl"
+                          ItemsSource="{Binding Stations}">
                 <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>
                         <UniformGrid Columns="2" />
@@ -49,12 +51,17 @@
                 <ItemsControl.ItemContainerStyle>
                     <Style TargetType="{x:Type ContentPresenter}">
                         <Setter Property="Margin" Value="0,0,12,12" />
+                        <Setter Property="Height" Value="{Binding DataContext.StationItemHeight, RelativeSource={RelativeSource AncestorType={x:Type ItemsControl}}}" />
+                        <Setter Property="VerticalAlignment" Value="Top" />
+                        <Setter Property="ClipToBounds" Value="True" />
                     </Style>
                 </ItemsControl.ItemContainerStyle>
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
                         <local:TestMaxView MinWidth="560"
-                                           Height="{Binding ActualHeight, RelativeSource={RelativeSource AncestorType={x:Type ScrollViewer}}}" />
+                                           Height="{Binding DataContext.StationItemHeight, RelativeSource={RelativeSource AncestorType={x:Type ItemsControl}}}"
+                                           VerticalAlignment="Top"
+                                           ClipToBounds="True" />
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>

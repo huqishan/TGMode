@@ -27,6 +27,8 @@ namespace ControlLibrary.Controls.FlowchartEditor.Control
     // 流程图编辑器的交互和渲染逻辑。
     public partial class FlowchartEditorControl : UserControl
     {
+        #region 常量与字段
+
         // 画布使用一个很大的固定工作区，再通过缩放和平移变换显示局部区域。
         private const double WorkspaceSize = 10000;
         private const double DefaultNodeWidth = 150;
@@ -78,11 +80,22 @@ namespace ControlLibrary.Controls.FlowchartEditor.Control
         private CancellationTokenSource? _executionCancellationTokenSource;
         private TaskCompletionSource<bool>? _executionResumeSignal;
 
+        #endregion
+
+        #region 构造函数
+
         public FlowchartEditorControl()
         {
             InitializeComponent();
         }
 
+        #endregion
+
+        #region 依赖属性、事件与公开状态
+
+        /// <summary>
+        /// 当前流程图文档依赖属性，支持外部双向绑定。
+        /// </summary>
         public static readonly DependencyProperty DocumentProperty =
             DependencyProperty.Register(
                 nameof(Document),
@@ -93,19 +106,36 @@ namespace ControlLibrary.Controls.FlowchartEditor.Control
                     FrameworkPropertyMetadataOptions.BindsTwoWayByDefault,
                     OnDocumentChanged));
 
+        /// <summary>
+        /// 执行流程图时，每进入一个节点触发一次。
+        /// </summary>
         public event EventHandler<FlowchartExecutionStepEventArgs>? ExecutionStepChanged;
 
+        /// <summary>
+        /// 节点双击事件，用于外部打开节点配置界面。
+        /// </summary>
         public event EventHandler<FlowchartNodeInteractionEventArgs>? NodeDoubleClick;
 
+        /// <summary>
+        /// 当前流程图文档，外部设置后会重建画布。
+        /// </summary>
         public FlowchartDocument? Document
         {
             get => (FlowchartDocument?)GetValue(DocumentProperty);
             set => SetValue(DocumentProperty, value);
         }
 
+        /// <summary>
+        /// 标识流程图当前是否正在执行。
+        /// </summary>
         public bool IsExecuting => _isExecuting;
 
+        /// <summary>
+        /// 标识流程图执行是否处于暂停状态。
+        /// </summary>
         public bool IsExecutionPaused => _isExecuting && _isExecutionPaused;
+
+        #endregion
 
         #region 页面命令公开方法
 
@@ -145,6 +175,11 @@ namespace ControlLibrary.Controls.FlowchartEditor.Control
 
         #endregion
 
+        #region 文件读写公开方法
+
+        /// <summary>
+        /// 将当前流程图保存为 JSON 文件。
+        /// </summary>
         public void SaveToFile(string filePath)
         {
             // 先把当前画布模型整理成纯数据对象，再统一序列化成 JSON 文件。
@@ -153,6 +188,9 @@ namespace ControlLibrary.Controls.FlowchartEditor.Control
             File.WriteAllText(filePath, json, Encoding.UTF8);
         }
 
+        /// <summary>
+        /// 从 JSON 文件加载流程图，并重建画布元素。
+        /// </summary>
         public void LoadFromFile(string filePath)
         {
             // 从本地文件读取后直接反序列化，再交给 LoadDocument 重建画布元素。
@@ -166,6 +204,13 @@ namespace ControlLibrary.Controls.FlowchartEditor.Control
             LoadDocumentSnapshot(document);
         }
 
+        #endregion
+
+        #region 流程执行公开方法
+
+        /// <summary>
+        /// 按连线顺序执行当前流程图，并返回执行结果。
+        /// </summary>
         public async Task<FlowchartExecutionResult> ExecuteFlowAsync()
         {
             if (_isExecuting)
@@ -259,6 +304,9 @@ namespace ControlLibrary.Controls.FlowchartEditor.Control
             }
         }
 
+        /// <summary>
+        /// 暂停当前流程执行。
+        /// </summary>
         public bool PauseExecution()
         {
             if (!_isExecuting || _isExecutionPaused)
@@ -272,6 +320,9 @@ namespace ControlLibrary.Controls.FlowchartEditor.Control
             return true;
         }
 
+        /// <summary>
+        /// 继续已暂停的流程执行。
+        /// </summary>
         public bool ResumeExecution()
         {
             if (!_isExecuting || !_isExecutionPaused)
@@ -285,6 +336,9 @@ namespace ControlLibrary.Controls.FlowchartEditor.Control
             return true;
         }
 
+        /// <summary>
+        /// 停止当前流程执行。
+        /// </summary>
         public bool StopExecution()
         {
             if (!_isExecuting)
@@ -299,6 +353,10 @@ namespace ControlLibrary.Controls.FlowchartEditor.Control
             _executionCancellationTokenSource?.Cancel();
             return true;
         }
+
+        #endregion
+
+        #region 控件生命周期与视口初始化
 
         private void FlowchartEditorControl_Loaded(object sender, RoutedEventArgs e)
         {
@@ -323,6 +381,10 @@ namespace ControlLibrary.Controls.FlowchartEditor.Control
             WorkspaceTranslateTransform.Y = (Viewport.ActualHeight / 2) - (WorkspaceSize / 2);
             _isViewportInitialized = true;
         }
+
+        #endregion
+
+        #region 文档绑定与序列化
 
         private static JsonSerializerOptions CreateDocumentJsonOptions()
         {
@@ -509,6 +571,10 @@ namespace ControlLibrary.Controls.FlowchartEditor.Control
             RenderConnections();
             Focus();
         }
+
+        #endregion
+
+        #region 流程执行内部逻辑
 
         private FlowchartNodeModel? GetExecutionStartNode()
         {
@@ -887,6 +953,10 @@ namespace ControlLibrary.Controls.FlowchartEditor.Control
             }
         }
 
+        #endregion
+
+        #region 拖拽创建节点
+
         private void Viewport_DragOver(object sender, DragEventArgs e)
         {
             e.Effects = e.Data.GetDataPresent(DataFormats.StringFormat) ? DragDropEffects.Copy : DragDropEffects.None;
@@ -956,6 +1026,10 @@ namespace ControlLibrary.Controls.FlowchartEditor.Control
             Focus();
             SynchronizeDocumentProperty();
         }
+
+        #endregion
+
+        #region 节点视觉元素
 
         private void CreateNodeVisual(FlowchartNodeModel node)
         {
@@ -1308,6 +1382,10 @@ namespace ControlLibrary.Controls.FlowchartEditor.Control
             return handle;
         }
 
+        #endregion
+
+        #region 鼠标交互与连线创建
+
         private void NodeRoot_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
             if (sender is not FrameworkElement element || element.Tag is not FlowchartNodeModel node)
@@ -1572,6 +1650,10 @@ namespace ControlLibrary.Controls.FlowchartEditor.Control
             e.Handled = true;
         }
 
+        #endregion
+
+        #region 删除、选择与状态刷新
+
         private void FlowchartEditorControl_PreviewKeyDown(object sender, KeyEventArgs e)
         {
             if (e.Key != Key.Delete)
@@ -1667,6 +1749,10 @@ namespace ControlLibrary.Controls.FlowchartEditor.Control
                 }
             }
         }
+
+        #endregion
+
+        #region 连线渲染与路由
 
         private void RenderConnections()
         {
@@ -1880,6 +1966,10 @@ namespace ControlLibrary.Controls.FlowchartEditor.Control
             return new Rect(0, 0, WorkspaceSize, WorkspaceSize);
         }
 
+        #endregion
+
+        #region 通用工具方法
+
         private static FlowchartNodeKind ResolveNodeKind(string text)
         {
             // 兼容旧的拖拽数据：如果只传了文本，也能把“判断”识别成菱形节点。
@@ -1926,6 +2016,10 @@ namespace ControlLibrary.Controls.FlowchartEditor.Control
             return value;
         }
 
+        #endregion
+
+        #region 内部辅助类型
+
         private sealed class AnchorHandleInfo
         {
             public AnchorHandleInfo(Guid nodeId, FlowchartAnchor anchor)
@@ -1958,6 +2052,8 @@ namespace ControlLibrary.Controls.FlowchartEditor.Control
             Success,
             Failure
         }
+
+        #endregion
     }
 }
 

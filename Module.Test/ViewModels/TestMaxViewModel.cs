@@ -1,9 +1,9 @@
 ﻿using ControlLibrary;
 using ControlLibrary.Controls.TestDataTable.Models;
+using ControlLibrary.Models.EventsModels.Test;
 using ControlLibrary.Models.MediatorModels.Business;
 using Shared.Infrastructure.Events;
 using Shared.Infrastructure.Mediator;
-using Shared.Models.Test;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;

@@ -16,6 +16,8 @@ public sealed class TestViewModel : ViewModelProperties, IDisposable
     private int _nextStationIndex = 1;
     private readonly IEventAggregator _eventAggregator;
     private readonly IMediator _mediator;
+    private double _stationDisplayHeight;
+    private double _stationItemHeight;
     private bool _disposed;
 
     public TestViewModel(IEventAggregator eventAggregator, IMediator mediator)
@@ -35,6 +37,23 @@ public sealed class TestViewModel : ViewModelProperties, IDisposable
     public ICommand RefreshStationsCommand { get; }
 
     public string StationCountText => $"共 {Stations.Count} 个工位";
+
+    public double StationItemHeight
+    {
+        get => _stationItemHeight;
+        private set => SetField(ref _stationItemHeight, value);
+    }
+
+    public void UpdateStationDisplayHeight(double height)
+    {
+        if (double.IsNaN(height) || double.IsInfinity(height) || height <= 0)
+        {
+            return;
+        }
+
+        _stationDisplayHeight = height;
+        RefreshStationItemHeight();
+    }
 
     public async Task LoadStationsAsync()
     {
@@ -87,12 +106,14 @@ public sealed class TestViewModel : ViewModelProperties, IDisposable
             .Max();
         _nextStationIndex = Math.Max(maxNumericSuffix + 1, Stations.Count + 1);
         OnPropertyChanged(nameof(StationCountText));
+        RefreshStationItemHeight();
     }
 
     private void AddStation()
     {
         Stations.Add(CreateStationViewModel($"工位 {_nextStationIndex++}"));
         OnPropertyChanged(nameof(StationCountText));
+        RefreshStationItemHeight();
     }
 
     private TestMaxViewModel CreateStationViewModel(string stationName)
@@ -122,5 +143,17 @@ public sealed class TestViewModel : ViewModelProperties, IDisposable
 
         return start < end &&
                int.TryParse(value.Substring(start + 1, end - start), out number);
+    }
+
+    private void RefreshStationItemHeight()
+    {
+        if (_stationDisplayHeight <= 0)
+        {
+            return;
+        }
+
+        StationItemHeight = Stations.Count > 2
+            ? _stationDisplayHeight / 2.0
+            : _stationDisplayHeight;
     }
 }

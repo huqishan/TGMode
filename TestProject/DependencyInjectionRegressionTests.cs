@@ -1,10 +1,10 @@
 using Autofac;
+using ControlLibrary.Models.EventsModels.Test;
 using Module.MES.ViewModels;
 using Module.Test.ViewModels;
 using Module.User.Services;
 using Shared.Infrastructure.DependencyInjection;
 using Shared.Infrastructure.Events;
-using Shared.Models.Test;
 using System.Reflection;
 using System.Threading;
 using System.Windows;

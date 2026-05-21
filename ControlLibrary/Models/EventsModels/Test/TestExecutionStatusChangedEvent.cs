@@ -1,7 +1,10 @@
-using System;
+using Shared.Infrastructure.Events;
 
-namespace Shared.Models.Test;
+namespace ControlLibrary.Models.EventsModels.Test;
 
+public sealed class TestExecutionStatusChangedEvent : PubSubEvent<TestExecutionStatusMessage>
+{
+}
 public sealed class TestExecutionStatusMessage
 {
     public TestExecutionStatusMessage(
