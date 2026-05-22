@@ -245,6 +245,11 @@
     <sys:String x:Key="校验位">Parity</sys:String>
     <sys:String x:Key="PLC类型">PLC Type</sys:String>
     <sys:String x:Key="PLC 地址">PLC Address</sys:String>
+    <sys:String x:Key="PLC CPU 类型">PLC CPU Type</sys:String>
+    <sys:String x:Key="PLC Rack">PLC Rack</sys:String>
+    <sys:String x:Key="PLC Slot">PLC Slot</sys:String>
+    <sys:String x:Key="PLC 逻辑站号">PLC Logical Station Number</sys:String>
+    <sys:String x:Key="PLC 密码">PLC Password</sys:String>
 
     <sys:String x:Key="数据源配置">Data Source Configuration</sys:String>
     <sys:String x:Key="测试数据">Test Data</sys:String>

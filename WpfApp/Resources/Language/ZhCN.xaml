@@ -181,6 +181,11 @@
     <sys:String x:Key="OK文本">OK文本</sys:String>
     <sys:String x:Key="PLC 地址">PLC 地址</sys:String>
     <sys:String x:Key="PLC 类型">PLC 类型</sys:String>
+    <sys:String x:Key="PLC CPU 类型">PLC CPU 类型</sys:String>
+    <sys:String x:Key="PLC Rack">PLC Rack</sys:String>
+    <sys:String x:Key="PLC Slot">PLC Slot</sys:String>
+    <sys:String x:Key="PLC 逻辑站号">PLC 逻辑站号</sys:String>
+    <sys:String x:Key="PLC 密码">PLC 密码</sys:String>
     <sys:String x:Key="Token 地址">Token 地址</sys:String>
     <sys:String x:Key="Token 名称">Token 名称</sys:String>
     <sys:String x:Key="WebApi 地址">WebApi 地址</sys:String>

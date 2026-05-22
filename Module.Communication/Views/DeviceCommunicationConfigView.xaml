@@ -283,6 +283,34 @@ Drop="SupportedProtocolsDataGrid_Drop">
                                       SelectedValuePath="Value" />
                         </StackPanel>
 
+                        <StackPanel Visibility="{Binding SelectedProfile.IsPlcMxType, Converter={StaticResource BoolToVisibilityConverter}}">
+                            <TextBlock Style="{StaticResource FieldLabelStyle}" Text="{DynamicResource PLC 逻辑站号}" />
+                            <TextBox Style="{StaticResource InputTextBoxStyle}"
+                                     Text="{Binding SelectedProfile.PLCActLogicalStationNumber, UpdateSourceTrigger=PropertyChanged}" />
+
+                            <TextBlock Style="{StaticResource FieldLabelStyle}" Text="{DynamicResource PLC 密码}" />
+                            <TextBox Style="{StaticResource InputTextBoxStyle}"
+                                     Text="{Binding SelectedProfile.PLCPassword, UpdateSourceTrigger=PropertyChanged}" />
+                        </StackPanel>
+
+                        <StackPanel Visibility="{Binding SelectedProfile.IsPlcS7Type, Converter={StaticResource BoolToVisibilityConverter}}">
+                            <TextBlock Style="{StaticResource FieldLabelStyle}" Text="{DynamicResource PLC CPU 类型}" />
+                            <ComboBox Style="{StaticResource InputComboBoxStyle}"
+                                      ItemContainerStyle="{StaticResource InputComboBoxItemStyle}"
+                                      ItemsSource="{Binding S7CpuTypes}"
+                                      ItemTemplate="{StaticResource SelectionOptionItemTemplate}"
+                                      SelectedValue="{Binding SelectedProfile.PLCS7CpuType, Mode=TwoWay}"
+                                      SelectedValuePath="Value" />
+
+                            <TextBlock Style="{StaticResource FieldLabelStyle}" Text="{DynamicResource PLC Rack}" />
+                            <TextBox Style="{StaticResource InputTextBoxStyle}"
+                                     Text="{Binding SelectedProfile.PLCS7Rack, UpdateSourceTrigger=PropertyChanged}" />
+
+                            <TextBlock Style="{StaticResource FieldLabelStyle}" Text="{DynamicResource PLC Slot}" />
+                            <TextBox Style="{StaticResource InputTextBoxStyle}"
+                                     Text="{Binding SelectedProfile.PLCS7Slot, UpdateSourceTrigger=PropertyChanged}" />
+                        </StackPanel>
+
                         <StackPanel Visibility="{Binding ElementName=communicationType, Path=SelectedItem.Value, Converter={StaticResource ComparisonToVisibilityConvert}, ConverterParameter='TCPClient|UDP|PLC'}">
                             <TextBlock Style="{StaticResource FieldLabelStyle}" Text="{DynamicResource 远端 IP 地址}" />
                             <TextBox Style="{StaticResource InputTextBoxStyle}"

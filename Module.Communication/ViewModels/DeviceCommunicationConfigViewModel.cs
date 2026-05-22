@@ -228,6 +228,11 @@ public DeviceCommunicationConfigViewModel()
     public ObservableCollection<SelectionOption> PLCTypes { get; } = new();
 
     /// <summary>
+    /// S7 CPU 类型下拉选项集合。
+    /// </summary>
+    public ObservableCollection<SelectionOption> S7CpuTypes { get; } = new();
+
+    /// <summary>
     /// 串口名称候选集合。
     /// </summary>
     public ObservableCollection<string> PortNameOptions { get; } = new();
@@ -658,6 +663,13 @@ public DeviceCommunicationConfigViewModel()
 
         PLCTypes.Add(new SelectionOption(PlcCommunicationTypeNames.Modbus, PlcCommunicationTypeNames.Modbus));
         PLCTypes.Add(new SelectionOption(PlcCommunicationTypeNames.MX, PlcCommunicationTypeNames.MX));
+        PLCTypes.Add(new SelectionOption(PlcCommunicationTypeNames.S7, PlcCommunicationTypeNames.S7));
+
+        S7CpuTypes.Add(new SelectionOption(S7CpuTypeNames.S7200, "S7-200"));
+        S7CpuTypes.Add(new SelectionOption(S7CpuTypeNames.S7300, "S7-300"));
+        S7CpuTypes.Add(new SelectionOption(S7CpuTypeNames.S7400, "S7-400"));
+        S7CpuTypes.Add(new SelectionOption(S7CpuTypeNames.S71200, "S7-1200"));
+        S7CpuTypes.Add(new SelectionOption(S7CpuTypeNames.S71500, "S7-1500"));
 
         RefreshPortNameOptions(updateSelectedProfile: false);
 

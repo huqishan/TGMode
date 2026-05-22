@@ -22,6 +22,8 @@ namespace Shared.Infrastructure.Communication
                 CommuniactionType.MX => new MxPlcCommunication(config),
                 CommuniactionType.PLC => PlcCommunicationTypeNames.IsModbus(config.PLCType)
                     ? new ModbusTcpPlcCommunication(config)
+                    : PlcCommunicationTypeNames.IsS7(config.PLCType)
+                        ? new S7PlcCommunication(config)
                     : new MxPlcCommunication(config),
                 CommuniactionType.RabbitMQRPCServer => new RabbitMQRPCServer(config),
                 CommuniactionType.RabbitMQRPCClient => new RabbitMQRPCClient(config),

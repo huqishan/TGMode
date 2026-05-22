@@ -170,6 +170,12 @@ namespace Module.Communication.Models
 
         public string? PLCPassword { get; set; }
 
+        public string? PLCS7CpuType { get; set; }
+
+        public string? PLCS7Rack { get; set; }
+
+        public string? PLCS7Slot { get; set; }
+
         public List<DeviceSupportedProtocolDocument>? SupportedProtocols { get; set; }
 
         public static DeviceCommunicationProfileDocument FromProfile(DeviceCommunicationProfile profile)
@@ -190,6 +196,9 @@ namespace Module.Communication.Models
                 PLCActLogicalStationNumber = profile.PLCActLogicalStationNumber,
                 PLCType = profile.PLCType,
                 PLCPassword = profile.PLCPassword,
+                PLCS7CpuType = profile.PLCS7CpuType,
+                PLCS7Rack = profile.PLCS7Rack,
+                PLCS7Slot = profile.PLCS7Slot,
                 SupportedProtocols = profile.SupportedProtocols
                     .Where(protocol => !protocol.IsEmpty)
                     .Select(DeviceSupportedProtocolDocument.FromModel)
@@ -222,6 +231,11 @@ namespace Module.Communication.Models
                 ? profile.PLCType
                 : PLCType.Trim();
             profile.PLCPassword = string.IsNullOrWhiteSpace(PLCPassword) ? profile.PLCPassword : PLCPassword.Trim();
+            profile.PLCS7CpuType = string.IsNullOrWhiteSpace(PLCS7CpuType)
+                ? profile.PLCS7CpuType
+                : PLCS7CpuType.Trim();
+            profile.PLCS7Rack = string.IsNullOrWhiteSpace(PLCS7Rack) ? profile.PLCS7Rack : PLCS7Rack.Trim();
+            profile.PLCS7Slot = string.IsNullOrWhiteSpace(PLCS7Slot) ? profile.PLCS7Slot : PLCS7Slot.Trim();
 
             if (SupportedProtocols is { Count: > 0 })
             {
@@ -255,6 +269,9 @@ namespace Module.Communication.Models
         private string _plcActLogicalStationNumber = "0";
         private string _plcType = PlcCommunicationTypeNames.MX;
         private string _plcPassword = string.Empty;
+        private string _plcS7CpuType = S7CpuTypeNames.S71200;
+        private string _plcS7Rack = "0";
+        private string _plcS7Slot = "1";
 
         public DeviceCommunicationProfile()
         {
@@ -350,6 +367,10 @@ namespace Module.Communication.Models
             {
                 if (SetField(ref _plcType, PlcCommunicationTypeNames.Normalize(value), true))
                 {
+                    ApplyPlcTypeDefaults();
+                    OnPropertyChanged(nameof(IsPlcModbusType));
+                    OnPropertyChanged(nameof(IsPlcMxType));
+                    OnPropertyChanged(nameof(IsPlcS7Type));
                     OnPropertyChanged(nameof(TypeDescription));
                 }
             }
@@ -361,6 +382,24 @@ namespace Module.Communication.Models
             set => SetField(ref _plcPassword, value, true);
         }
 
+        public string PLCS7CpuType
+        {
+            get => _plcS7CpuType;
+            set => SetField(ref _plcS7CpuType, S7CpuTypeNames.Normalize(value), true);
+        }
+
+        public string PLCS7Rack
+        {
+            get => _plcS7Rack;
+            set => SetField(ref _plcS7Rack, value, true);
+        }
+
+        public string PLCS7Slot
+        {
+            get => _plcS7Slot;
+            set => SetField(ref _plcS7Slot, value, true);
+        }
+
         public bool IsNetworkType => Type is CommuniactionType.TCPClient or CommuniactionType.TCPServer or CommuniactionType.UDP;
 
         public bool UsesRemoteEndpoint => Type is CommuniactionType.TCPClient or CommuniactionType.UDP or CommuniactionType.PLC;
@@ -370,6 +409,12 @@ namespace Module.Communication.Models
         public bool IsSerialType => Type == CommuniactionType.COM;
 
         public bool IsPlcType => Type == CommuniactionType.PLC;
+
+        public bool IsPlcModbusType => IsPlcType && PlcCommunicationTypeNames.IsModbus(PLCType);
+
+        public bool IsPlcMxType => IsPlcType && PlcCommunicationTypeNames.IsMx(PLCType);
+
+        public bool IsPlcS7Type => IsPlcType && PlcCommunicationTypeNames.IsS7(PLCType);
 
         public string TypeDisplayName => Type switch
         {
@@ -387,9 +432,11 @@ namespace Module.Communication.Models
             CommuniactionType.TCPServer => "启动本地监听端口并等待客户端接入。",
             CommuniactionType.UDP => "使用无连接报文进行轻量级设备通信。",
             CommuniactionType.COM => "用于串口设备通信。",
-            CommuniactionType.PLC => PlcCommunicationTypeNames.IsModbus(PLCType)
+            CommuniactionType.PLC => IsPlcModbusType
                 ? "使用 Modbus TCP 的 PLC 通信。"
-                : "使用三菱 MX 逻辑站模式的 PLC 通信。",
+                : IsPlcS7Type
+                    ? "使用 Siemens S7 以太网协议的 PLC 通信。"
+                    : "使用三菱 MX 逻辑站模式的 PLC 通信。",
             _ => "当前通信类型暂无描述。"
         };
 
@@ -399,9 +446,11 @@ namespace Module.Communication.Models
             CommuniactionType.TCPServer => $"监听 {LocalIPAddress}:{LocalPort}",
             CommuniactionType.UDP => $"远端 {RemoteIPAddress}:{RemotePort}  本地 {LocalIPAddress}:{LocalPort}",
             CommuniactionType.COM => $"{PortName}  波特率 {BaudRate}bps  校验位 {Parity}  数据位 {DataBits}  停止位 {StopBits}",
-            CommuniactionType.PLC => PlcCommunicationTypeNames.IsModbus(PLCType)
+            CommuniactionType.PLC => IsPlcModbusType
                 ? $"PLC {PLCType}  远端 {RemoteIPAddress}:{RemotePort}"
-                : $"PLC {PLCType}  逻辑站号 {PLCActLogicalStationNumber}",
+                : IsPlcS7Type
+                    ? $"PLC {PLCType}  {PLCS7CpuType}  {RemoteIPAddress}  Rack {PLCS7Rack}  Slot {PLCS7Slot}"
+                    : $"PLC {PLCType}  逻辑站号 {PLCActLogicalStationNumber}",
             _ => "未配置"
         };
 
@@ -438,7 +487,10 @@ namespace Module.Communication.Models
                 StopBits = StopBits,
                 PLCActLogicalStationNumber = PLCActLogicalStationNumber,
                 PLCType = PLCType,
-                PLCPassword = PLCPassword
+                PLCPassword = PLCPassword,
+                PLCS7CpuType = PLCS7CpuType,
+                PLCS7Rack = PLCS7Rack,
+                PLCS7Slot = PLCS7Slot
             };
 
             foreach (DeviceSupportedProtocol protocol in SupportedProtocols.Where(item => !item.IsEmpty))
@@ -484,10 +536,13 @@ namespace Module.Communication.Models
                     LocalIPAddress = "127.0.0.1";
                     LocalPort = "0";
                     RemoteIPAddress = "127.0.0.1";
-                    RemotePort = "502";
                     PLCActLogicalStationNumber = "0";
                     PLCType = PlcCommunicationTypeNames.Normalize(PLCType);
                     PLCPassword = string.Empty;
+                    PLCS7CpuType = S7CpuTypeNames.Normalize(PLCS7CpuType);
+                    PLCS7Rack = "0";
+                    PLCS7Slot = "1";
+                    RemotePort = PlcCommunicationTypeNames.IsS7(PLCType) ? "102" : "502";
                     break;
             }
         }
@@ -577,6 +632,41 @@ namespace Module.Communication.Models
                         return true;
                     }
 
+                    if (PlcCommunicationTypeNames.IsS7(plcType))
+                    {
+                        if (!TryValidateIpAddress(RemoteIPAddress, "远端 IP 地址", out validationMessage) ||
+                            !TryValidatePort(RemotePort, "远端端口", true, out int s7RemotePort, out validationMessage))
+                        {
+                            return false;
+                        }
+
+                        if (s7RemotePort != 102)
+                        {
+                            validationMessage = "PLC S7 远端端口必须为 102。";
+                            return false;
+                        }
+
+                        if (!TryValidateNumberInRange(PLCS7Rack, "PLC Rack", 0, 7, out int s7Rack, out validationMessage) ||
+                            !TryValidateNumberInRange(PLCS7Slot, "PLC Slot", 0, 31, out int s7Slot, out validationMessage))
+                        {
+                            return false;
+                        }
+
+                        config = new CommuniactionConfigModel(
+                            CommuniactionType.PLC,
+                            LocalName.Trim(),
+                            RemoteIPAddress.Trim(),
+                            s7RemotePort,
+                            string.IsNullOrWhiteSpace(LocalIPAddress) ? "0.0.0.0" : LocalIPAddress.Trim(),
+                            0,
+                            plcType,
+                            PLCS7CpuType,
+                            s7Rack,
+                            s7Slot);
+                        validationMessage = "PLC S7 配置有效。";
+                        return true;
+                    }
+
                     if (!TryValidateNumberInRange(
                             PLCActLogicalStationNumber,
                             "PLC 逻辑站号",
@@ -627,6 +717,9 @@ namespace Module.Communication.Models
             OnPropertyChanged(nameof(UsesLocalEndpoint));
             OnPropertyChanged(nameof(IsSerialType));
             OnPropertyChanged(nameof(IsPlcType));
+            OnPropertyChanged(nameof(IsPlcModbusType));
+            OnPropertyChanged(nameof(IsPlcMxType));
+            OnPropertyChanged(nameof(IsPlcS7Type));
             OnPropertyChanged(nameof(TypeDisplayName));
             OnPropertyChanged(nameof(TypeDescription));
         }
@@ -636,6 +729,44 @@ namespace Module.Communication.Models
             OnPropertyChanged(nameof(Summary));
             OnPropertyChanged(nameof(SupportedProtocolsSummary));
             OnPropertyChanged(nameof(SupportedProtocolsDisplayText));
+        }
+
+        private void ApplyPlcTypeDefaults()
+        {
+            if (!IsPlcType)
+            {
+                return;
+            }
+
+            if (IsPlcS7Type)
+            {
+                if (string.IsNullOrWhiteSpace(PLCS7CpuType))
+                {
+                    PLCS7CpuType = S7CpuTypeNames.S71200;
+                }
+
+                if (string.IsNullOrWhiteSpace(PLCS7Rack))
+                {
+                    PLCS7Rack = "0";
+                }
+
+                if (string.IsNullOrWhiteSpace(PLCS7Slot))
+                {
+                    PLCS7Slot = "1";
+                }
+
+                if (string.IsNullOrWhiteSpace(RemotePort) || RemotePort == "502")
+                {
+                    RemotePort = "102";
+                }
+
+                return;
+            }
+
+            if (IsPlcModbusType && (string.IsNullOrWhiteSpace(RemotePort) || RemotePort == "102"))
+            {
+                RemotePort = "502";
+            }
         }
 
         private void SupportedProtocols_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
