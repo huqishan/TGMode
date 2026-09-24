@@ -188,7 +188,7 @@
                                 Visibility="Collapsed" Background="{DynamicResource PrimaryButtonBrush}" />
                     </Canvas>
                     <!-- 复用公共步骤编辑抽屉，仅覆盖步骤列表区域，并从该区域右侧滑入。 -->
-                    <operationEditingViews:OperationEditorDrawerView Grid.Column="2"
+                    <operationEditingViews:OperationEditorDrawerView
                                                  Panel.ZIndex="30"
                                                  IsRightAligned="True"
                                                  IsOpen="{Binding OperationEditor.IsOpen}"

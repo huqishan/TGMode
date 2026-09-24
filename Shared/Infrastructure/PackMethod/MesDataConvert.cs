@@ -26,11 +26,26 @@ using System.Xml.Linq;
 
 namespace Shared.Infrastructure.PackMethod
 {
+    /// <summary>
+    /// MES 数据转换与发送工具，负责按数据结构配置生成 JSON、SOAP、拼接文本，并调用配置的 MES 通信方式。
+    /// </summary>
     public static class MesDataConvert
     {
+        /// <summary>MES 配置文件根目录。</summary>
         static string _LayoutFile = $"{System.AppDomain.CurrentDomain.SetupInformation.ApplicationBase}\\Config\\MES_Config";
+
+        /// <summary>当前转换字段的错误上下文，用于补充转换异常信息。</summary>
         static string _ErrorCode = null;
+
+        /// <summary>按远端地址缓存的 MES TCP 通信对象。</summary>
         static Dictionary<string, CommunicationBase> _MESObj = new Dictionary<string, CommunicationBase>();
+
+        /// <summary>
+        /// 按指定数据结构将业务源数据转换为目标文本。
+        /// </summary>
+        /// <param name="sourceData">待转换的业务源数据。</param>
+        /// <param name="dataLayout">目标数据结构配置。</param>
+        /// <returns>转换后的 JSON、SOAP 或拼接文本；结构无效时返回空。</returns>
         public static string Convert(MesDataInfoTree sourceData, DataSruct dataLayout)
         {
             if (dataLayout == null || dataLayout.Structure == null || dataLayout.Structure.Count == 0) return null;
@@ -59,11 +74,16 @@ namespace Shared.Infrastructure.PackMethod
             }
             return null;
         }
+        /// <summary>
+        /// 按数据结构名称加载配置并转换业务源数据。
+        /// </summary>
+        /// <param name="sourceData">待转换的业务源数据。</param>
+        /// <param name="structName">数据结构配置名称。</param>
+        /// <returns>转换后的目标文本。</returns>
         public static string Convert(MesDataInfoTree sourceData, string structName)
         {
             DataSruct dataLayout = JsonHelper.ReadJson<DataSruct>($"{_LayoutFile}\\DataStructure\\{structName}.json");
             if (dataLayout == null || dataLayout.Structure == null || dataLayout.Structure.Count == 0) throw new Exception($"上位机数据结构为空！！！");
-            JObject jsonObj;
             try
             {
                 return Convert(sourceData, dataLayout);
@@ -74,6 +94,12 @@ namespace Shared.Infrastructure.PackMethod
             }
             throw new Exception($"上位机数据转换为空，请检查数据结构");
         }
+        /// <summary>
+        /// 加载 MES 接口配置并执行接口 Lua 脚本。
+        /// </summary>
+        /// <param name="apiName">MES 接口名称。</param>
+        /// <param name="sourceData">脚本执行时使用的业务源数据。</param>
+        /// <returns>接口执行结果。</returns>
         public static MesResult ExecuteApi(string apiName, MesDataInfoTree sourceData = null)
         {
             string apiFilePath = $"{_LayoutFile}\\ApiConfig\\{apiName}.json";
@@ -100,6 +126,13 @@ namespace Shared.Infrastructure.PackMethod
             Global_Event.WriteLog($"系统校验：{mesResult.State}\r\n系统反馈数据：\r\n{mesResult.Message}", apiName);
             return mesResult;
         }
+        /// <summary>
+        /// 根据接口配置转换并发送 MES 数据，统一处理鉴权、重传和返回值校验。
+        /// </summary>
+        /// <param name="apiName">MES 接口名称。</param>
+        /// <param name="data">待发送数据；为空时根据接口的数据结构配置自动生成。</param>
+        /// <param name="sourceData">生成发送数据和替换 URL 参数所需的业务源数据。</param>
+        /// <returns>MES 发送及服务器校验结果。</returns>
         public static MesResult SendMES(string apiName, ref string data, MesDataInfoTree sourceData = null)
         {
             string apiFilePath = $"{_LayoutFile}\\ApiConfig\\{apiName}.json";
@@ -249,12 +282,24 @@ namespace Shared.Infrastructure.PackMethod
             return mesResult;
         }
         #region JsonToModel
+        /// <summary>
+        /// 从 JSON 文件生成数据结构配置树。
+        /// </summary>
+        /// <param name="jsonPath">JSON 文件路径。</param>
+        /// <returns>解析后的结构树根节点。</returns>
         public static TreeModel DeserializeFromJsonFile(string jsonPath)
         {
             JsonNode jsonNode = JsonNode.Parse(File.ReadAllText(jsonPath));
             TreeModel model = new TreeModel() { ClientCode = Path.GetFileNameWithoutExtension(jsonPath), DataType = "JSON"};
+            // JSON 文件解析必须从根节点进入递归构建，否则界面只能得到一个没有子项的空结构。
+            AddItemFromJsonNote(jsonNode, ref model);
             return model;
         }
+        /// <summary>
+        /// 递归读取 JSON 节点，并将对象、数组和标量追加到结构树。
+        /// </summary>
+        /// <param name="jsonNode">当前 JSON 节点。</param>
+        /// <param name="tree">当前结构树节点。</param>
         private static void AddItemFromJsonNote(JsonNode jsonNode, ref TreeModel tree)
         {
             if (jsonNode == null) return;
@@ -270,7 +315,6 @@ namespace Shared.Infrastructure.PackMethod
                             DataType = "Json"
                         };
                         tree.Children.Add(treeModel);
-                        string key = kvp.Key;
                         JsonNode value = kvp.Value;
                         AddItemFromJsonNote(value, ref treeModel);
                     }
@@ -294,12 +338,35 @@ namespace Shared.Infrastructure.PackMethod
             }
             else if (jsonNode is JsonArray jsonArr)
             {
+                tree.DataType = "List";
                 for (int i = 0; i < jsonArr.Count; i++)
                 {
                     JsonNode item = jsonArr[i];
+                    TreeModel itemModel = new TreeModel
+                    {
+                        MESCode = tree.MESCode ?? tree.ClientCode,
+                        DataType = "Model"
+                    };
+                    tree.Children.Add(itemModel);
+                    AddItemFromJsonNote(item, ref itemModel);
                 }
             }
+            else if (jsonNode is JsonValue jsonValue)
+            {
+                KeyValuePair<string, JsonNode> valueEntry = new("Value", jsonValue);
+                tree.Children.Add(new TreeModel
+                {
+                    MESCode = "Value",
+                    DataType = GetJsonObjectType(valueEntry),
+                    ClientCode = jsonValue.ToString()
+                });
+            }
         }
+        /// <summary>
+        /// 根据 JSON 标量类型返回对应的数据结构类型名称。
+        /// </summary>
+        /// <param name="obj">包含字段名称和值的 JSON 项。</param>
+        /// <returns>Double、Bool 或 String。</returns>
         private static string GetJsonObjectType(KeyValuePair<string, JsonNode> obj)
         {
             var kind = obj.Value.GetValueKind();
@@ -321,6 +388,11 @@ namespace Shared.Infrastructure.PackMethod
         }
         #endregion
         #region XMLToModel
+        /// <summary>
+        /// 从 XML 文件生成 SOAP 数据结构配置树。
+        /// </summary>
+        /// <param name="xmlPath">XML 文件路径。</param>
+        /// <returns>解析后的结构树根节点。</returns>
         public static TreeModel DeserializeFromXMLFile(string xmlPath)
         {
             XmlDocument xmlDoc = new XmlDocument();
@@ -329,6 +401,11 @@ namespace Shared.Infrastructure.PackMethod
             AddItemFromXmlNote(xmlDoc.FirstChild, ref model);
             return model;
         }
+        /// <summary>
+        /// 递归读取 XML 节点、命名空间和子节点，并追加到结构树。
+        /// </summary>
+        /// <param name="xmlNode">当前 XML 节点。</param>
+        /// <param name="tree">当前结构树节点。</param>
         private static void AddItemFromXmlNote(XmlNode xmlNode, ref TreeModel tree)
         {
             if (xmlNode == null) return;
@@ -351,6 +428,12 @@ namespace Shared.Infrastructure.PackMethod
             tree.Children.Add(treeModel);
         }
         #endregion
+        /// <summary>
+        /// 使用源数据替换 URL 中的单个花括号参数。
+        /// </summary>
+        /// <param name="url">接口 URL 模板。</param>
+        /// <param name="sourceData">参数值来源。</param>
+        /// <returns>替换参数后的 URL。</returns>
         private static string GetUrl(string url, MesDataInfoTree sourceData)
         {
             string result = url;
@@ -364,6 +447,10 @@ namespace Shared.Infrastructure.PackMethod
             }
             return result;
         }
+        /// <summary>
+        /// 将 MES TCP 通信日志转发到全局日志入口。
+        /// </summary>
+        /// <param name="obj">通信日志消息。</param>
         private static void MESCommuniactionObj_OnLog(LogMessageModel obj)
         {
             Global_Event.WriteLog(obj.Message, null);
@@ -375,6 +462,9 @@ namespace Shared.Infrastructure.PackMethod
         /// </summary>
         private sealed class JsonBuildContext
         {
+            /// <summary>
+            /// 创建单次 JSON 构建上下文，并共享引用布局缓存和循环引用检测集合。
+            /// </summary>
             public JsonBuildContext(MesDataInfoTree sourceData, IReadOnlyDictionary<string, object> sourceValues, int? whileIndex = null,
                 Dictionary<string, TreeModel> referencedLayouts = null, HashSet<string> activeReferencedLayouts = null)
             {
@@ -385,18 +475,33 @@ namespace Shared.Infrastructure.PackMethod
                 ActiveReferencedLayouts = activeReferencedLayouts ?? new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             }
 
+            /// <summary>当前转换使用的完整源数据。</summary>
             public MesDataInfoTree SourceData { get; }
+
+            /// <summary>按客户端编码建立的源值索引。</summary>
             public IReadOnlyDictionary<string, object> SourceValues { get; }
+
+            /// <summary>循环结构当前从一开始的序号；非循环节点为空。</summary>
             public int? WhileIndex { get; }
+
+            /// <summary>本次转换已加载的引用布局缓存。</summary>
             public Dictionary<string, TreeModel> ReferencedLayouts { get; }
+
+            /// <summary>当前递归路径中的引用布局，用于检测循环引用。</summary>
             public HashSet<string> ActiveReferencedLayouts { get; }
 
+            /// <summary>
+            /// 创建共享当前缓存、但切换循环序号的上下文。
+            /// </summary>
             public JsonBuildContext WithWhileIndex(int whileIndex)
             {
                 return new JsonBuildContext(SourceData, SourceValues, whileIndex, ReferencedLayouts, ActiveReferencedLayouts);
             }
         }
 
+        /// <summary>
+        /// 为单次 JSON 转换建立源值索引和引用布局上下文。
+        /// </summary>
         private static JsonBuildContext CreateJsonBuildContext(MesDataInfoTree sourceData)
         {
             Dictionary<string, object> sourceValues = new(StringComparer.Ordinal);
@@ -474,6 +579,9 @@ namespace Shared.Infrastructure.PackMethod
             };
         }
 
+        /// <summary>
+        /// 构建不包含子结构的 JSON 标量节点。
+        /// </summary>
         private static JToken BuildScalarJsonValue(TreeModel node, JsonBuildContext context)
         {
             object value = ResolveSourceValue(context, node);
@@ -563,6 +671,9 @@ namespace Shared.Infrastructure.PackMethod
             }
         }
 
+        /// <summary>
+        /// 将数组布局转换为 JSON 数组，支持分隔文本和子模型两种来源。
+        /// </summary>
         private static JArray BuildJsonArray(List<TreeModel> layout, JsonBuildContext context)
         {
             JArray result = new();
@@ -591,6 +702,9 @@ namespace Shared.Infrastructure.PackMethod
             return result;
         }
 
+        /// <summary>
+        /// 尝试按配置分隔符拆分单个源值，并追加到目标 JSON 数组。
+        /// </summary>
         private static bool TryAppendDelimitedArrayValues(JArray result, TreeModel item, JsonBuildContext context)
         {
             if (item.Children.Count > 0 || string.IsNullOrEmpty(item.ClientCode)) return false;
@@ -612,6 +726,9 @@ namespace Shared.Infrastructure.PackMethod
             return true;
         }
 
+        /// <summary>
+        /// 将列表布局的子节点依次转换为 JSON 数组元素。
+        /// </summary>
         private static JArray BuildJsonList(List<TreeModel> layout, JsonBuildContext context)
         {
             JArray result = new();
@@ -665,6 +782,9 @@ namespace Shared.Infrastructure.PackMethod
             return models;
         }
 
+        /// <summary>
+        /// 将模型布局的全部子字段构建为 JSON 对象。
+        /// </summary>
         private static JObject BuildJsonModel(List<TreeModel> layout, JsonBuildContext context)
         {
             JObject result = new();
@@ -718,6 +838,9 @@ namespace Shared.Infrastructure.PackMethod
             return node.DefectValue;
         }
 
+        /// <summary>
+        /// 根据循环序号替换客户端字段名称中的方括号数字占位。
+        /// </summary>
         private static string GetWhileName(int index, string name)
         {
             index--;
@@ -736,115 +859,13 @@ namespace Shared.Infrastructure.PackMethod
             }
             return result;
         }
-        private static void ValueTypeConvert(object value, TreeModel layout, ref JObject root)
-        {
-            JObject jsonObj = new JObject();
-            _ErrorCode = $"ClientName:{layout.ClientCode} MesName:{layout.MESCode} Value:{value}";
-            if (!layout.IsNull && string.IsNullOrEmpty(value?.ToString())) return;
-            if (!string.IsNullOrEmpty(layout.JudgeValue))
-            {
-                value = layout.JudgeValue.Equals(value) ? layout.OKText : layout.NGText;
-            }
-            switch (layout.DataType.ToUpper())
-            {
-                case "STRING":
-                    root.Add(layout.MESCode, (value ?? "")?.ToString());
-                    break;
-                case "BOOL":
-                    bool result = false;
-                    if (!bool.TryParse(value.ToString(), out result)) result = value.ToString().ToUpper() == layout.JudgeValue.ToUpper();
-                    root.Add(layout.MESCode, result);
-                    break;
-                case "DATETIME":
-                    if (string.IsNullOrEmpty(value?.ToString())) value = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss ffff");
-                    root.Add(layout.MESCode, System.Convert.ToDateTime(value).ToString(layout.DefectValue));
-                    break;
-                case "TIMETICKS13":
-                    if (string.IsNullOrEmpty(value?.ToString())) value = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss ffff");
-                    DateTime time = System.Convert.ToDateTime(value);
-                    DateTime starttime = TimeZone.CurrentTimeZone.ToLocalTime(new DateTime(1970, 1, 1, 0, 0, 0, 0));
-                    long tick = (time.Ticks - starttime.Ticks) / 10000;
-                    root.Add(layout.MESCode, tick);
-                    break;
-                case "INT":
-                    root.Add(layout.MESCode, System.Convert.ToInt32(value));
-                    break;
-                case "DOUBLE":
-                    root.Add(layout.MESCode, Math.Round(System.Convert.ToDouble(value), System.Convert.ToInt32(layout.KeepDecimalLength)));
-                    break;
-                case "LIST":
-                    break;
-                case "MODEL":
-                    break;
-                case "ARRAY":
-                    break;
-                default://null
-                    root.Add(layout.MESCode, null);
-                    break;
-            }
-        }
-        private static void ValueTypeConvert(MesDataInfoTree sourceData, TreeModel layout, ref JObject root)
-        {
-
-            foreach (TreeModel item in layout.Children)
-            {
-                JObject jsonObj = new JObject();
-                object value = sourceData?.MesDataInfoItems?.FirstOrDefault(r => r.Code == item.ClientCode)?.Value;
-                _ErrorCode = $"ClientName:{layout.ClientCode} MesName:{layout.MESCode} Value:{value}";
-                if (!layout.IsNull && string.IsNullOrEmpty(value?.ToString())) return;
-                if (!string.IsNullOrEmpty(layout.JudgeValue))
-                {
-                    value = layout.JudgeValue.Equals(value) ? layout.OKText : layout.NGText;
-                }
-                switch (layout.DataType.ToUpper())
-                {
-                    case "STRING":
-                        root.Add(layout.MESCode, (value ?? "")?.ToString());
-                        break;
-                    case "BOOL":
-                        bool result = false;
-                        if (!bool.TryParse(value.ToString(), out result)) result = value.ToString().ToUpper() == layout.JudgeValue.ToUpper();
-                        root.Add(layout.MESCode, result);
-                        break;
-                    case "DATETIME":
-                        if (string.IsNullOrEmpty(value?.ToString())) value = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss ffff");
-                        root.Add(layout.MESCode, System.Convert.ToDateTime(value).ToString(layout.DefectValue));
-                        break;
-                    case "TIMETICKS13":
-                        if (string.IsNullOrEmpty(value?.ToString())) value = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss ffff");
-                        DateTime time = System.Convert.ToDateTime(value);
-                        DateTime starttime = TimeZone.CurrentTimeZone.ToLocalTime(new DateTime(1970, 1, 1, 0, 0, 0, 0));
-                        long tick = (time.Ticks - starttime.Ticks) / 10000;
-                        root.Add(layout.MESCode, tick);
-                        break;
-                    case "INT":
-                        root.Add(layout.MESCode, System.Convert.ToInt32(value));
-                        break;
-                    case "DOUBLE":
-                        root.Add(layout.MESCode, Math.Round(System.Convert.ToDouble(value), System.Convert.ToInt32(layout.KeepDecimalLength)));
-                        break;
-                    case "LIST":
-                        JArray jArray = new JArray();
-                        ValueTypeConvert(sourceData, item, ref jsonObj);
-                        jArray.Add(jsonObj);
-                        root.Add(item.MESCode ?? "", jArray);
-                        break;
-                    case "MODEL":
-                        ValueTypeConvert(sourceData, item, ref jsonObj);
-                        root.Add(item.MESCode ?? "", jsonObj);
-                        break;
-                    case "ARRAY":
-                        break;
-                    default://null
-                        root.Add(layout.MESCode, null);
-                        break;
-                }
-            }
-        }
         #endregion
         #region SOAP
         private sealed class SoapBuildContext
         {
+            /// <summary>
+            /// 创建单次 SOAP 构建上下文，并共享引用布局缓存和循环引用检测集合。
+            /// </summary>
             public SoapBuildContext(MesDataInfoTree sourceData, IReadOnlyDictionary<string, object> sourceValues, XNamespace defaultNamespace,
                 int? whileIndex = null, Dictionary<string, TreeModel> referencedLayouts = null, HashSet<string> activeReferencedLayouts = null)
             {
@@ -856,24 +877,44 @@ namespace Shared.Infrastructure.PackMethod
                 ActiveReferencedLayouts = activeReferencedLayouts ?? new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             }
 
+            /// <summary>当前转换使用的完整源数据。</summary>
             public MesDataInfoTree SourceData { get; }
+
+            /// <summary>按客户端编码建立的源值索引。</summary>
             public IReadOnlyDictionary<string, object> SourceValues { get; }
+
+            /// <summary>当前节点继承的默认 XML 命名空间。</summary>
             public XNamespace DefaultNamespace { get; }
+
+            /// <summary>循环结构当前从一开始的序号；非循环节点为空。</summary>
             public int? WhileIndex { get; }
+
+            /// <summary>本次转换已加载的引用布局缓存。</summary>
             public Dictionary<string, TreeModel> ReferencedLayouts { get; }
+
+            /// <summary>当前递归路径中的引用布局，用于检测循环引用。</summary>
             public HashSet<string> ActiveReferencedLayouts { get; }
 
+            /// <summary>
+            /// 创建共享当前缓存、但切换默认命名空间的上下文。
+            /// </summary>
             public SoapBuildContext WithDefaultNamespace(XNamespace defaultNamespace)
             {
                 return new SoapBuildContext(SourceData, SourceValues, defaultNamespace, WhileIndex, ReferencedLayouts, ActiveReferencedLayouts);
             }
 
+            /// <summary>
+            /// 创建共享当前缓存、但切换循环序号的上下文。
+            /// </summary>
             public SoapBuildContext WithWhileIndex(int whileIndex)
             {
                 return new SoapBuildContext(SourceData, SourceValues, DefaultNamespace, whileIndex, ReferencedLayouts, ActiveReferencedLayouts);
             }
         }
 
+        /// <summary>
+        /// 为单次 SOAP 转换建立源值索引和命名空间上下文。
+        /// </summary>
         private static SoapBuildContext CreateSoapBuildContext(MesDataInfoTree sourceData)
         {
             Dictionary<string, object> sourceValues = new(StringComparer.Ordinal);
@@ -929,6 +970,9 @@ namespace Shared.Infrastructure.PackMethod
             }
         }
 
+        /// <summary>
+        /// 构建包含子字段的 SOAP 模型元素，并向下传递模型命名空间。
+        /// </summary>
         private static XElement BuildSoapModel(TreeModel model, SoapBuildContext context)
         {
             XNamespace nodeNamespace = ResolveSoapNamespace(model, context);
@@ -938,6 +982,9 @@ namespace Shared.Infrastructure.PackMethod
             return element;
         }
 
+        /// <summary>
+        /// 构建 SOAP 列表容器，并按配置顺序追加列表子节点。
+        /// </summary>
         private static XElement BuildSoapList(TreeModel list, SoapBuildContext context)
         {
             XNamespace nodeNamespace = ResolveSoapNamespace(list, context);
@@ -947,6 +994,9 @@ namespace Shared.Infrastructure.PackMethod
             return element;
         }
 
+        /// <summary>
+        /// 按循环次数构建 SOAP 模型，遇到缺失的必填字段时停止继续生成。
+        /// </summary>
         private static IEnumerable<XElement> BuildWhileSoapModels(TreeModel model, SoapBuildContext context)
         {
             for (int i = 1; i <= model.WhileCount; i++)
@@ -961,6 +1011,9 @@ namespace Shared.Infrastructure.PackMethod
             }
         }
 
+        /// <summary>
+        /// 解析并转换标量值，生成带正确命名空间的 SOAP 元素。
+        /// </summary>
         private static XElement BuildSoapValueElement(TreeModel node, SoapBuildContext context)
         {
             object value = ResolveSoapValue(node, context);
@@ -969,6 +1022,9 @@ namespace Shared.Infrastructure.PackMethod
             return new XElement(nodeNamespace + node.MESCode, ConvertSoapValue(value, node));
         }
 
+        /// <summary>
+        /// 按节点数据类型和判断映射规则转换 SOAP 标量值。
+        /// </summary>
         private static object ConvertSoapValue(object value, TreeModel node)
         {
             _ErrorCode = $"ClientName:{node.ClientCode} MESName:{node.MESCode} Value:{value}";
@@ -988,6 +1044,9 @@ namespace Shared.Infrastructure.PackMethod
             };
         }
 
+        /// <summary>
+        /// 加载引用布局、构建对应 JSON 文本并包装为 SOAP 子元素。
+        /// </summary>
         private static XElement BuildReferencedSoap(TreeModel node, SoapBuildContext context)
         {
             if (!context.ActiveReferencedLayouts.Add(node.ClientCode))
@@ -1010,6 +1069,9 @@ namespace Shared.Infrastructure.PackMethod
             }
         }
 
+        /// <summary>
+        /// 从源值索引解析 SOAP 字段值，并处理循环字段和默认值。
+        /// </summary>
         private static object ResolveSoapValue(TreeModel node, SoapBuildContext context)
         {
             string clientCode = node.ClientCode ?? string.Empty;
@@ -1023,11 +1085,17 @@ namespace Shared.Infrastructure.PackMethod
             return node.DefectValue;
         }
 
+        /// <summary>
+        /// 获取节点显式命名空间；未配置时继承上下文默认命名空间。
+        /// </summary>
         private static XNamespace ResolveSoapNamespace(TreeModel node, SoapBuildContext context)
         {
             return string.IsNullOrWhiteSpace(node.XMLNameSpace) ? context.DefaultNamespace : node.XMLNameSpace;
         }
 
+        /// <summary>
+        /// 向父元素追加配置的 XML 命名空间声明。
+        /// </summary>
         private static void AddSoapNamespaceDeclaration(XElement parent, TreeModel node)
         {
             if (string.IsNullOrWhiteSpace(node.MESCode) || string.IsNullOrWhiteSpace(node.XMLNameSpace)) return;
@@ -1035,46 +1103,86 @@ namespace Shared.Infrastructure.PackMethod
         }
         #endregion
         #region JOINT
+        /// <summary>
+        /// 按结构配置顺序拼接源数据；普通字段保留字段分隔符，循环字段只在循环值之间插入分隔符。
+        /// </summary>
         private static string ItemsToString(MesDataInfoTree sourceData, IEnumerable<TreeModel> layout)
         {
-            StringBuilder sb = new StringBuilder();
-            foreach (TreeModel item in layout)
+            // 单次建立精确匹配索引，保持旧逻辑 FirstOrDefault 在重复编码时取首项的行为。
+            Dictionary<string, object> sourceValues = new Dictionary<string, object>(StringComparer.Ordinal);
+            foreach (MesDataInfoItem sourceItem in sourceData?.MesDataInfoItems ?? Enumerable.Empty<MesDataInfoItem>())
             {
+                if (!sourceValues.ContainsKey(sourceItem.Code))
+                {
+                    sourceValues.Add(sourceItem.Code, sourceItem.Value);
+                }
+            }
+
+            StringBuilder result = new StringBuilder();
+            foreach (TreeModel item in layout ?? Enumerable.Empty<TreeModel>())
+            {
+                string separator = item.MESCode ?? string.Empty;
                 if (item.IsWhile)
                 {
-                    string data = null;
-                    for (int i = 1; i <= item.WhileCount; i++)
+                    StringBuilder whileResult = new StringBuilder();
+                    bool hasAppendedValue = false;
+                    for (int index = 1; index <= item.WhileCount; index++)
                     {
-                        var v = sourceData?.MesDataInfoItems?.FirstOrDefault(r => r.Code == $"{item.ClientCode.Replace("_", $"{i}_")}")?.Value;
-                        if (string.IsNullOrEmpty(v?.ToString()))
+                        string clientCode = (item.ClientCode ?? string.Empty).Replace("_", $"{index}_");
+                        sourceValues.TryGetValue(clientCode, out object value);
+                        if (string.IsNullOrEmpty(value?.ToString()))
                         {
-                            v = !string.IsNullOrEmpty(item.DefectValue) ? $"{item.DefectValue}" : item.DefectValue;
+                            value = item.DefectValue;
                         }
-                        if (!item.IsNull && string.IsNullOrEmpty(v?.ToString())) continue;
-                        data += $"{v?.ToString()}{item.MESCode}";
+
+                        if (!item.IsNull && string.IsNullOrEmpty(value?.ToString()))
+                        {
+                            continue;
+                        }
+
+                        if (hasAppendedValue)
+                        {
+                            whileResult.Append(separator);
+                        }
+                        whileResult.Append(value?.ToString());
+                        hasAppendedValue = true;
                     }
-                    if (data != null)
-                        sb.Append(data.Substring(0, data.Length - item.MESCode.Length));
-                }
-                else if (item.DataType.ToUpper().Contains("DATETIME"))
-                {
-                    var v = sourceData?.MesDataInfoItems?.FirstOrDefault(r => r.Code == item.ClientCode)?.Value;
-                    if (!item.IsNull && string.IsNullOrEmpty(v?.ToString())) continue;
-                    sb.Append(System.Convert.ToDateTime(v).ToString(item.DefectValue)?.ToString() + item.MESCode);
+
+                    result.Append(whileResult);
                 }
                 else
                 {
-                    var v = sourceData?.MesDataInfoItems?.FirstOrDefault(r => r.Code == item.ClientCode)?.Value;
-                    if (string.IsNullOrEmpty(v?.ToString())) v = item.DefectValue;
-                    if (!item.IsNull && string.IsNullOrEmpty(v?.ToString())) continue;
+                    sourceValues.TryGetValue(item.ClientCode ?? string.Empty, out object value);
+                    bool isDateTime = (item.DataType ?? string.Empty).Contains("DATETIME", StringComparison.OrdinalIgnoreCase);
+                    if (!isDateTime && string.IsNullOrEmpty(value?.ToString()))
+                    {
+                        value = item.DefectValue;
+                    }
+
+                    if (!item.IsNull && string.IsNullOrEmpty(value?.ToString()))
+                    {
+                        continue;
+                    }
+
+                    if (isDateTime)
+                    {
+                        result.Append(System.Convert.ToDateTime(value).ToString(item.DefectValue));
+                        result.Append(separator);
+                        continue;
+                    }
+
                     if (!string.IsNullOrEmpty(item.JudgeValue))
                     {
-                        v = item.JudgeValue.Equals(v) ? item.OKText : item.NGText;
+                        value = string.Equals(item.JudgeValue, value?.ToString(), StringComparison.Ordinal)
+                            ? item.OKText
+                            : item.NGText;
                     }
-                    sb.Append(v?.ToString() + item.MESCode);
+
+                    result.Append(value?.ToString());
+                    result.Append(separator);
                 }
             }
-            return sb.ToString();
+            return result.ToString();
         }
         #endregion
     }

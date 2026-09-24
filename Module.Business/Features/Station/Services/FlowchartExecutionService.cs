@@ -19,9 +19,6 @@ namespace Module.Business.Services;
 public static class FlowchartExecutionService
 {
     #region 常量与运行状态字段
-    // 执行步数上限用于兜底阻断错误连线形成的无限循环。
-    private const int MaxExecutionSteps = 500;
-
     // 工位名作为唯一占用键：不同工位可并发，同一工位同一时间只允许一个流程图实例。
     private static readonly ConcurrentDictionary<string, FlowchartExecutionContext> ActiveExecutions =
         new(StringComparer.OrdinalIgnoreCase);
@@ -63,104 +60,154 @@ public static class FlowchartExecutionService
 
     #region 对外执行与控制入口
     /// <summary>
-    /// 根据工位名称和流程图名称读取流程图文件并执行；同一工位同时只允许一个流程图运行。
+    /// 根据工位名称或工位编码读取配置并执行流程图；同一工位同时只允许一个流程图运行。
     /// </summary>
-    public static async Task<FlowchartExecutionServiceResult> ExecuteAsync(string stationName)
+    /// <param name="stationName">工位名称或工位编码。</param>
+    /// <param name="nodeExecutionIntervalMilliseconds">节点完成后的可控等待时间；默认不等待。</param>
+    /// <param name="maxExecutionSteps">允许执行的最大节点数；为空时不限制循环次数。</param>
+    /// <returns>包含执行状态、消息、日志和耗时的流程图执行结果。</returns>
+    public static async Task<FlowchartExecutionServiceResult> ExecuteAsync(
+        string stationName,
+        int nodeExecutionIntervalMilliseconds = 0,
+        int? maxExecutionSteps = null)
     {
-        string normalizedStationName = NormalizeRequiredText(stationName);
         DateTime startTime = DateTime.Now;
+        string stationNameOrCode = NormalizeRequiredText(stationName);
 
-        if (string.IsNullOrWhiteSpace(normalizedStationName))
+        if (string.IsNullOrWhiteSpace(stationNameOrCode))
         {
             return FlowchartExecutionServiceResult.CreateFailure("Station name is required.", startTime: startTime, endTime: DateTime.Now);
         }
 
-        StationConfigurationCatalog catalog = StationConfigurationStore.LoadCatalog();
-        StationProfile? station = catalog.Stations.FirstOrDefault(item =>
-            string.Equals(item.StationName?.Trim(), normalizedStationName, StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(item.StationCode?.Trim(), normalizedStationName, StringComparison.OrdinalIgnoreCase));
-        if (station is null)
-        {
-            return FlowchartExecutionServiceResult.CreateFailure(
-                $"Station '{normalizedStationName}' was not found.",
-                startTime: startTime,
-                endTime: DateTime.Now);
-        }
-
-        if (!station.IsEnabled)
-        {
-            return FlowchartExecutionServiceResult.CreateFailure(
-                $"Station '{station.StationName}' is disabled.",
-                startTime: startTime,
-                endTime: DateTime.Now);
-        }
-
-        string flowchartName = station.StationName;
-        FlowchartDocument flowchartDocument = StationProfile.CloneFlowchartDocument(station.FlowchartDocument);
-        FlowchartExecutionKey key = new(station.StationName, flowchartName);
-        FlowchartExecutionContext context = new(key, startTime);
-        if (!ActiveExecutions.TryAdd(station.StationName, context))
-        {
-            string runningFlowchartName = ActiveExecutions.TryGetValue(station.StationName, out FlowchartExecutionContext? runningContext)
-                ? runningContext.Key.FlowchartName
-                : string.Empty;
-            context.Dispose();
-            return FlowchartExecutionServiceResult.CreateFailure(
-                string.IsNullOrWhiteSpace(runningFlowchartName)
-                    ? $"Station '{station.StationName}' already has a running flowchart."
-                    : $"Station '{station.StationName}' is already running flowchart '{runningFlowchartName}'.",
-                startTime: startTime,
-                endTime: DateTime.Now);
-        }
+        FlowchartExecutionContext? context = null;
+        string registeredStationName = string.Empty;
+        string flowchartName = string.Empty;
 
         try
         {
-            return await ExecuteFlowchartAsync(context, flowchartName, flowchartDocument).ConfigureAwait(false);
+            // 配置读取涉及磁盘 IO，放到后台线程，避免从界面启动流程时阻塞 UI。
+            StationConfigurationCatalog catalog = await Task.Run(StationConfigurationStore.LoadCatalog).ConfigureAwait(false);
+            StationProfile? station = catalog.Stations.FirstOrDefault(item =>
+                string.Equals(item.StationName?.Trim(), stationNameOrCode, StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(item.StationCode?.Trim(), stationNameOrCode, StringComparison.OrdinalIgnoreCase));
+            if (station is null)
+            {
+                return FlowchartExecutionServiceResult.CreateFailure(
+                    $"Station '{stationNameOrCode}' was not found.",
+                    startTime: startTime,
+                    endTime: DateTime.Now);
+            }
+
+            registeredStationName = NormalizeRequiredText(station.StationName);
+            if (string.IsNullOrWhiteSpace(registeredStationName))
+            {
+                return FlowchartExecutionServiceResult.CreateFailure(
+                    $"Station '{stationNameOrCode}' has no valid station name.",
+                    startTime: startTime,
+                    endTime: DateTime.Now);
+            }
+
+            if (!station.IsEnabled)
+            {
+                return FlowchartExecutionServiceResult.CreateFailure(
+                    $"Station '{registeredStationName}' is disabled.",
+                    startTime: startTime,
+                    endTime: DateTime.Now);
+            }
+
+            flowchartName = registeredStationName;
+            FlowchartDocument flowchartDocument = StationProfile.CloneFlowchartDocument(station.FlowchartDocument);
+            context = new FlowchartExecutionContext(registeredStationName, flowchartName, startTime);
+
+            // 只有成功登记到运行表中的上下文才能进入执行阶段，同一工位的重复启动在此处统一拦截。
+            if (!ActiveExecutions.TryAdd(registeredStationName, context))
+            {
+                string runningFlowchartName = ActiveExecutions.TryGetValue(
+                    registeredStationName,
+                    out FlowchartExecutionContext? runningContext)
+                    ? runningContext.FlowchartName
+                    : string.Empty;
+                context.Dispose();
+                context = null;
+                return FlowchartExecutionServiceResult.CreateFailure(
+                    string.IsNullOrWhiteSpace(runningFlowchartName)
+                        ? $"Station '{registeredStationName}' already has a running flowchart."
+                        : $"Station '{registeredStationName}' is already running flowchart '{runningFlowchartName}'.",
+                    startTime: startTime,
+                    endTime: DateTime.Now);
+            }
+
+            return await ExecuteFlowchartAsync(
+                    context,
+                    flowchartName,
+                    flowchartDocument,
+                    Math.Max(0, nodeExecutionIntervalMilliseconds),
+                    maxExecutionSteps.HasValue ? Math.Max(1, maxExecutionSteps.Value) : null)
+                .ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
             DateTime endTime = DateTime.Now;
             FlowchartExecutionServiceResult result = FlowchartExecutionServiceResult.CreateCanceled(
-                $"Flowchart '{flowchartName}' on station '{station.StationName}' was stopped.",
-                context.LogsSnapshot,
+                $"Flowchart '{flowchartName}' on station '{registeredStationName}' was stopped.",
+                context?.LogsSnapshot,
                 startTime,
                 endTime);
-            Raise(AfterFlowchartExecuted, FlowchartExecutionEventArgs.CreateFlowchart(
-                station.StationName,
-                flowchartName,
-                false,
-                result.Message,
-                startTime,
-                endTime));
+            if (context is not null)
+            {
+                Raise(AfterFlowchartExecuted, FlowchartExecutionEventArgs.CreateFlowchart(
+                    registeredStationName,
+                    flowchartName,
+                    false,
+                    result.Message,
+                    startTime,
+                    endTime));
+            }
+
             return result;
         }
         catch (Exception ex)
         {
             DateTime endTime = DateTime.Now;
+            string displayStationName = string.IsNullOrWhiteSpace(registeredStationName)
+                ? stationNameOrCode
+                : registeredStationName;
             FlowchartExecutionServiceResult result = FlowchartExecutionServiceResult.CreateFailure(
-                $"Flowchart '{flowchartName}' on station '{station.StationName}' failed: {ex.Message}",
-                context.LogsSnapshot,
+                string.IsNullOrWhiteSpace(flowchartName)
+                    ? $"Station '{displayStationName}' flowchart could not be started: {ex.Message}"
+                    : $"Flowchart '{flowchartName}' on station '{displayStationName}' failed: {ex.Message}",
+                context?.LogsSnapshot,
                 startTime,
                 endTime);
-            Raise(AfterFlowchartExecuted, FlowchartExecutionEventArgs.CreateFlowchart(
-                station.StationName,
-                flowchartName,
-                false,
-                result.Message,
-                startTime,
-                endTime));
+            if (context is not null && !string.IsNullOrWhiteSpace(flowchartName))
+            {
+                Raise(AfterFlowchartExecuted, FlowchartExecutionEventArgs.CreateFlowchart(
+                    displayStationName,
+                    flowchartName,
+                    false,
+                    result.Message,
+                    startTime,
+                    endTime));
+            }
+
             return result;
         }
         finally
         {
-            ActiveExecutions.TryRemove(station.StationName, out _);
-            context.Dispose();
+            // 未成功登记的上下文已在冲突分支释放；这里只清理实际进入运行表的实例。
+            if (context is not null)
+            {
+                ActiveExecutions.TryRemove(registeredStationName, out _);
+                context.Dispose();
+            }
         }
     }
 
     /// <summary>
     /// 暂停指定工位当前正在运行的流程图。
     /// </summary>
+    /// <param name="stationName">工位名称或工位编码。</param>
+    /// <returns>暂停请求的处理结果。</returns>
     public static FlowchartExecutionControlActionResult Pause(string stationName)
     {
         if (!TryGetStationContext(stationName, out FlowchartExecutionContext? context, out string message))
@@ -169,13 +216,15 @@ public static class FlowchartExecutionService
         }
 
         return context.Pause()
-            ? FlowchartExecutionControlActionResult.CreateSuccess($"Station '{context.Key.StationName}' flowchart paused.")
-            : FlowchartExecutionControlActionResult.CreateSuccess($"Station '{context.Key.StationName}' flowchart is already paused.");
+            ? FlowchartExecutionControlActionResult.CreateSuccess($"Station '{context.StationName}' flowchart paused.")
+            : FlowchartExecutionControlActionResult.CreateSuccess($"Station '{context.StationName}' flowchart is already paused.");
     }
 
     /// <summary>
     /// 继续指定工位已暂停的流程图。
     /// </summary>
+    /// <param name="stationName">工位名称或工位编码。</param>
+    /// <returns>继续请求的处理结果。</returns>
     public static FlowchartExecutionControlActionResult Continue(string stationName)
     {
         if (!TryGetStationContext(stationName, out FlowchartExecutionContext? context, out string message))
@@ -184,13 +233,15 @@ public static class FlowchartExecutionService
         }
 
         return context.Resume()
-            ? FlowchartExecutionControlActionResult.CreateSuccess($"Station '{context.Key.StationName}' flowchart resumed.")
-            : FlowchartExecutionControlActionResult.CreateSuccess($"Station '{context.Key.StationName}' flowchart is not paused.");
+            ? FlowchartExecutionControlActionResult.CreateSuccess($"Station '{context.StationName}' flowchart resumed.")
+            : FlowchartExecutionControlActionResult.CreateSuccess($"Station '{context.StationName}' flowchart is not paused.");
     }
 
     /// <summary>
     /// 请求停止指定工位当前正在运行的流程图。
     /// </summary>
+    /// <param name="stationName">工位名称或工位编码。</param>
+    /// <returns>停止请求的处理结果。</returns>
     public static FlowchartExecutionControlActionResult Stop(string stationName)
     {
         if (!TryGetStationContext(stationName, out FlowchartExecutionContext? context, out string message))
@@ -200,12 +251,13 @@ public static class FlowchartExecutionService
 
         context.Stop();
         return FlowchartExecutionControlActionResult.CreateSuccess(
-            $"Stop request sent to flowchart '{context.Key.FlowchartName}' on station '{context.Key.StationName}'.");
+            $"Stop request sent to flowchart '{context.FlowchartName}' on station '{context.StationName}'.");
     }
 
     /// <summary>
     /// 获取当前所有正在运行的流程图快照。
     /// </summary>
+    /// <returns>按工位名称和流程图名称排序的运行快照。</returns>
     public static IReadOnlyList<FlowchartExecutionSnapshot> GetActiveExecutions()
     {
         return ActiveExecutions.Values
@@ -225,11 +277,13 @@ public static class FlowchartExecutionService
     private static async Task<FlowchartExecutionServiceResult> ExecuteFlowchartAsync(
         FlowchartExecutionContext context,
         string flowchartName,
-        FlowchartDocument flowchartDocument)
+        FlowchartDocument flowchartDocument,
+        int nodeExecutionIntervalMilliseconds,
+        int? maxExecutionSteps)
     {
         DateTime startTime = DateTime.Now;
         FlowchartExecutionEventArgs beforeArgs = FlowchartExecutionEventArgs.CreateFlowchart(
-            context.Key.StationName,
+            context.StationName,
             flowchartName,
             startTime: startTime);
         Raise(BeforeFlowchartExecuting, beforeArgs);
@@ -242,7 +296,7 @@ public static class FlowchartExecutionService
                 startTime,
                 canceledAt);
             Raise(AfterFlowchartExecuted, FlowchartExecutionEventArgs.CreateFlowchart(
-                context.Key.StationName,
+                context.StationName,
                 flowchartName,
                 false,
                 canceledResult.Message,
@@ -251,9 +305,9 @@ public static class FlowchartExecutionService
             return canceledResult;
         }
 
-        context.AddLog($"Start flowchart '{flowchartName}' on station '{context.Key.StationName}'.");
+        context.AddLog($"Start flowchart '{flowchartName}' on station '{context.StationName}'.");
         Raise(FlowchartExecuting, FlowchartExecutionEventArgs.CreateFlowchart(
-            context.Key.StationName,
+            context.StationName,
             flowchartName,
             message: "Flowchart is executing.",
             startTime: startTime));
@@ -270,7 +324,8 @@ public static class FlowchartExecutionService
         }
 
         Dictionary<string, string> returnValues = new(StringComparer.OrdinalIgnoreCase);
-        for (int stepIndex = 1; stepIndex <= MaxExecutionSteps; stepIndex++)
+        int stepIndex = 1;
+        while (!maxExecutionSteps.HasValue || stepIndex <= maxExecutionSteps.Value)
         {
             await context.WaitIfPausedAsync().ConfigureAwait(false);
             context.ThrowIfCancellationRequested();
@@ -290,6 +345,12 @@ public static class FlowchartExecutionService
             if (!nodeResult.IsSuccess)
             {
                 return FinishFlowchart(context, flowchartName, false, nodeResult.Message, startTime);
+            }
+
+            // 节点间隔由调用场景决定；默认正式调用不等待，工位配置页面可传入动画展示时间。
+            if (nodeExecutionIntervalMilliseconds > 0)
+            {
+                await DelayWithControlAsync(context, nodeExecutionIntervalMilliseconds).ConfigureAwait(false);
             }
 
             if (currentNode.Kind == FlowchartNodeKind.End)
@@ -312,9 +373,15 @@ public static class FlowchartExecutionService
             }
 
             currentNode = nextNode;
+            stepIndex++;
         }
 
-        return FinishFlowchart(context, flowchartName, false, $"Flowchart stopped after reaching max step count {MaxExecutionSteps}.", startTime);
+        return FinishFlowchart(
+            context,
+            flowchartName,
+            false,
+            $"Flowchart stopped after reaching max step count {maxExecutionSteps.Value}.",
+            startTime);
     }
 
     /// <summary>
@@ -330,7 +397,7 @@ public static class FlowchartExecutionService
         DateTime startTime = DateTime.Now;
         string nodeName = ResolveNodeName(node);
         FlowchartExecutionEventArgs beforeArgs = FlowchartExecutionEventArgs.CreateNode(
-            context.Key.StationName,
+            context.StationName,
             flowchartName,
             node,
             stepIndex,
@@ -343,7 +410,7 @@ public static class FlowchartExecutionService
 
         context.AddLog($"Start node {stepIndex}: {nodeName}.");
         Raise(NodeExecuting, FlowchartExecutionEventArgs.CreateNode(
-            context.Key.StationName,
+            context.StationName,
             flowchartName,
             node,
             stepIndex,
@@ -355,11 +422,17 @@ public static class FlowchartExecutionService
         string message = $"Node {stepIndex} finished: {nodeName}.";
         bool isSuccess = true;
 
-        if (TryReadNodeOperation(node, out WorkStepOperation? operation))
+        if (node.Kind == FlowchartNodeKind.Decision)
         {
-            if (node.Kind == FlowchartNodeKind.Decision && IsJudgeOperation(operation))
+            // 判断块必须包含可用的步骤实体并执行其中的条件配置，禁止在载荷缺失时按普通节点静默通过。
+            if (!TryReadNodeOperation(node, out WorkStepOperation? decisionOperation))
             {
-                isSuccess = TryEvaluateDecisionOperation(operation, returnValues, out bool decisionResult, out message);
+                isSuccess = false;
+                message = $"Node {stepIndex} failed: decision configuration is missing or invalid.";
+            }
+            else
+            {
+                isSuccess = TryEvaluateDecisionOperation(decisionOperation, returnValues, out bool decisionResult, out message);
                 decisionState = decisionResult ? FlowchartNodeDecisionState.Success : FlowchartNodeDecisionState.Failure;
                 result = decisionResult;
                 if (isSuccess)
@@ -367,23 +440,25 @@ public static class FlowchartExecutionService
                     message = $"Node {stepIndex} decision result: {(decisionResult ? "True" : "False")}.";
                 }
             }
-            else if (node.Kind is FlowchartNodeKind.Process or FlowchartNodeKind.Decision)
-            {
-                SchemeStepExecutionOutput output = await SchemeExecutionService
-                    .ExecuteStandaloneStepAsync(context, operation, returnValues)
-                    .ConfigureAwait(false);
-                result = output.Result;
-                isSuccess = output.IsSuccess;
-                message = output.IsSuccess
-                    ? $"Node {stepIndex} finished: {operation.Summary}."
-                    : $"Node {stepIndex} failed: {output.Message}";
-            }
+        }
+        else if (node.Kind == FlowchartNodeKind.Process &&
+                 TryReadNodeOperation(node, out WorkStepOperation? operation))
+        {
+            SchemeStepExecutionOutput output = await SchemeExecutionService
+                .ExecuteStandaloneStepAsync(context, operation, returnValues)
+                .ConfigureAwait(false);
+
+            result = output.Result;
+            isSuccess = output.IsSuccess;
+            message = output.IsSuccess
+                ? $"Node {stepIndex} finished: {operation.Summary}."
+                : $"Node {stepIndex} failed: {output.Message}";
         }
 
         DateTime endTime = DateTime.Now;
         context.AddLog(message);
         Raise(AfterNodeExecuted, FlowchartExecutionEventArgs.CreateNode(
-            context.Key.StationName,
+            context.StationName,
             flowchartName,
             node,
             stepIndex,
@@ -461,7 +536,7 @@ public static class FlowchartExecutionService
     }
 
     /// <summary>
-    /// 尝试执行操作并返回是否成功。
+    /// 根据工位名称或工位编码查找当前运行上下文，并将查找失败原因转换为控制入口可直接返回的消息。
     /// </summary>
     private static bool TryEvaluateDecisionOperation(
         WorkStepOperation operation,
@@ -469,38 +544,67 @@ public static class FlowchartExecutionService
         out bool result,
         out string message)
     {
-        List<string> values = operation.Parameters
-            .OrderBy(parameter => parameter.Num)
-            .Select(parameter => ResolveParameterValue(parameter, returnValues))
-            .ToList();
-
-        string methodName = operation.PCommandName?.Trim() ?? string.Empty;
-        result = methodName switch
+        // 判断块与处理块统一使用步骤实体，但判断行为只读取步骤中的条件执行配置。
+        ConditionExecution condition = operation.ConditionExecution ?? new ConditionExecution();
+        if (!condition.IsEnabled)
         {
-            "=" => TextEquals(GetValue(values, 0), GetValue(values, 1)),
-            "≠" => !TextEquals(GetValue(values, 0), GetValue(values, 1)),
-            ">" => CompareNumbers(GetValue(values, 0), GetValue(values, 1)) > 0,
-            "≥" => CompareNumbers(GetValue(values, 0), GetValue(values, 1)) >= 0,
-            "<" => CompareNumbers(GetValue(values, 0), GetValue(values, 1)) < 0,
-            "≤" => CompareNumbers(GetValue(values, 0), GetValue(values, 1)) <= 0,
-            "∈" => CompareNumbers(GetValue(values, 0), GetValue(values, 1)) >= 0 && CompareNumbers(GetValue(values, 0), GetValue(values, 2)) <= 0,
-            "∉" => CompareNumbers(GetValue(values, 0), GetValue(values, 1)) < 0 || CompareNumbers(GetValue(values, 0), GetValue(values, 2)) > 0,
-            "∋" => GetValue(values, 0).IndexOf(GetValue(values, 1), StringComparison.OrdinalIgnoreCase) >= 0,
-            "∌" => GetValue(values, 0).IndexOf(GetValue(values, 1), StringComparison.OrdinalIgnoreCase) < 0,
-            "= ∅" => string.IsNullOrWhiteSpace(GetValue(values, 0)),
-            "≠ ∅" => !string.IsNullOrWhiteSpace(GetValue(values, 0)),
+            result = false;
+            message = "判断块的条件执行配置未启用。";
+            return false;
+        }
+
+        string leftValue = ResolveConditionValue(condition.LeftParameterType, condition.LeftValue, returnValues);
+        string rightValue = ResolveConditionValue(condition.RightParameterType, condition.RightValue, returnValues);
+        string relationOperator = condition.RelationOperator?.Trim() ?? string.Empty;
+
+        result = relationOperator switch
+        {
+            "NA" =>true,
+            "=" => TextEquals(leftValue, rightValue),
+            "≠" => !TextEquals(leftValue, rightValue),
+            ">" => CompareNumbers(leftValue, rightValue) > 0,
+            "≥" => CompareNumbers(leftValue, rightValue) >= 0,
+            "<" => CompareNumbers(leftValue, rightValue) < 0,
+            "≤" => CompareNumbers(leftValue, rightValue) <= 0,
+            "＜{0}＜" => IsValueInRange(leftValue, rightValue, includeBoundary: false),
+            "≤{0}≤" => IsValueInRange(leftValue, rightValue, includeBoundary: true),
+            "()" => leftValue.IndexOf(rightValue, StringComparison.OrdinalIgnoreCase) >= 0,
+            "!()" => leftValue.IndexOf(rightValue, StringComparison.OrdinalIgnoreCase) < 0,
+            "黑名单" => !IsValueInList(leftValue, rightValue),
+            "白名单" => IsValueInList(leftValue, rightValue),
             _ => false
         };
 
-        message = string.IsNullOrWhiteSpace(methodName)
-            ? "Decision method is required."
-            : $"Unknown decision method '{methodName}'.";
-        return IsSupportedJudgeMethod(methodName);
+        message = string.IsNullOrWhiteSpace(relationOperator)
+            ? "判断块必须配置关系符。"
+            : $"无法识别判断关系符“{relationOperator}”。";
+        return IsSupportedJudgeMethod(relationOperator);
     }
 
     #endregion
 
     #region 操作解析与通用工具
+
+    /// <summary>
+    /// 执行能够响应暂停和停止请求的流程图节点间隔。
+    /// </summary>
+    /// <param name="context">当前流程图执行上下文。</param>
+    /// <param name="delayMilliseconds">需要等待的毫秒数。</param>
+    private static async Task DelayWithControlAsync(
+        FlowchartExecutionContext context,
+        int delayMilliseconds)
+    {
+        int remainingMilliseconds = Math.Max(0, delayMilliseconds);
+        while (remainingMilliseconds > 0)
+        {
+            await context.WaitIfPausedAsync().ConfigureAwait(false);
+            context.ThrowIfCancellationRequested();
+
+            int currentDelay = Math.Min(50, remainingMilliseconds);
+            await Task.Delay(currentDelay, context.CancellationToken).ConfigureAwait(false);
+            remainingMilliseconds -= currentDelay;
+        }
+    }
 
     /// <summary>
     /// 结束流程图执行并触发完成事件。
@@ -516,7 +620,7 @@ public static class FlowchartExecutionService
         DateTime endTime = DateTime.Now;
         context.AddLog(message);
         Raise(AfterFlowchartExecuted, FlowchartExecutionEventArgs.CreateFlowchart(
-            context.Key.StationName,
+            context.StationName,
             flowchartName,
             isSuccess,
             message,
@@ -562,28 +666,18 @@ public static class FlowchartExecutionService
     }
 
     /// <summary>
-    /// 解析并返回对应的业务值。
+    /// 根据条件参数类型解析判断值；返回值和工步值从当前流程返回值上下文读取，其余类型使用配置值。
     /// </summary>
-    private static string ResolveParameterValue(
-        InputParameter parameter,
+    private static string ResolveConditionValue(
+        string? parameterType,
+        string? configuredValue,
         IReadOnlyDictionary<string, string> returnValues)
     {
-        string type = parameter.ParameterType?.Trim() ?? string.Empty;
-        string value = parameter.Value?.Trim() ?? string.Empty;
-
-        return type switch
-        {
-            "返回值" => returnValues.TryGetValue(value, out string? returnValue) ? returnValue : string.Empty,
-            _ => value
-        };
-    }
-
-    /// <summary>
-    /// 判断是否满足指定业务条件。
-    /// </summary>
-    private static bool IsJudgeOperation(WorkStepOperation operation)
-    {
-        return string.Equals(operation.OperationObjectName?.Trim(), "判断", StringComparison.OrdinalIgnoreCase);
+        string type = parameterType?.Trim() ?? string.Empty;
+        string value = configuredValue?.Trim() ?? string.Empty;
+        return type is "返回值" or "工步值"
+            ? returnValues.TryGetValue(value, out string? runtimeValue) ? runtimeValue : string.Empty
+            : value;
     }
 
     /// <summary>
@@ -599,14 +693,42 @@ public static class FlowchartExecutionService
             "≥" => true,
             "<" => true,
             "≤" => true,
-            "∈" => true,
-            "∉" => true,
-            "∋" => true,
-            "∌" => true,
-            "= ∅" => true,
-            "≠ ∅" => true,
+            "＜{0}＜" => true,
+            "≤{0}≤" => true,
+            "()" => true,
+            "!()" => true,
+            "黑名单" => true,
+            "白名单" => true,
             _ => false
         };
+    }
+
+    /// <summary>
+    /// 判断数值是否位于使用“~”分隔的区间内。
+    /// </summary>
+    private static bool IsValueInRange(string value, string range, bool includeBoundary)
+    {
+        string[] boundaries = range.Split('~', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+        if (boundaries.Length != 2)
+        {
+            return false;
+        }
+
+        int lowerComparison = CompareNumbers(value, boundaries[0]);
+        int upperComparison = CompareNumbers(value, boundaries[1]);
+        return includeBoundary
+            ? lowerComparison >= 0 && upperComparison <= 0
+            : lowerComparison > 0 && upperComparison < 0;
+    }
+
+    /// <summary>
+    /// 判断目标值是否存在于使用逗号、分号或竖线分隔的名单中。
+    /// </summary>
+    private static bool IsValueInList(string value, string configuredList)
+    {
+        return configuredList
+            .Split(new[] { ',', '，', ';', '；', '|' }, StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+            .Any(item => TextEquals(value, item));
     }
 
     /// <summary>
@@ -617,14 +739,6 @@ public static class FlowchartExecutionService
         decimal leftValue = decimal.TryParse(left, out decimal parsedLeft) ? parsedLeft : 0m;
         decimal rightValue = decimal.TryParse(right, out decimal parsedRight) ? parsedRight : 0m;
         return leftValue.CompareTo(rightValue);
-    }
-
-    /// <summary>
-    /// 获取指定索引位置的返回值。
-    /// </summary>
-    private static string GetValue(IReadOnlyList<string> values, int index)
-    {
-        return index >= 0 && index < values.Count ? values[index] : string.Empty;
     }
 
     /// <summary>
@@ -686,7 +800,18 @@ public static class FlowchartExecutionService
             return true;
         }
 
-        string? canonicalStationName = ResolveStationName(normalizedStationName);
+        string? canonicalStationName;
+        try
+        {
+            canonicalStationName = ResolveStationName(normalizedStationName);
+        }
+        catch (Exception ex)
+        {
+            context = null!;
+            message = $"Station configuration could not be loaded: {ex.Message}";
+            return false;
+        }
+
         if (!string.IsNullOrWhiteSpace(canonicalStationName) &&
             ActiveExecutions.TryGetValue(canonicalStationName, out runningContext))
         {
@@ -704,7 +829,7 @@ public static class FlowchartExecutionService
     }
 
     /// <summary>
-    /// 解析并返回对应的业务值。
+    /// 根据工位名称或工位编码解析配置中保存的规范工位名称。
     /// </summary>
     private static string? ResolveStationName(string stationNameOrCode)
     {
@@ -713,7 +838,7 @@ public static class FlowchartExecutionService
             string.Equals(item.StationName?.Trim(), stationNameOrCode, StringComparison.OrdinalIgnoreCase) ||
             string.Equals(item.StationCode?.Trim(), stationNameOrCode, StringComparison.OrdinalIgnoreCase));
 
-        return station?.StationName;
+        return station?.StationName?.Trim();
     }
 
     /// <summary>
@@ -735,52 +860,9 @@ public static class FlowchartExecutionService
     #endregion
 
     #region 内部执行上下文
-    private sealed class FlowchartExecutionKey : IEquatable<FlowchartExecutionKey>
-    {
-        /// <summary>
-        /// 创建流程图执行键。
-        /// </summary>
-        /// <param name="stationName">工位名称。</param>
-        /// <param name="flowchartName">流程图名称。</param>
-        public FlowchartExecutionKey(string stationName, string flowchartName)
-        {
-            StationName = stationName;
-            FlowchartName = flowchartName;
-        }
-
-        public string StationName { get; }
-
-        public string FlowchartName { get; }
-
-        /// <summary>
-        /// 比较当前对象与目标对象是否相等。
-        /// </summary>
-        public bool Equals(FlowchartExecutionKey? other)
-        {
-            return other is not null &&
-                   string.Equals(StationName, other.StationName, StringComparison.OrdinalIgnoreCase) &&
-                   string.Equals(FlowchartName, other.FlowchartName, StringComparison.OrdinalIgnoreCase);
-        }
-
-        /// <summary>
-        /// 比较当前对象与目标对象是否相等。
-        /// </summary>
-        public override bool Equals(object? obj)
-        {
-            return Equals(obj as FlowchartExecutionKey);
-        }
-
-        /// <summary>
-        /// 获取流程图执行键的哈希码。
-        /// </summary>
-        public override int GetHashCode()
-        {
-            return HashCode.Combine(
-                StringComparer.OrdinalIgnoreCase.GetHashCode(StationName),
-                StringComparer.OrdinalIgnoreCase.GetHashCode(FlowchartName));
-        }
-    }
-
+    /// <summary>
+    /// 保存单次流程图运行所需的工位信息、控制状态和执行日志。
+    /// </summary>
     private sealed class FlowchartExecutionContext : IControlledExecutionContext, IDisposable
     {
         private readonly object _pauseLock = new();
@@ -792,15 +874,21 @@ public static class FlowchartExecutionService
         /// <summary>
         /// 创建流程图执行上下文。
         /// </summary>
-        /// <param name="key">流程图执行键。</param>
+        /// <param name="stationName">工位名称。</param>
+        /// <param name="flowchartName">流程图名称。</param>
         /// <param name="startTime">执行开始时间。</param>
-        public FlowchartExecutionContext(FlowchartExecutionKey key, DateTime startTime)
+        public FlowchartExecutionContext(string stationName, string flowchartName, DateTime startTime)
         {
-            Key = key;
+            StationName = stationName;
+            FlowchartName = flowchartName;
             StartTime = startTime;
         }
 
-        public FlowchartExecutionKey Key { get; }
+        /// <summary>获取当前执行所属的工位名称。</summary>
+        public string StationName { get; }
+
+        /// <summary>获取当前执行的流程图名称。</summary>
+        public string FlowchartName { get; }
 
         public DateTime StartTime { get; }
 
@@ -932,8 +1020,8 @@ public static class FlowchartExecutionService
         {
             DateTime snapshotTime = DateTime.Now;
             return new FlowchartExecutionSnapshot(
-                Key.StationName,
-                Key.FlowchartName,
+                StationName,
+                FlowchartName,
                 IsPaused,
                 StartTime,
                 null,

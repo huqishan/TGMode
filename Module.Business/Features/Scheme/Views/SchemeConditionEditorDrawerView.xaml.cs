@@ -126,27 +126,58 @@ public partial class SchemeConditionEditorDrawerView : UserControl
         double targetOffset = isOpen ? 0d : ClosedOffset;
         if (isOpen)
         {
+            DrawerHost.Visibility = Visibility.Visible;
             DrawerHost.IsHitTestVisible = true;
+        }
+        else
+        {
+            // 关闭开始后立即停止接收输入，避免动画期间重复触发关闭命令。
+            DrawerHost.IsHitTestVisible = false;
         }
 
         if (!animate)
         {
-            DrawerHost.Opacity = targetOpacity;
+            DrawerBackdrop.Opacity = targetOpacity;
             DrawerTranslateTransform.X = targetOffset;
             DrawerHost.IsHitTestVisible = isOpen;
+            DrawerHost.Visibility = isOpen ? Visibility.Visible : Visibility.Collapsed;
+            DrawerSheet.CacheMode = null;
             return;
         }
 
-        DoubleAnimation opacityAnimation = new(targetOpacity, AnimationDuration) { EasingFunction = Easing };
-        if (!isOpen)
-        {
-            opacityAnimation.Completed += (_, _) => DrawerHost.IsHitTestVisible = Editor?.IsOpen == true;
-        }
+        // 参数表包含大量输入控件。动画期间缓存抽屉位图，只移动缓存结果，避免每一帧重新合成全部控件。
+        double currentOpacity = DrawerBackdrop.Opacity;
+        double currentOffset = DrawerTranslateTransform.X;
+        DrawerSheet.CacheMode = new BitmapCache(1d);
+        DrawerBackdrop.Opacity = targetOpacity;
+        DrawerTranslateTransform.X = targetOffset;
 
-        DrawerHost.BeginAnimation(OpacityProperty, opacityAnimation);
+        DoubleAnimation opacityAnimation = new(currentOpacity, targetOpacity, AnimationDuration)
+        {
+            EasingFunction = Easing,
+            FillBehavior = FillBehavior.Stop
+        };
+        DoubleAnimation offsetAnimation = new(currentOffset, targetOffset, AnimationDuration)
+        {
+            EasingFunction = Easing,
+            FillBehavior = FillBehavior.Stop
+        };
+        offsetAnimation.Completed += (_, _) =>
+        {
+            bool remainsOpen = Editor?.IsOpen == true;
+            DrawerSheet.CacheMode = null;
+            DrawerHost.IsHitTestVisible = remainsOpen;
+            if (!remainsOpen)
+            {
+                // 动画结束后折叠复杂可视树，避免隐藏参数表继续参与父级布局和渲染。
+                DrawerHost.Visibility = Visibility.Collapsed;
+            }
+        };
+
+        DrawerBackdrop.BeginAnimation(OpacityProperty, opacityAnimation);
         DrawerTranslateTransform.BeginAnimation(
             TranslateTransform.XProperty,
-            new DoubleAnimation(targetOffset, AnimationDuration) { EasingFunction = Easing });
+            offsetAnimation);
     }
 
     #endregion

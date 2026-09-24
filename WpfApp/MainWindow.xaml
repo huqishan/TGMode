@@ -5,6 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:WpfApp"
         xmlns:controls="clr-namespace:ControlLibrary.Controls.Navigation.Control;assembly=ControlLibrary"
+        xmlns:loading="clr-namespace:ControlLibrary.Controls.Loading;assembly=ControlLibrary"
         xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
         mc:Ignorable="d"
         MinWidth="1450" WindowStyle="None"
@@ -147,6 +148,9 @@
                         HorizontalAlignment="Stretch"
                         VerticalAlignment="Stretch" />
         </Grid>
+
+        <!-- 主窗口只承载一个全局加载遮罩，所有业务模块均可通过服务调用。 -->
+        <loading:GlobalLoadingOverlay />
     </Grid>
    
 </Window>

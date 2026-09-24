@@ -317,6 +317,54 @@ public class MesDataConvertTests
 
     #endregion
 
+    #region JOINT 字段拼接
+
+    /// <summary>
+    /// 验证普通字段、判断文本映射和循环字段按照布局顺序生成兼容的拼接结果。
+    /// </summary>
+    [Test]
+    public void Convert_Joint布局_应按顺序拼接普通字段与循环字段()
+    {
+        MesDataInfoTree sourceData = CreateSourceData(
+            new MesDataInfoItem("Code", "A"),
+            new MesDataInfoItem("Result", "1"),
+            new MesDataInfoItem("Value1_", "X"),
+            new MesDataInfoItem("Value2_", "Y"));
+        DataSruct layout = new()
+        {
+            StructureType = "JOINT",
+            Structure = new List<TreeModel>
+            {
+                new() { ClientCode = "Code", MESCode = "|", DataType = "STRING", IsNull = true },
+                new()
+                {
+                    ClientCode = "Result",
+                    MESCode = "|",
+                    DataType = "STRING",
+                    IsNull = true,
+                    JudgeValue = "1",
+                    OKText = "PASS",
+                    NGText = "FAIL"
+                },
+                new()
+                {
+                    ClientCode = "Value_",
+                    MESCode = ",",
+                    DataType = "STRING",
+                    IsNull = true,
+                    IsWhile = true,
+                    WhileCount = 2
+                }
+            }
+        };
+
+        string result = MesDataConvert.Convert(sourceData, layout);
+
+        Assert.That(result, Is.EqualTo("A|PASS|X,Y"));
+    }
+
+    #endregion
+
     private static MesDataInfoTree CreateSourceData(params MesDataInfoItem[] items)
     {
         return new MesDataInfoTree("Product", true, "Api", items.ToList());

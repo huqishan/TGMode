@@ -271,7 +271,7 @@ Style="{StaticResource ColumnsDataGridStyle}">
                             ElementStyle="{StaticResource CellTextBlockStyle}"
                             EditingElementStyle="{StaticResource CellTextBoxStyle}"
                             Binding="{Binding Parameter.Num, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />-->
-                            <DataGridTemplateColumn Width="0.8*"
+                            <DataGridTemplateColumn Width="1*"
                                 Header="{DynamicResource 参数类型}">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>

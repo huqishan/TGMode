@@ -1,5 +1,6 @@
 using ControlLibrary.Controls.FlowchartEditor.Models;
 using Module.Business.Features.StationConfiguration;
+using Module.Business.Features.OperationEditing.ViewModels.PresentationModels;
 using Module.Business.Models;
 using System;
 using System.Collections.Generic;
@@ -209,7 +210,7 @@ public static class StationConfigurationStore
             {
                 Id = nodeId,
                 Text = string.IsNullOrWhiteSpace(node.Text) ? "处理" : node.Text.Trim(),
-                MetadataJson = node.MetadataJson ?? string.Empty,
+                MetadataJson = NormalizeNodeOperationMetadata(node),
                 Kind = Enum.IsDefined(typeof(FlowchartNodeKind), node.Kind) ? node.Kind : FlowchartNodeKind.Process,
                 X = NormalizeCoordinate(node.X),
                 Y = NormalizeCoordinate(node.Y),
@@ -251,6 +252,48 @@ public static class StationConfigurationStore
             Nodes = nodes,
             Connections = connections
         };
+    }
+
+    /// <summary>
+    /// 确保所有流程图节点都使用统一的步骤实体作为业务载荷。
+    /// </summary>
+    private static string NormalizeNodeOperationMetadata(FlowchartNodeDocument node)
+    {
+        if (!string.IsNullOrWhiteSpace(node.MetadataJson))
+        {
+            try
+            {
+                if (JsonSerializer.Deserialize<WorkStepOperation>(node.MetadataJson) is not null)
+                {
+                    return node.MetadataJson;
+                }
+            }
+            catch (JsonException)
+            {
+                // 无效或旧格式载荷由下方统一步骤实体替换。
+            }
+        }
+
+        string defaultText = node.Kind switch
+        {
+            FlowchartNodeKind.Start => "开始",
+            FlowchartNodeKind.Decision => "判断",
+            FlowchartNodeKind.End => "结束",
+            _ => "处理"
+        };
+        WorkStepOperation operation = new()
+        {
+            OperationObjectName = node.Kind switch
+            {
+                FlowchartNodeKind.Decision => "判断",
+                FlowchartNodeKind.Start => "开始",
+                FlowchartNodeKind.End => "结束",
+                _ => "System"
+            },
+            Summary = string.IsNullOrWhiteSpace(node.Text) ? defaultText : node.Text.Trim()
+        };
+        operation.ConditionExecution.IsEnabled = node.Kind == FlowchartNodeKind.Decision;
+        return JsonSerializer.Serialize(operation);
     }
 
     #endregion

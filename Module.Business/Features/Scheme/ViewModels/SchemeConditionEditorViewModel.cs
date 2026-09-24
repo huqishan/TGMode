@@ -1,10 +1,10 @@
 using ControlLibrary;
 using Module.Business.Features.OperationEditing.ViewModels.PresentationModels;
 using Module.Business.Features.Scheme.ViewModels.PresentationModels;
-using Module.Business.Features.WorkStep.Services;
 using Module.Business.Features.WorkStep.ViewModels.PresentationModels;
 using System.Collections.ObjectModel;
 using System.Windows.Input;
+using System.Threading.Tasks;
 
 namespace Module.Business.Features.Scheme.ViewModels;
 
@@ -94,63 +94,165 @@ public sealed class SchemeConditionEditorViewModel : ViewModelProperties
     /// <summary>
     /// 打开编辑器并从方案工步实例生成连续分组参数行。
     /// </summary>
-    public void Open(SchemeProfile scheme)
+    public async Task OpenAsync(SchemeProfile scheme, IReadOnlyCollection<WorkStepProfile> configuredWorkSteps)
     {
         ArgumentNullException.ThrowIfNull(scheme);
-        _editingScheme = scheme;
-        _allGroups.Clear();
-        ObservableCollection<WorkStepProfile> configuredWorkSteps = WorkStepConfigurationStore.Load();
+        ArgumentNullException.ThrowIfNull(configuredWorkSteps);
 
-        foreach (SchemeWorkStepItem workStep in scheme.Steps.OrderBy(item => item.Num))
+        // 先把每个方案工步与最新内置工步参数对齐：同名参数保留方案已编辑值，新参数按配置默认值补入，
+        // 已从内置工步删除的遗留参数继续保留但标记为停用，因此不会进入判断条件配置界面。
+        foreach (SchemeWorkStepItem workStep in scheme.Steps)
         {
             WorkStepProfile? configuredWorkStep = configuredWorkSteps.FirstOrDefault(item => string.Equals(
                 item.Name,
                 workStep.StepType,
                 StringComparison.OrdinalIgnoreCase));
-            IReadOnlyList<WorkStepOperation> operations = configuredWorkStep is null
-                ? Array.Empty<WorkStepOperation>()
-                : configuredWorkStep.Operations;
-            List<InputParameter> configuredInputs = operations
+            if (configuredWorkStep is null)
+            {
+                foreach (SchemeWorkStepParameterItem parameter in workStep.InputParameters) parameter.IsUsed = false;
+                foreach (SchemeWorkStepParameterItem parameter in workStep.ReturnParameters) parameter.IsUsed = false;
+                continue;
+            }
+
+            List<SchemeWorkStepParameterItem> latestInputs = configuredWorkStep.Operations
                 .OrderBy(operation => operation.Num)
                 .SelectMany(operation => operation.Parameters.OrderBy(parameter => parameter.Num))
                 .Where(parameter => string.Equals(parameter.ParameterType?.Trim(), "工步值", StringComparison.Ordinal))
                 .DistinctBy(parameter => parameter.Value?.Trim() ?? string.Empty, StringComparer.OrdinalIgnoreCase)
-                .ToList();
-            List<SchemeConditionEditorItem> rows = new();
-            foreach (InputParameter configuredInput in configuredInputs)
-            {
-                string parameterName = configuredInput.Value?.Trim() ?? string.Empty;
-                SchemeWorkStepParameterItem? savedParameter = workStep.InputParameters.FirstOrDefault(parameter =>
-                    string.Equals(parameter.Name?.Trim(), parameterName, StringComparison.OrdinalIgnoreCase));
-                if (savedParameter?.IsUsed == true)
+                .Select(parameter => new SchemeWorkStepParameterItem
                 {
-                    rows.Add(new SchemeConditionEditorItem(savedParameter.Clone(), true));
+                    Name = parameter.Value,
+                    Value = parameter.ParameterName,
+                    IsUsed = true
+                })
+                .ToList();
+            HashSet<string> latestInputNames = new(
+                latestInputs.Select(parameter => parameter.Name?.Trim() ?? string.Empty),
+                StringComparer.OrdinalIgnoreCase);
+            foreach (SchemeWorkStepParameterItem latestParameter in latestInputs)
+            {
+                SchemeWorkStepParameterItem? savedParameter = workStep.InputParameters.FirstOrDefault(parameter =>
+                    string.Equals(parameter.Name?.Trim(), latestParameter.Name?.Trim(), StringComparison.OrdinalIgnoreCase));
+                if (savedParameter is null)
+                {
+                    workStep.InputParameters.Add(latestParameter);
+                }
+                else
+                {
+                    savedParameter.IsUsed = true;
                 }
             }
 
-            List<string> configuredReturns = operations
+            foreach (SchemeWorkStepParameterItem parameter in workStep.InputParameters.Where(parameter =>
+                         !latestInputNames.Contains(parameter.Name?.Trim() ?? string.Empty)))
+            {
+                parameter.IsUsed = false;
+            }
+
+            List<SchemeWorkStepParameterItem> latestReturns = configuredWorkStep.Operations
                 .OrderBy(operation => operation.Num)
                 .SelectMany(operation => operation.ReturnValues
+                    .Where(returnValue => returnValue.IsShowView)
                     .OrderBy(returnValue => returnValue.Num)
-                    .Select(returnValue =>
-                        string.IsNullOrWhiteSpace(operation.ReturnValue)
+                    .Select(returnValue => new SchemeWorkStepParameterItem
+                    {
+                        Name = string.IsNullOrWhiteSpace(operation.ReturnValue)
                             ? returnValue.ReturnParameterName
-                            : $"{operation.ReturnValue}_{returnValue.ReturnParameterName}"))
-                .Distinct(StringComparer.OrdinalIgnoreCase)
+                            : $"{operation.ReturnValue}_{returnValue.ReturnParameterName}",
+                        Value = string.IsNullOrWhiteSpace(operation.ReturnValue)
+                            ? returnValue.ReturnParameterName
+                            : $"{operation.ReturnValue}_{returnValue.ReturnParameterName}",
+                        Unit = returnValue.Unit,
+                        IsUsed = true
+                    }))
+                .DistinctBy(parameter => parameter.Value?.Trim() ?? string.Empty, StringComparer.OrdinalIgnoreCase)
                 .ToList();
-
-            foreach (string fullName in configuredReturns)
+            HashSet<string> latestReturnNames = new(
+                latestReturns.Select(parameter => parameter.Value?.Trim() ?? string.Empty),
+                StringComparer.OrdinalIgnoreCase);
+            foreach (SchemeWorkStepParameterItem latestParameter in latestReturns)
             {
                 SchemeWorkStepParameterItem? savedParameter = workStep.ReturnParameters.FirstOrDefault(parameter =>
-                    string.Equals(parameter.Value?.Trim(), fullName.Trim(), StringComparison.OrdinalIgnoreCase));
-                if (savedParameter?.IsUsed == true)
+                    string.Equals(parameter.Value?.Trim(), latestParameter.Value?.Trim(), StringComparison.OrdinalIgnoreCase));
+                if (savedParameter is null)
                 {
-                    rows.Add(new SchemeConditionEditorItem(savedParameter.Clone(), false));
+                    workStep.ReturnParameters.Add(latestParameter);
+                }
+                else
+                {
+                    savedParameter.IsUsed = true;
                 }
             }
 
-            _allGroups.Add(new SchemeConditionWorkStepGroup(workStep, rows));
+            foreach (SchemeWorkStepParameterItem parameter in workStep.ReturnParameters.Where(parameter =>
+                         !latestReturnNames.Contains(parameter.Value?.Trim() ?? string.Empty)))
+            {
+                parameter.IsUsed = false;
+            }
         }
+
+        List<SchemeConditionWorkStepGroup> preparedGroups = await Task.Run(() =>
+        {
+            // 数据匹配与行模型创建放到后台线程，主线程只负责最终集合绑定和弹框首帧布局。
+            List<SchemeConditionWorkStepGroup> groups = new();
+            foreach (SchemeWorkStepItem workStep in scheme.Steps.OrderBy(item => item.Num))
+            {
+                WorkStepProfile? configuredWorkStep = configuredWorkSteps.FirstOrDefault(item => string.Equals(
+                    item.Name,
+                    workStep.StepType,
+                    StringComparison.OrdinalIgnoreCase));
+                IReadOnlyList<WorkStepOperation> operations = configuredWorkStep is null
+                    ? Array.Empty<WorkStepOperation>()
+                    : configuredWorkStep.Operations;
+                List<InputParameter> configuredInputs = operations
+                    .OrderBy(operation => operation.Num)
+                    .SelectMany(operation => operation.Parameters.OrderBy(parameter => parameter.Num))
+                    .Where(parameter => string.Equals(parameter.ParameterType?.Trim(), "工步值", StringComparison.Ordinal))
+                    .DistinctBy(parameter => parameter.Value?.Trim() ?? string.Empty, StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+                List<SchemeConditionEditorItem> rows = new();
+                foreach (InputParameter configuredInput in configuredInputs)
+                {
+                    string parameterName = configuredInput.Value?.Trim() ?? string.Empty;
+                    SchemeWorkStepParameterItem? savedParameter = workStep.InputParameters.FirstOrDefault(parameter =>
+                        string.Equals(parameter.Name?.Trim(), parameterName, StringComparison.OrdinalIgnoreCase));
+                    if (savedParameter?.IsUsed == true)
+                    {
+                        rows.Add(new SchemeConditionEditorItem(savedParameter.Clone(), true));
+                    }
+                }
+
+                List<string> configuredReturns = operations
+                    .OrderBy(operation => operation.Num)
+                    .SelectMany(operation => operation.ReturnValues
+                        .Where(returnValue => returnValue.IsShowView)
+                        .OrderBy(returnValue => returnValue.Num)
+                        .Select(returnValue =>
+                            string.IsNullOrWhiteSpace(operation.ReturnValue)
+                                ? returnValue.ReturnParameterName
+                                : $"{operation.ReturnValue}_{returnValue.ReturnParameterName}"))
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+
+                foreach (string fullName in configuredReturns)
+                {
+                    SchemeWorkStepParameterItem? savedParameter = workStep.ReturnParameters.FirstOrDefault(parameter =>
+                        string.Equals(parameter.Value?.Trim(), fullName.Trim(), StringComparison.OrdinalIgnoreCase));
+                    if (savedParameter?.IsUsed == true)
+                    {
+                        rows.Add(new SchemeConditionEditorItem(savedParameter.Clone(), false));
+                    }
+                }
+
+                groups.Add(new SchemeConditionWorkStepGroup(workStep, rows));
+            }
+
+            return groups;
+        });
+
+        _editingScheme = scheme;
+        _allGroups.Clear();
+        _allGroups.AddRange(preparedGroups);
 
         _searchText = string.Empty;
         _selectedParameterFilter = "全部参数";

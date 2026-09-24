@@ -25,7 +25,7 @@ using System.Windows.Media;
 namespace Module.Business.Features.StationConfiguration;
 
 /// <summary>
-/// 工位配置页面视图模型，负责工位列表、流程图导入导出和预览执行状态。
+/// 工位配置页面视图模型，负责工位列表、流程图导入导出和执行控制状态。
 /// </summary>
 public sealed class StationConfigurationViewModel : ViewModelProperties
 {
@@ -77,6 +77,16 @@ public sealed class StationConfigurationViewModel : ViewModelProperties
 
     #region 数据与状态字段
     /// <summary>
+    /// 工位配置页面执行动画中每个节点的高亮保留时间，单位为毫秒。
+    /// </summary>
+    private const int FlowchartNodeHighlightMilliseconds = 1000;
+
+    /// <summary>
+    /// 工位配置页面执行流程图时允许经过的最大节点数，用于阻止错误连线造成无限执行。
+    /// </summary>
+    private const int FlowchartMaximumExecutionSteps = 100;
+
+    /// <summary>
     /// 当前工位配置目录。
     /// </summary>
     private readonly StationConfigurationCatalog _catalog = StationConfigurationStore.LoadCatalog();
@@ -102,24 +112,19 @@ public sealed class StationConfigurationViewModel : ViewModelProperties
     private Brush _pageStatusBrush = NeutralBrush;
 
     /// <summary>
-    /// 流程图预览执行状态文本。
-    /// </summary>
-    private string _executionStatusText = "状态：等待操作";
-
-    /// <summary>
-    /// 流程图预览执行状态画刷。
-    /// </summary>
-    private Brush _executionStatusBrush = NeutralBrush;
-
-    /// <summary>
-    /// 是否正在预览执行流程图。
+    /// 是否正在执行流程图。
     /// </summary>
     private bool _isExecuting;
 
     /// <summary>
-    /// 当前流程图预览是否已暂停。
+    /// 当前流程图是否已暂停。
     /// </summary>
     private bool _isPaused;
+
+    /// <summary>
+    /// 当前实际运行流程图所属的工位名称，执行期间不随界面选中项变化。
+    /// </summary>
+    private string _executingStationName = string.Empty;
 
     /// <summary>
     /// 当前流程图节点操作编辑器。
@@ -132,6 +137,11 @@ public sealed class StationConfigurationViewModel : ViewModelProperties
     /// 当前正在编辑的流程图节点编号。
     /// </summary>
     private Guid? _editingNodeId;
+
+    /// <summary>
+    /// 当前正在编辑的流程图节点类型，用于在同一个弹框内切换处理块与判断块界面。
+    /// </summary>
+    private FlowchartNodeKind? _editingNodeKind;
 
     /// <summary>
     /// 上一次新建或复制命令触发时间，用于防止连点。
@@ -195,11 +205,6 @@ public sealed class StationConfigurationViewModel : ViewModelProperties
     public ObservableCollection<FlowchartNodeTemplate> NodeTemplates { get; } = new();
 
     /// <summary>
-    /// 流程图预览执行日志。
-    /// </summary>
-    public ObservableCollection<string> ExecutionLogs { get; } = new();
-
-    /// <summary>
     /// 工位搜索关键字。
     /// </summary>
     public string SearchText
@@ -230,11 +235,9 @@ public sealed class StationConfigurationViewModel : ViewModelProperties
             }
 
             _selectedStation = value;
-            ExecutionLogs.Clear();
             SetExecutionStatus("状态：等待操作", NeutralBrush);
             OnPropertyChanged();
             OnPropertyChanged(nameof(HasSelectedStation));
-            OnPropertyChanged(nameof(CurrentStationSummary));
             RaiseCommandStatesChanged();
         }
     }
@@ -258,25 +261,7 @@ public sealed class StationConfigurationViewModel : ViewModelProperties
     }
 
     /// <summary>
-    /// 流程图预览执行状态文本。
-    /// </summary>
-    public string ExecutionStatusText
-    {
-        get => _executionStatusText;
-        private set => SetField(ref _executionStatusText, value);
-    }
-
-    /// <summary>
-    /// 流程图预览执行状态画刷。
-    /// </summary>
-    public Brush ExecutionStatusBrush
-    {
-        get => _executionStatusBrush;
-        private set => SetField(ref _executionStatusBrush, value);
-    }
-
-    /// <summary>
-    /// 是否正在执行流程图预览。
+    /// 是否正在执行流程图。
     /// </summary>
     public bool IsExecuting
     {
@@ -292,7 +277,7 @@ public sealed class StationConfigurationViewModel : ViewModelProperties
     }
 
     /// <summary>
-    /// 流程图预览是否暂停。
+    /// 流程图执行是否暂停。
     /// </summary>
     public bool IsPaused
     {
@@ -329,6 +314,16 @@ public sealed class StationConfigurationViewModel : ViewModelProperties
     /// </summary>
     public bool IsNodeOperationEditorOpen => NodeOperationEditor is not null;
 
+    /// <summary>
+    /// 当前弹框是否正在编辑判断块。
+    /// </summary>
+    public bool IsEditingDecisionNode => _editingNodeKind == FlowchartNodeKind.Decision;
+
+    /// <summary>
+    /// 当前节点编辑弹框标题。
+    /// </summary>
+    public string NodeOperationEditorTitle => IsEditingDecisionNode ? "编辑判断块" : "编辑步骤";
+
     public bool CanEdit => !IsExecuting;
 
     /// <summary>
@@ -340,11 +335,6 @@ public sealed class StationConfigurationViewModel : ViewModelProperties
     /// 是否已选择工位。
     /// </summary>
     public bool HasSelectedStation => SelectedStation is not null;
-
-    /// <summary>
-    /// 当前工位摘要信息。
-    /// </summary>
-    public string CurrentStationSummary => SelectedStation?.Summary ?? "未选择工位";
 
     #endregion
 
@@ -380,17 +370,17 @@ public sealed class StationConfigurationViewModel : ViewModelProperties
     public ICommand ExportFlowchartCommand { get; }
 
     /// <summary>
-    /// 预览执行流程图命令。
+    /// 执行当前工位流程图命令。
     /// </summary>
     public ICommand ExecuteFlowchartCommand { get; }
 
     /// <summary>
-    /// 暂停或继续流程图预览命令。
+    /// 暂停或继续当前流程图命令。
     /// </summary>
     public ICommand PauseFlowchartCommand { get; }
 
     /// <summary>
-    /// 停止流程图预览命令。
+    /// 停止当前流程图命令。
     /// </summary>
     public ICommand StopFlowchartCommand { get; }
 
@@ -568,12 +558,7 @@ public sealed class StationConfigurationViewModel : ViewModelProperties
 
     #endregion
 
-    #region 流程图预览控制
-    /// <summary>
-    /// 在页面内预览执行当前流程图。
-    /// </summary>
-    /// <param name="parameter">流程图编辑器控件。</param>
-    /// <returns>异步预览执行任务。</returns>
+    #region 流程图执行控制
     #region 流程图节点操作编辑
 
     /// <summary>
@@ -588,6 +573,16 @@ public sealed class StationConfigurationViewModel : ViewModelProperties
 
         WorkStepOperation operation = DeserializeNodeOperation(e);
         _editingNodeId = e.NodeId;
+        _editingNodeKind = e.NodeKind;
+
+        // 判断块始终需要计算条件，界面不再提供关闭条件的入口，也不使用隐藏的 NG 步骤跳转。
+        if (e.NodeKind == FlowchartNodeKind.Decision)
+        {
+            operation.OperationObjectName = "判断";
+            operation.ConditionExecution.IsEnabled = true;
+            operation.ConditionExecution.IsNgJumpEnabled = false;
+            operation.ConditionExecution.NgJumpStepId = string.Empty;
+        }
 
         OperationEditorViewModel operationEditor = new();
         operationEditor.OperationSaved += NodeOperationEditor_OperationSaved;
@@ -597,6 +592,8 @@ public sealed class StationConfigurationViewModel : ViewModelProperties
         operationEditor.Open(editingOperation, isNewOperation: false, new[] { editingOperation });
 
         NodeOperationEditor = operationEditor;
+        OnPropertyChanged(nameof(IsEditingDecisionNode));
+        OnPropertyChanged(nameof(NodeOperationEditorTitle));
         return true;
     }
 
@@ -653,8 +650,11 @@ public sealed class StationConfigurationViewModel : ViewModelProperties
         }
 
         _editingNodeId = null;
+        _editingNodeKind = null;
         _savedNodeOperation = null;
         NodeOperationEditor = null;
+        OnPropertyChanged(nameof(IsEditingDecisionNode));
+        OnPropertyChanged(nameof(NodeOperationEditorTitle));
     }
 
     private void NodeOperationEditor_OperationSaved(object? sender, OperationEditorSavedEventArgs e)
@@ -679,8 +679,6 @@ public sealed class StationConfigurationViewModel : ViewModelProperties
             .Select(line => line?.Trim() ?? string.Empty)
             .FirstOrDefault(line => !string.IsNullOrWhiteSpace(line))
             ?? string.Empty;
-        string summary = NormalizeInlineText(lines.Skip(1));
-
         string operationObject = ResolveOperationObject(e.NodeKind, firstLine);
         WorkStepOperation operationTemplate = SchemeConfigurationViewModel.CreateDefaultOperation();
         operationTemplate.OperationObjectName = operationObject;
@@ -689,11 +687,23 @@ public sealed class StationConfigurationViewModel : ViewModelProperties
 
     private static bool CanEditNode(FlowchartNodeKind nodeKind)
     {
-        return nodeKind == FlowchartNodeKind.Process;
+        return nodeKind is FlowchartNodeKind.Process or FlowchartNodeKind.Decision;
     }
 
     private static string BuildNodeText(FlowchartNodeKind nodeKind, WorkStepOperation operation)
     {
+        // 处理块和判断块直接展示编辑界面中的描述，使流程图能够表达节点的业务含义。
+        if (nodeKind is FlowchartNodeKind.Process or FlowchartNodeKind.Decision &&
+            !string.IsNullOrWhiteSpace(operation.Summary))
+        {
+            return operation.Summary.Trim();
+        }
+
+        if (nodeKind == FlowchartNodeKind.Decision)
+        {
+            return GetDefaultNodeText(nodeKind);
+        }
+
         string operationObject = string.IsNullOrWhiteSpace(operation.OperationObjectName)
             ? GetDefaultNodeText(nodeKind)
             : operation.OperationObjectName.Trim();
@@ -752,19 +762,20 @@ public sealed class StationConfigurationViewModel : ViewModelProperties
             yield break;
         }
 
-        foreach (ReturnValue returnValue in operation.ReturnValues)
+        string returnValueName = operation.ReturnValue?.Trim() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(returnValueName))
         {
-            if (!string.IsNullOrWhiteSpace(returnValue.ReturnParameterName))
-            {
-                yield return returnValue.ReturnParameterName.Trim();
-            }
+            yield break;
         }
 
-        foreach (ReturnValue returnValue in operationEditorViewModel.CreateReturnParametersFromOperation(operation))
+        // 候选名称必须与执行服务写入返回值字典的键完全一致，处理块和判断块才能直接引用运行结果。
+        IEnumerable<ReturnValue> returnValues = operation.ReturnValues
+            .Concat(operationEditorViewModel.CreateReturnParametersFromOperation(operation));
+        foreach (ReturnValue returnValue in returnValues)
         {
             if (!string.IsNullOrWhiteSpace(returnValue.ReturnParameterName))
             {
-                yield return returnValue.ReturnParameterName.Trim();
+                yield return $"{returnValueName}_{returnValue.ReturnParameterName.Trim()}";
             }
         }
     }
@@ -788,22 +799,13 @@ public sealed class StationConfigurationViewModel : ViewModelProperties
         }
     }
 
-    private static string NormalizeInlineText(string? text)
-    {
-        return NormalizeInlineText((text ?? string.Empty)
-            .Split(new[] { "\r\n", "\n", "\r" }, StringSplitOptions.None));
-    }
-
-    private static string NormalizeInlineText(IEnumerable<string> values)
-    {
-        return string.Join(
-            " ",
-            values.Select(value => value?.Trim() ?? string.Empty)
-                .Where(value => !string.IsNullOrWhiteSpace(value)));
-    }
-
     #endregion
 
+    /// <summary>
+    /// 保存当前画布并通过流程图执行服务运行真实节点操作。
+    /// </summary>
+    /// <param name="parameter">流程图编辑器控件。</param>
+    /// <returns>异步执行任务。</returns>
     private async Task ExecuteFlowchartAsync(object? parameter)
     {
         if (parameter is not FlowchartEditorControl editor || SelectedStation is null)
@@ -813,38 +815,44 @@ public sealed class StationConfigurationViewModel : ViewModelProperties
         }
 
         CaptureCurrentEditorDocument(editor);
+        if (!ValidateStations(out string validationMessage))
+        {
+            SetExecutionStatus($"状态：{validationMessage}", WarningBrush);
+            return;
+        }
 
         IsExecuting = true;
         IsPaused = false;
-        ExecutionLogs.Clear();
-        SetExecutionStatus("状态：开始预览流程图", NeutralBrush);
+        _executingStationName = SelectedStation.StationName.Trim();
+        SetExecutionStatus("状态：正在启动流程图", NeutralBrush);
+
+        Guid? previousNodeId = null;
+        EventHandler<FlowchartExecutionEventArgs> nodeExecutingHandler = (_, eventArgs) =>
+        {
+            if (!eventArgs.NodeId.HasValue ||
+                !string.Equals(eventArgs.StationName, _executingStationName, StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+
+            // 执行服务可能在后台线程触发事件，画布高亮必须切回编辑器所属的 UI 线程。
+            editor.Dispatcher.Invoke(() =>
+            {
+                editor.ShowExecutionPosition(eventArgs.NodeId.Value, previousNodeId);
+                previousNodeId = eventArgs.NodeId.Value;
+            });
+        };
+        editor.ClearExecutionPosition();
+        FlowchartExecutionService.NodeExecuting += nodeExecutingHandler;
 
         try
         {
-            void HandleExecutionStepChanged(object? sender, FlowchartExecutionStepEventArgs e)
-            {
-                ExecutionLogs.Add(e.Message);
-                SetExecutionStatus($"状态：{e.Message}", NeutralBrush);
-            }
-
-            editor.ExecutionStepChanged += HandleExecutionStepChanged;
-            FlowchartExecutionResult result;
-            try
-            {
-                result = await editor.ExecuteFlowAsync();
-            }
-            finally
-            {
-                editor.ExecutionStepChanged -= HandleExecutionStepChanged;
-            }
-
-            foreach (string step in result.Steps)
-            {
-                if (!ExecutionLogs.Contains(step))
-                {
-                    ExecutionLogs.Add(step);
-                }
-            }
+            // 正式执行服务从持久化配置读取流程图，启动前先保存画布快照，确保执行内容与当前界面一致。
+            await Task.Run(() => StationConfigurationStore.SaveCatalog(_catalog));
+            FlowchartExecutionServiceResult result = await FlowchartExecutionService.ExecuteAsync(
+                _executingStationName,
+                FlowchartNodeHighlightMilliseconds,
+                FlowchartMaximumExecutionSteps);
 
             SetExecutionStatus(
                 $"状态：{result.Message}",
@@ -852,62 +860,60 @@ public sealed class StationConfigurationViewModel : ViewModelProperties
         }
         catch (Exception ex)
         {
-            SetExecutionStatus($"状态：预览流程图失败：{ex.Message}", WarningBrush);
+            SetExecutionStatus($"状态：流程图执行失败：{ex.Message}", WarningBrush);
         }
         finally
         {
+            FlowchartExecutionService.NodeExecuting -= nodeExecutingHandler;
+            editor.ClearExecutionPosition();
             IsPaused = false;
             IsExecuting = false;
+            _executingStationName = string.Empty;
         }
     }
 
     /// <summary>
-    /// 切换流程图预览的暂停和继续状态。
+    /// 切换当前流程图的暂停和继续状态。
     /// </summary>
-    /// <param name="parameter">流程图编辑器控件。</param>
+    /// <param name="parameter">命令参数，当前执行不依赖编辑器控件。</param>
     private void TogglePauseFlowchart(object? parameter)
     {
-        if (parameter is not FlowchartEditorControl editor || SelectedStation is null)
+        if (string.IsNullOrWhiteSpace(_executingStationName))
         {
-            SetExecutionStatus("状态：未选择工位。", WarningBrush);
+            SetExecutionStatus("状态：没有正在执行的流程图。", WarningBrush);
             return;
         }
 
-        bool isSuccess = IsPaused
-            ? editor.ResumeExecution()
-            : editor.PauseExecution();
-
-        if (isSuccess)
+        FlowchartExecutionControlActionResult result = IsPaused
+            ? FlowchartExecutionService.Continue(_executingStationName)
+            : FlowchartExecutionService.Pause(_executingStationName);
+        if (result.IsSuccess)
         {
             IsPaused = !IsPaused;
-            SetExecutionStatus(IsPaused ? "状态：流程图预览已暂停。" : "状态：流程图预览已继续。", NeutralBrush);
-            return;
         }
 
-        SetExecutionStatus(IsPaused ? "状态：流程图预览未处于暂停状态。" : "状态：没有正在预览的流程图。", WarningBrush);
+        SetExecutionStatus($"状态：{result.Message}", result.IsSuccess ? NeutralBrush : WarningBrush);
     }
 
     /// <summary>
-    /// 停止当前流程图预览。
+    /// 停止当前正在执行的流程图。
     /// </summary>
-    /// <param name="parameter">流程图编辑器控件。</param>
+    /// <param name="parameter">命令参数，当前执行不依赖编辑器控件。</param>
     private void StopFlowchart(object? parameter)
     {
-        if (parameter is not FlowchartEditorControl editor || SelectedStation is null)
+        if (string.IsNullOrWhiteSpace(_executingStationName))
         {
-            SetExecutionStatus("状态：未选择工位。", WarningBrush);
+            SetExecutionStatus("状态：没有正在执行的流程图。", WarningBrush);
             return;
         }
 
-        bool isSuccess = editor.StopExecution();
-        if (isSuccess)
+        FlowchartExecutionControlActionResult result = FlowchartExecutionService.Stop(_executingStationName);
+        if (result.IsSuccess)
         {
             IsPaused = false;
-            SetExecutionStatus("状态：已发送停止预览请求。", WarningBrush);
-            return;
         }
 
-        SetExecutionStatus("状态：没有正在预览的流程图。", WarningBrush);
+        SetExecutionStatus($"状态：{result.Message}", result.IsSuccess ? NeutralBrush : WarningBrush);
     }
 
     #endregion
@@ -1001,11 +1007,6 @@ public sealed class StationConfigurationViewModel : ViewModelProperties
         if (ShouldRefreshLastModified(e.PropertyName))
         {
             station.LastModifiedAt = DateTime.Now;
-        }
-
-        if (ReferenceEquals(station, SelectedStation))
-        {
-            OnPropertyChanged(nameof(CurrentStationSummary));
         }
 
         StationsView.Refresh();
@@ -1215,7 +1216,7 @@ public sealed class StationConfigurationViewModel : ViewModelProperties
     }
 
     /// <summary>
-    /// 更新流程图预览执行状态。
+    /// 更新流程图执行状态。
     /// </summary>
     /// <param name="text">参数 text。</param>
     /// <param name="brush">参数 brush。</param>

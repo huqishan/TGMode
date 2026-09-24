@@ -1,4 +1,5 @@
 using ControlLibrary;
+using ControlLibrary.Controls.Loading;
 using Module.Business.Models;
 using Module.Business.Features.OperationEditing.ViewModels.PresentationModels;
 using Module.Business.Features.Scheme.ViewModels.PresentationModels;
@@ -14,6 +15,7 @@ using System.Linq;
 using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Threading;
 
 namespace Module.Business.Features.Scheme.ViewModels;
 public sealed class SchemeConfigurationViewModel : ViewModelProperties
@@ -651,8 +653,8 @@ public sealed class SchemeConfigurationViewModel : ViewModelProperties
         DuplicateSchemeCommand = new RelayCommand(_ => DuplicateSelectedScheme(), _ => SelectedScheme is not null);
         DeleteSchemeCommand = new RelayCommand(_ => DeleteSelectedScheme(), _ => SelectedScheme is not null);
         SaveSchemesCommand = new RelayCommand(_ => SaveSchemes());
-        OpenConditionEditorCommand = new RelayCommand(
-            parameter =>
+        OpenConditionEditorCommand = new AsyncRelayCommand(
+            async parameter =>
             {
                 if (parameter is SchemeProfile scheme)
                 {
@@ -666,7 +668,26 @@ public sealed class SchemeConfigurationViewModel : ViewModelProperties
                     SaveDisplayedParametersToSelectedSchemeStep();
                     if (SelectedScheme is not null)
                     {
-                        ConditionEditor.Open(SelectedScheme);
+                        // 判断条件配置面向方案中的全部工步，打开前重新读取工步配置，确保新增参数能够立即参与合并。
+                        RefreshBuiltInWorkSteps();
+                        LoadingOverlayService.Show("正在加载判断条件配置…");
+                        try
+                        {
+                            // 先让主窗口完成遮罩首帧渲染，再生成判断条件数据，避免点击后出现界面无响应的观感。
+                            await System.Windows.Application.Current.Dispatcher.InvokeAsync(
+                                () => { },
+                                DispatcherPriority.Render);
+                            await ConditionEditor.OpenAsync(SelectedScheme, _workStepProfiles);
+
+                            // 弹框数据和首帧布局完成后再关闭遮罩，用户看到的即为可操作的完整界面。
+                            await System.Windows.Application.Current.Dispatcher.InvokeAsync(
+                                () => { },
+                                DispatcherPriority.ContextIdle);
+                        }
+                        finally
+                        {
+                            LoadingOverlayService.Close();
+                        }
                     }
                 }
             });

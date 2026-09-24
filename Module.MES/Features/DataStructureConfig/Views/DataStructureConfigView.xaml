@@ -258,7 +258,7 @@ CornerRadius="999">
                             </StackPanel>
                             <StackPanel HorizontalAlignment="Left" Grid.Column="1" Margin="16,0,0,0">
                                 <TextBlock Style="{StaticResource FieldLabelStyle}" Text="{DynamicResource 结构类型}" />
-                                <ComboBox Style="{StaticResource InputComboBoxStyle}"
+                                <ComboBox Style="{StaticResource InputComboBoxStyle}" Width="120"
 ItemContainerStyle="{StaticResource InputComboBoxItemStyle}"
 DisplayMemberPath="DisplayName"
 ItemsSource="{Binding StructureTypes}"

@@ -24,8 +24,8 @@ public partial class StationConfigurationView : UserControl
 
     private void Editor_NodeDoubleClick(object sender, FlowchartNodeInteractionEventArgs e)
     {
-        // 判断块不再使用普通步骤编辑器；双击入口只处理流程图处理块。
-        if (e.NodeKind == FlowchartNodeKind.Process)
+        // 处理块与判断块共用步骤实体；判断块由弹框切换为精简的条件编辑界面。
+        if (e.NodeKind is FlowchartNodeKind.Process or FlowchartNodeKind.Decision)
         {
             ViewModel?.OpenNodeOperationEditor(e, FlowchartPanel.CreateDocumentSnapshot());
         }

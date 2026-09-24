@@ -2,8 +2,11 @@
              x:Name="Root"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-    <Grid x:Name="DrawerHost" Opacity="0" IsHitTestVisible="False">
-        <Border Background="#3A000000" MouseLeftButtonDown="DrawerBackdrop_MouseLeftButtonDown" />
+    <Grid x:Name="DrawerHost" Visibility="Collapsed" IsHitTestVisible="False">
+        <Border x:Name="DrawerBackdrop"
+                Background="#3A000000"
+                Opacity="0"
+                MouseLeftButtonDown="DrawerBackdrop_MouseLeftButtonDown" />
 
         <!-- 判断条件采用宽抽屉连续显示全部工步，结构与 TestDataTable 的合并工步列保持一致。 -->
         <Border x:Name="DrawerSheet"
@@ -98,9 +101,36 @@
                         BorderBrush="{DynamicResource TabItemBorderBrush}"
                         BorderThickness="1,0,1,1"
                         ClipToBounds="True">
-                    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                        <ItemsControl ItemsSource="{Binding Editor.Groups, ElementName=Root}">
-                            <ItemsControl.ItemTemplate>
+                    <ListBox Background="Transparent"
+                             BorderThickness="0"
+                             ItemsSource="{Binding Editor.Groups, ElementName=Root}"
+                             ScrollViewer.CanContentScroll="True"
+                             ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                             ScrollViewer.VerticalScrollBarVisibility="Auto"
+                             VirtualizingPanel.IsVirtualizing="True"
+                             VirtualizingPanel.VirtualizationMode="Recycling">
+                        <!-- 分组行需要铺满表格且不显示选中态，使用轻量容器以启用回收虚拟化。 -->
+                        <ListBox.ItemContainerStyle>
+                            <Style TargetType="ListBoxItem">
+                                <Setter Property="Padding" Value="0" />
+                                <Setter Property="Margin" Value="0" />
+                                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                <Setter Property="IsTabStop" Value="False" />
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="ListBoxItem">
+                                            <ContentPresenter />
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                            </Style>
+                        </ListBox.ItemContainerStyle>
+                        <ListBox.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <VirtualizingStackPanel />
+                            </ItemsPanelTemplate>
+                        </ListBox.ItemsPanel>
+                            <ListBox.ItemTemplate>
                                 <DataTemplate>
                                     <Grid>
                                         <Grid.ColumnDefinitions>
@@ -253,9 +283,8 @@
                                         </ItemsControl>
                                     </Grid>
                                 </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                    </ScrollViewer>
+                            </ListBox.ItemTemplate>
+                    </ListBox>
                 </Border>
 
                 <!-- 保存提示和参数类型图例。 -->

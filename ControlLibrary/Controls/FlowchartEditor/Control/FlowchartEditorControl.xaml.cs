@@ -135,6 +135,34 @@ namespace ControlLibrary.Controls.FlowchartEditor.Control
         /// </summary>
         public bool IsExecutionPaused => _isExecuting && _isExecutionPaused;
 
+        /// <summary>
+        /// 显示外部执行服务当前到达的节点，并高亮从上一节点进入的连线。
+        /// </summary>
+        /// <param name="nodeId">当前节点编号。</param>
+        /// <param name="previousNodeId">上一节点编号；首个节点为空。</param>
+        public void ShowExecutionPosition(Guid nodeId, Guid? previousNodeId)
+        {
+            if (!_nodesById.ContainsKey(nodeId))
+            {
+                return;
+            }
+
+            Guid? connectionId = previousNodeId.HasValue
+                ? _connections.FirstOrDefault(connection =>
+                    connection.SourceNodeId == previousNodeId.Value &&
+                    connection.TargetNodeId == nodeId)?.Id
+                : null;
+            SetExecutionHighlight(nodeId, connectionId);
+        }
+
+        /// <summary>
+        /// 清除外部执行服务留下的节点和连线高亮。
+        /// </summary>
+        public void ClearExecutionPosition()
+        {
+            SetExecutionHighlight(null, null);
+        }
+
         #endregion
 
         #region 页面命令公开方法
@@ -1086,7 +1114,7 @@ namespace ControlLibrary.Controls.FlowchartEditor.Control
             }
 
             return node.Kind == FlowchartNodeKind.Process
-                ? CreateProcessNodeContent(title, summary)
+                ? CreateProcessNodeContent(string.IsNullOrWhiteSpace(summary) ? title : summary, string.Empty)
                 : CreateDefaultNodeContent(string.IsNullOrWhiteSpace(summary) ? title : $"{title} {summary}");
         }
 

@@ -28,88 +28,77 @@ using System.Threading.Tasks;
 
 namespace Module.Business.Services;
 
+/// <summary>
+/// 方案执行服务，负责按工位编排方案、工步及步骤执行，并提供暂停、继续、停止和状态通知能力。
+/// </summary>
 public static class SchemeExecutionService
 {
-    #region ����������״̬�ֶ�
-
-    // �������������������ѯ���ڣ�ͳһ�����������ɢ��ħ��ֵ��
+    #region 常量与运行状态字段
+    /// <summary>执行控制状态的轮询间隔，单位为毫秒。</summary>
     private const int ControlPollingIntervalMilliseconds = 50;
 
+    /// <summary>用于解析命令文本中“{{参数名}}”占位符的正则表达式。</summary>
     private static readonly Regex PlaceholderRegex =
         new(@"\{\{\s*(?<name>[^{}\r\n]+?)\s*\}\}", RegexOptions.Compiled);
 
+    /// <summary>当前正在执行的方案，以工位编号作为唯一占用键。</summary>
     private static readonly ConcurrentDictionary<string, SchemeExecutionContext> ActiveExecutions =
         new(StringComparer.OrdinalIgnoreCase);
+    /// <summary>方案执行期间可跨步骤读取的全局值。</summary>
     private static readonly ConcurrentDictionary<string, string> GlobalValues = new(StringComparer.OrdinalIgnoreCase);
+    /// <summary>用于发布测试状态事件的事件聚合器。</summary>
     private static IEventAggregator? _eventAggregator;
+    /// <summary>用于向通信模块发送请求的中介器。</summary>
     private static IMediator? _mediator;
 
     #endregion
 
+    /// <summary>配置方案执行状态发布所使用的事件聚合器。</summary>
     public static void ConfigureEventAggregator(IEventAggregator eventAggregator)
     {
         _eventAggregator = eventAggregator ?? throw new ArgumentNullException(nameof(eventAggregator));
     }
 
+    /// <summary>配置设备通信所使用的中介器。</summary>
     public static void ConfigureMediator(IMediator mediator)
     {
         _mediator = mediator ?? throw new ArgumentNullException(nameof(mediator));
     }
 
-    #region ִ�����������¼�
+    #region 执行生命周期事件
 
-    /// <summary>
-    /// ����ִ��ǰ�¼�����ͨ�� <see cref="SchemeExecutionEventArgs.Cancel"/> ȡ��ִ�С�
-    /// </summary>
+    /// <summary>方案执行前事件，可由订阅方取消执行。</summary>
     public static event EventHandler<SchemeExecutionEventArgs>? BeforeSchemeExecuting;
 
-    /// <summary>
-    /// ����ִ�����¼����ڷ���������ִ��ѭ���󴥷���
-    /// </summary>
+    /// <summary>方案开始执行事件。</summary>
     public static event EventHandler<SchemeExecutionEventArgs>? SchemeExecuting;
 
-    /// <summary>
-    /// ����ִ�к��¼�������ִ�п�ʼʱ�䡢����ʱ��ͺ�ʱ��?
-    /// </summary>
+    /// <summary>方案执行完成事件，包含执行结果和时间信息。</summary>
     public static event EventHandler<SchemeExecutionEventArgs>? AfterSchemeExecuted;
 
-    /// <summary>
-    /// ����ִ��ǰ�¼�����ͨ�� <see cref="SchemeExecutionEventArgs.Cancel"/> ȡ��ִ�С�
-    /// </summary>
+    /// <summary>工步执行前事件，可由订阅方取消执行。</summary>
     public static event EventHandler<SchemeExecutionEventArgs>? BeforeWorkStepExecuting;
 
-    /// <summary>
-    /// ����ִ�����¼����ڹ����ڲ��迪ʼִ��ǰ������
-    /// </summary>
+    /// <summary>工步开始执行事件。</summary>
     public static event EventHandler<SchemeExecutionEventArgs>? WorkStepExecuting;
 
-    /// <summary>
-    /// ����ִ�к��¼�������ִ�п�ʼʱ�䡢����ʱ��ͺ�ʱ��?
-    /// </summary>
+    /// <summary>工步执行完成事件，包含执行结果和时间信息。</summary>
     public static event EventHandler<SchemeExecutionEventArgs>? AfterWorkStepExecuted;
 
-    /// <summary>
-    /// ����ִ��ǰ�¼�����ͨ�� <see cref="SchemeExecutionEventArgs.Cancel"/> ȡ��ִ�С�
-    /// </summary>
+    /// <summary>步骤执行前事件，可由订阅方取消执行。</summary>
     public static event EventHandler<SchemeExecutionEventArgs>? BeforeStepExecuting;
 
-    /// <summary>
-    /// ����ִ�����¼����ڵ���������ʽ����ǰ������
-    /// </summary>
+    /// <summary>步骤开始执行事件。</summary>
     public static event EventHandler<SchemeExecutionEventArgs>? StepExecuting;
 
-    /// <summary>
-    /// ����ִ�к��¼�������ִ�п�ʼʱ�䡢����ʱ�䡢��ʱ��ִ�н����?
-    /// </summary>
+    /// <summary>步骤执行完成事件，包含执行结果、耗时和返回值。</summary>
     public static event EventHandler<SchemeExecutionEventArgs>? AfterStepExecuted;
 
     #endregion
 
-    #region ����ִ����������
+    #region 方案执行与控制入口
 
-    /// <summary>
-    /// ���ݹ�λ�źͷ������ƶ�ȡ�����ļ���ִ�У�ͬһ��λͬһʱ��ֻ����һ������ִ��ʵ����
-    /// </summary>
+    /// <summary>根据工位编号和方案名称读取配置并执行，同一工位同时只允许一个方案运行。</summary>
     public static async Task<SchemeExecutionResult> ExecuteAsync(string stationNo, string schemeName)
     {
         string normalizedStationNo = NormalizeRequiredText(stationNo);
@@ -127,11 +116,11 @@ public static class SchemeExecutionService
 
         PublishTestStatus(
             normalizedStationNo,
-            "׼������",
+            "准备测试",
             string.Empty,
             normalizedSchemeName,
             string.Empty,
-            $"׼��ִ�в��Է�����{normalizedSchemeName}");
+            $"准备执行测试方案：{normalizedSchemeName}");
 
         SchemeExecutionKey key = new(normalizedStationNo, normalizedSchemeName);
         SchemeExecutionContext context = new(key, startTime);
@@ -146,7 +135,7 @@ public static class SchemeExecutionService
                 : $"Station '{normalizedStationNo}' is already running scheme '{runningSchemeName}'.";
             PublishTestStatus(
                 normalizedStationNo,
-                "����ʧ��",
+                "启动失败",
                 string.Empty,
                 normalizedSchemeName,
                 string.Empty,
@@ -167,7 +156,7 @@ public static class SchemeExecutionService
             {
                 PublishTestStatus(
                     normalizedStationNo,
-                    "����ʧ��",
+                    "加载失败",
                     string.Empty,
                     normalizedSchemeName,
                     string.Empty,
@@ -186,7 +175,7 @@ public static class SchemeExecutionService
         {
             PublishTestStatus(
                 normalizedStationNo,
-                "��ֹͣ",
+                "已停止",
                 string.Empty,
                 normalizedSchemeName,
                 string.Empty,
@@ -202,7 +191,7 @@ public static class SchemeExecutionService
         {
             PublishTestStatus(
                 normalizedStationNo,
-                "����ʧ��",
+                "执行失败",
                 string.Empty,
                 normalizedSchemeName,
                 string.Empty,
@@ -220,9 +209,7 @@ public static class SchemeExecutionService
             context.Dispose();
         }
     }
-    /// <summary>
-    /// ��ָͣ����λ�������������еķ���ִ��ʵ����
-    /// </summary>
+    /// <summary>暂停指定工位当前正在运行的方案。</summary>
     public static SchemeExecutionControlActionResult Pause(string stationNo)
     {
         if (!TryGetStationContexts(stationNo, out List<SchemeExecutionContext> contexts, out string message))
@@ -234,7 +221,7 @@ public static class SchemeExecutionService
         int pausedCount = contexts.Count(context => context.Pause());
         if (pausedCount > 0)
         {
-            PublishExecutionControlStatus(normalizedStationNo, "����ͣ", contexts.First().Key.SchemeName, "��������ͣ");
+            PublishExecutionControlStatus(normalizedStationNo, "方案暂停", contexts.First().Key.SchemeName, "方案已暂停");
         }
 
         return pausedCount > 0
@@ -243,9 +230,7 @@ public static class SchemeExecutionService
             : SchemeExecutionControlActionResult.CreateSuccess(
                 $"Station '{normalizedStationNo}' executions are already paused.");
     }
-    /// <summary>
-    /// ����ָ����λ����������ͣ�ķ���ִ��ʵ����
-    /// </summary>
+    /// <summary>继续指定工位当前已暂停的方案。</summary>
     public static SchemeExecutionControlActionResult Continue(string stationNo)
     {
         if (!TryGetStationContexts(stationNo, out List<SchemeExecutionContext> contexts, out string message))
@@ -257,7 +242,7 @@ public static class SchemeExecutionService
         int resumedCount = contexts.Count(context => context.Resume());
         if (resumedCount > 0)
         {
-            PublishExecutionControlStatus(normalizedStationNo, "������", contexts.First().Key.SchemeName, "�����Ѽ���");
+            PublishExecutionControlStatus(normalizedStationNo, "方案继续", contexts.First().Key.SchemeName, "方案已继续");
         }
 
         return resumedCount > 0
@@ -266,9 +251,7 @@ public static class SchemeExecutionService
             : SchemeExecutionControlActionResult.CreateSuccess(
                 $"Station '{normalizedStationNo}' executions are not paused.");
     }
-    /// <summary>
-    /// ָֹͣ����λ�������������еķ���ִ��ʵ����
-    /// </summary>
+    /// <summary>请求停止指定工位当前正在运行的方案。</summary>
     public static SchemeExecutionControlActionResult Stop(string stationNo)
     {
         if (!TryGetStationContexts(stationNo, out List<SchemeExecutionContext> contexts, out string message))
@@ -282,14 +265,12 @@ public static class SchemeExecutionService
         }
 
         string normalizedStationNo = NormalizeRequiredText(stationNo);
-        PublishExecutionControlStatus(normalizedStationNo, "ֹͣ��", contexts.First().Key.SchemeName, "�ѷ���ֹͣ��������");
+        PublishExecutionControlStatus(normalizedStationNo, "停止中", contexts.First().Key.SchemeName, "已发送停止方案请求");
         return SchemeExecutionControlActionResult.CreateSuccess(
             $"Stop request sent to {contexts.Count} execution(s) on station '{normalizedStationNo}'.");
     }
 
-    /// <summary>
-    /// ��ȡ��ǰ�������еķ���ִ�п��ա�
-    /// </summary>
+    /// <summary>获取当前所有正在运行的方案快照。</summary>
     public static IReadOnlyList<SchemeExecutionSnapshot> GetActiveExecutions()
     {
         return ActiveExecutions.Values
@@ -301,8 +282,9 @@ public static class SchemeExecutionService
 
     #endregion
 
-    #region ����������������ִ�б���
+    #region 方案、工步与步骤执行编排
 
+    /// <summary>按顺序执行方案中的全部工步，并汇总方案级执行结果。</summary>
     private static async Task<SchemeExecutionResult> ExecuteSchemeAsync(
         SchemeExecutionContext context,
         SchemeProfile scheme,
@@ -317,7 +299,7 @@ public static class SchemeExecutionService
         if (beforeSchemeArgs.Cancel)
         {
             DateTime canceledAt = DateTime.Now;
-            PublishSchemeStatus(context.Key.StationNo, "��ȡ��", scheme, "Scheme execution was canceled before start.", false);
+            PublishSchemeStatus(context.Key.StationNo, "已取消", scheme, "Scheme execution was canceled before start.", false);
             return SchemeExecutionResult.CreateCanceled(
                 "Scheme execution was canceled before start.",
                 context.Logs,
@@ -331,7 +313,7 @@ public static class SchemeExecutionService
             scheme,
             message: "Scheme is executing.",
             startTime: startTime));
-        PublishSchemeStatus(context.Key.StationNo, "������", scheme, $"���Է���ִ���У�{scheme.SchemeName}");
+        PublishSchemeStatus(context.Key.StationNo, "测试中", scheme, $"测试方案执行中：{scheme.SchemeName}");
 
         for (int workStepIndex = 0; workStepIndex < scheme.Steps.Count; workStepIndex++)
         {
@@ -360,7 +342,7 @@ public static class SchemeExecutionService
                     failureMessage,
                     startTime,
                     failedAt));
-                PublishSchemeStatus(context.Key.StationNo, "����ʧ��", scheme, failureMessage, false);
+                PublishSchemeStatus(context.Key.StationNo, "测试失败", scheme, failureMessage, false);
                 return SchemeExecutionResult.CreateFailure(failureMessage, context.Logs, startTime, failedAt);
             }
 
@@ -381,7 +363,7 @@ public static class SchemeExecutionService
                     workStepResult.Message,
                     startTime,
                     failedAt));
-                PublishSchemeStatus(context.Key.StationNo, "����ʧ��", scheme, workStepResult.Message, false);
+                PublishSchemeStatus(context.Key.StationNo, "测试失败", scheme, workStepResult.Message, false);
                 return workStepResult;
             }
         }
@@ -396,10 +378,11 @@ public static class SchemeExecutionService
             message,
             startTime,
             endTime));
-        PublishSchemeStatus(context.Key.StationNo, "����ͨ��", scheme, message, true);
+        PublishSchemeStatus(context.Key.StationNo, "测试通过", scheme, message, true);
         return SchemeExecutionResult.CreateSuccess(message, context.Logs, startTime, endTime);
     }
 
+    /// <summary>执行单个工步中的步骤集合，并处理工步级事件、日志和失败结果。</summary>
     private static async Task<SchemeExecutionResult> ExecuteWorkStepAsync(
         SchemeExecutionContext context,
         SchemeProfile scheme,
@@ -418,7 +401,7 @@ public static class SchemeExecutionService
         if (beforeWorkStepArgs.Cancel)
         {
             DateTime canceledAt = DateTime.Now;
-            PublishSchemeStatus(context.Key.StationNo, "��ȡ��", scheme, "Work step execution was canceled before start.", false);
+            PublishSchemeStatus(context.Key.StationNo, "已取消", scheme, "Work step execution was canceled before start.", false);
             return SchemeExecutionResult.CreateCanceled(
                 "Work step execution was canceled before start.",
                 context.Logs,
@@ -436,9 +419,9 @@ public static class SchemeExecutionService
             startTime: startTime));
         PublishSchemeStatus(
             context.Key.StationNo,
-            "������",
+            "工步执行中",
             scheme,
-            $"����ִ�й��� {workStepIndex}��{schemeStep.StepName}");
+            $"正在执行工步 {workStepIndex}：{schemeStep.StepName}");
 
         Dictionary<string, string> returnValues = new(StringComparer.OrdinalIgnoreCase);
         for (int stepIndex = 0; stepIndex < operations.Count; stepIndex++)
@@ -487,6 +470,7 @@ public static class SchemeExecutionService
         return SchemeExecutionResult.CreateSuccess(message, context.Logs, startTime, endTime);
     }
 
+    /// <summary>执行单个步骤，处理执行前条件、操作调用、延时以及返回值回写。</summary>
     private static async Task<SchemeExecutionResult> ExecuteStepAsync(
         SchemeExecutionContext context,
         SchemeProfile scheme,
@@ -509,7 +493,7 @@ public static class SchemeExecutionService
         if (beforeStepArgs.Cancel)
         {
             DateTime canceledAt = DateTime.Now;
-            PublishSchemeStatus(context.Key.StationNo, "��ȡ��", scheme, "Step execution was canceled before start.", false);
+            PublishSchemeStatus(context.Key.StationNo, "已取消", scheme, "Step execution was canceled before start.", false);
             return SchemeExecutionResult.CreateCanceled(
                 "Step execution was canceled before start.",
                 context.Logs,
@@ -529,9 +513,9 @@ public static class SchemeExecutionService
             startTime: startTime));
         PublishSchemeStatus(
             context.Key.StationNo,
-            "������",
+            "步骤执行中",
             scheme,
-            $"����ִ�в��� {workStepIndex}.{stepIndex}��{operation.Summary}");
+            $"正在执行步骤 {workStepIndex}.{stepIndex}：{operation.Summary}");
 
         SchemeStepExecutionOutput output;
         try
@@ -591,7 +575,7 @@ public static class SchemeExecutionService
             endTime));
         if (!output.IsSuccess)
         {
-            PublishSchemeStatus(context.Key.StationNo, "����ʧ��", scheme, message, false);
+            PublishSchemeStatus(context.Key.StationNo, "测试失败", scheme, message, false);
         }
 
         return output.IsSuccess
@@ -601,11 +585,9 @@ public static class SchemeExecutionService
 
     #endregion
 
-    #region ���������ִ��?
+    #region 单步骤操作执行
 
-    /// <summary>
-    /// ������ͼ�ȶ���������ڸ��õ�������ִ���߼���?
-    /// </summary>
+    /// <summary>为流程图等独立调用场景复用单个步骤的执行逻辑。</summary>
     internal static async Task<SchemeStepExecutionOutput> ExecuteStandaloneStepAsync(
         IControlledExecutionContext context,
         WorkStepOperation operation,
@@ -642,6 +624,7 @@ public static class SchemeExecutionService
         return output;
     }
 
+    /// <summary>根据操作对象类型将步骤分派到 Lua、判断、系统方法或设备通信执行器。</summary>
     private static async Task<SchemeStepExecutionOutput> ExecuteOperationAsync(
         IControlledExecutionContext context,
         WorkStepOperation operation,
@@ -680,6 +663,7 @@ public static class SchemeExecutionService
             .ConfigureAwait(false);
     }
 
+    /// <summary>执行步骤中配置的 Lua 脚本并返回脚本结果。</summary>
     private static SchemeStepExecutionOutput ExecuteLua(WorkStepOperation operation)
     {
         object[] results = new LuaManage().DoString(operation.LuaScript ?? string.Empty);
@@ -692,6 +676,7 @@ public static class SchemeExecutionService
         return SchemeStepExecutionOutput.Success(resultText);
     }
 
+    /// <summary>尝试从业务操作目录解析当前步骤对应的业务方法。</summary>
     private static bool TryResolveBusinessOperation(
         WorkStepOperation operation,
         out string deviceId,
@@ -704,6 +689,7 @@ public static class SchemeExecutionService
         return BusinessOperationCatalog.Find(deviceId, operationId) is not null;
     }
 
+    /// <summary>调用业务操作目录中已注册的方法，并转换为统一的步骤执行结果。</summary>
     private static async Task<SchemeStepExecutionOutput> ExecuteCatalogBusinessOperationAsync(
         IControlledExecutionContext context,
         WorkStepOperation operation,
@@ -734,13 +720,14 @@ public static class SchemeExecutionService
             : SchemeStepExecutionOutput.Failure(result.Message, result.Result);
     }
 
+    /// <summary>通过反射执行兼容的系统方法，并按配置构造方法参数。</summary>
     private static async Task<SchemeStepExecutionOutput> ExecuteSystemMethodAsync(
         WorkStepOperation operation,
         SchemeWorkStepItem schemeStep,
         IReadOnlyDictionary<string, string> returnValues)
     {
         string methodName = operation.PCommandName?.Trim() ?? string.Empty;
-        if (string.IsNullOrWhiteSpace(methodName) || string.Equals(methodName, "�ȴ�", StringComparison.OrdinalIgnoreCase))
+        if (string.IsNullOrWhiteSpace(methodName) || string.Equals(methodName, "等待", StringComparison.OrdinalIgnoreCase))
         {
             return SchemeStepExecutionOutput.Success(string.Empty);
         }
@@ -766,6 +753,7 @@ public static class SchemeExecutionService
         return SchemeStepExecutionOutput.Success(value);
     }
 
+    /// <summary>根据判断操作的关系符和参数计算布尔结果。</summary>
     private static SchemeStepExecutionOutput ExecuteJudge(
         WorkStepOperation operation,
         SchemeWorkStepItem schemeStep,
@@ -799,6 +787,7 @@ public static class SchemeExecutionService
             : SchemeStepExecutionOutput.Failure($"Judge method '{methodName}' returned false.", false);
     }
 
+    /// <summary>构建设备报文并通过通信中介器执行设备读写操作。</summary>
     private static async Task<SchemeStepExecutionOutput> ExecuteDeviceOperationAsync(
         IControlledExecutionContext context,
         WorkStepOperation operation,
@@ -832,6 +821,7 @@ public static class SchemeExecutionService
                 result.Result);
     }
 
+    /// <summary>根据协议命令、步骤参数和校验配置生成最终设备报文。</summary>
     private static string BuildDeviceMessage(
         WorkStepOperation operation,
         SchemeWorkStepItem schemeStep,
@@ -855,8 +845,9 @@ public static class SchemeExecutionService
 
     #endregion
 
-    #region Э�����ö�ȡ�뱨������
+    #region 协议配置读取与报文构建
 
+    /// <summary>解析设备所绑定协议中的命令配置及请求格式。</summary>
     private static bool TryResolveProtocolCommand(
         string protocolName,
         string commandName,
@@ -908,6 +899,7 @@ public static class SchemeExecutionService
         return true;
     }
 
+    /// <summary>从协议配置文件中查找指定协议和命令的 JSON 定义。</summary>
     private static JsonElement? FindProtocolCommand(string protocolName, string commandName)
     {
         string directory = Path.Combine(AppContext.BaseDirectory, "Config", "Protocol");
@@ -940,7 +932,7 @@ public static class SchemeExecutionService
                 }
 
                 if (string.Equals(GetJsonString(root, "CommandName"), commandName, StringComparison.OrdinalIgnoreCase) ||
-                    string.Equals(commandName, "ָ�� 1", StringComparison.OrdinalIgnoreCase))
+                    string.Equals(commandName, "指令 1", StringComparison.OrdinalIgnoreCase))
                 {
                     return root.Clone();
                 }
@@ -956,8 +948,9 @@ public static class SchemeExecutionService
 
     #endregion
 
-    #region ϵͳ��������������ֵ����
+    #region 系统参数解析与返回值处理
 
+    /// <summary>依据反射参数定义和步骤配置构造系统方法调用参数。</summary>
     private static object?[] BuildMethodArguments(
         MethodInfo method,
         WorkStepOperation operation,
@@ -991,6 +984,7 @@ public static class SchemeExecutionService
         return args;
     }
 
+    /// <summary>根据参数类型从设置值、工步值、返回值或全局值中解析实际值。</summary>
     private static string ResolveParameterValue(
         InputParameter parameter,
         SchemeWorkStepItem schemeStep,
@@ -1008,6 +1002,7 @@ public static class SchemeExecutionService
         };
     }
 
+    /// <summary>从当前方案工步的输入参数中解析指定工步值。</summary>
     private static string ResolveSchemeStepParameterValue(
         InputParameter parameter,
         SchemeWorkStepItem schemeStep)
@@ -1023,8 +1018,9 @@ public static class SchemeExecutionService
 
     #endregion
 
-    #region ��������������ִ�п��ƹ���
+    #region 独立步骤与执行控制工具
 
+    /// <summary>执行可响应暂停与取消请求的分段延时。</summary>
     private static async Task DelayWithControlAsync(IControlledExecutionContext context, int delayMilliseconds)
     {
         int remaining = Math.Max(0, delayMilliseconds);
@@ -1039,6 +1035,7 @@ public static class SchemeExecutionService
         }
     }
 
+    /// <summary>创建流程图独立步骤执行时使用的临时工步上下文。</summary>
     private static SchemeWorkStepItem CreateStandaloneSchemeStep()
     {
         return new SchemeWorkStepItem
@@ -1047,6 +1044,7 @@ public static class SchemeExecutionService
         };
     }
 
+    /// <summary>获取指定工位当前运行的方案上下文，支持按规范化工位编号查找。</summary>
     private static bool TryGetStationContexts(
         string stationNo,
         out List<SchemeExecutionContext> contexts,
@@ -1074,28 +1072,33 @@ public static class SchemeExecutionService
 
     #endregion
 
-    #region �������͡��¼���ͨ�ù���
+    #region 操作类型、事件与通用工具
 
+    /// <summary>判断步骤是否为系统操作。</summary>
     private static bool IsSystemOperation(WorkStepOperation operation)
     {
         return string.Equals(operation.OperationObjectName?.Trim(), "System", StringComparison.OrdinalIgnoreCase) ||
                string.Equals(operation.OperationObjectName?.Trim(), "System", StringComparison.OrdinalIgnoreCase);
     }
 
+    /// <summary>判断步骤是否为 Lua 脚本操作。</summary>
     private static bool IsLuaOperation(WorkStepOperation operation)
     {
         return string.Equals(operation.OperationObjectName?.Trim(), "Lua", StringComparison.OrdinalIgnoreCase);
     }
 
+    /// <summary>判断步骤是否为内置判断操作。</summary>
     private static bool IsJudgeOperation(WorkStepOperation operation)
     {
         return string.Equals(operation.OperationObjectName?.Trim(), "判断", StringComparison.OrdinalIgnoreCase);
     }
 
+    /// <summary>安全触发方案执行生命周期事件。</summary>
     private static void Raise(EventHandler<SchemeExecutionEventArgs>? handler, SchemeExecutionEventArgs args)
     {
         handler?.Invoke(null, args);
     }
+    /// <summary>发布方案级执行状态，供业务界面同步当前测试状态。</summary>
     private static void PublishSchemeStatus(
         string stationNo,
         string testStatus,
@@ -1112,6 +1115,7 @@ public static class SchemeExecutionService
             message,
             isSuccess);
     }
+    /// <summary>向事件聚合器发布统一的测试状态消息。</summary>
     private static void PublishTestStatus(
         string stationNo,
         string testStatus,
@@ -1140,6 +1144,7 @@ public static class SchemeExecutionService
         }
     }
 
+    /// <summary>发布暂停、继续或停止操作产生的控制状态。</summary>
     private static void PublishExecutionControlStatus(
         string stationNo,
         string testStatus,
@@ -1155,6 +1160,7 @@ public static class SchemeExecutionService
             message);
     }
 
+    /// <summary>将文本参数转换为目标方法声明所需的运行时类型。</summary>
     private static object? ConvertToParameterType(string value, Type targetType)
     {
         Type type = Nullable.GetUnderlyingType(targetType) ?? targetType;
@@ -1193,6 +1199,7 @@ public static class SchemeExecutionService
         return Convert.ChangeType(value, type, CultureInfo.InvariantCulture);
     }
 
+    /// <summary>将逐行键值文本解析为忽略大小写的参数字典。</summary>
     private static Dictionary<string, string> ParseKeyValueLines(string text)
     {
         Dictionary<string, string> values = new(StringComparer.OrdinalIgnoreCase);
@@ -1218,6 +1225,7 @@ public static class SchemeExecutionService
         return values;
     }
 
+    /// <summary>按照配置的 CRC 模式计算设备报文校验字节。</summary>
     private static byte[] BuildChecksum(byte[] payloadBytes, string crcMode)
     {
         return crcMode switch
@@ -1230,6 +1238,7 @@ public static class SchemeExecutionService
         };
     }
 
+    /// <summary>使用指定初始值计算反射式 CRC16 校验码。</summary>
     private static byte[] ComputeReflectedCrc16(byte[] data, ushort seed)
     {
         ushort crc = seed;
@@ -1247,6 +1256,7 @@ public static class SchemeExecutionService
         return new[] { (byte)(crc & 0xFF), (byte)((crc >> 8) & 0xFF) };
     }
 
+    /// <summary>计算 CRC16/CCITT-FALSE 校验码。</summary>
     private static byte[] ComputeCrc16CcittFalse(byte[] data)
     {
         ushort crc = 0xFFFF;
@@ -1264,6 +1274,7 @@ public static class SchemeExecutionService
         return new[] { (byte)((crc >> 8) & 0xFF), (byte)(crc & 0xFF) };
     }
 
+    /// <summary>计算按小端字节序输出的 CRC32 校验码。</summary>
     private static byte[] ComputeCrc32LittleEndian(byte[] data)
     {
         uint crc = 0xFFFFFFFF;
@@ -1283,6 +1294,7 @@ public static class SchemeExecutionService
         return BitConverter.IsLittleEndian ? bytes : bytes.Reverse().ToArray();
     }
 
+    /// <summary>读取协议配置文本，并兼容项目中已加密的配置文件。</summary>
     private static string ReadPossiblyEncryptedText(string filePath)
     {
         string text = File.ReadAllText(filePath, Encoding.UTF8);
@@ -1296,6 +1308,7 @@ public static class SchemeExecutionService
         }
     }
 
+    /// <summary>从 JSON 对象读取指定属性的文本值，不存在时返回空字符串。</summary>
     private static string GetJsonString(JsonElement element, string propertyName)
     {
         if (!element.TryGetProperty(propertyName, out JsonElement propertyElement))
@@ -1313,12 +1326,14 @@ public static class SchemeExecutionService
         };
     }
 
+    /// <summary>判断协议请求格式是否为十六进制报文。</summary>
     private static bool IsHexRequestFormat(string requestFormat)
     {
         return string.Equals(requestFormat, "Hex", StringComparison.OrdinalIgnoreCase) ||
                string.Equals(requestFormat, "0", StringComparison.OrdinalIgnoreCase);
     }
 
+    /// <summary>移除十六进制文本中的分隔符并规范为连续字符。</summary>
     private static string NormalizeHexString(string value)
     {
         string normalized = value.Replace("0x", string.Empty, StringComparison.OrdinalIgnoreCase);
@@ -1330,6 +1345,7 @@ public static class SchemeExecutionService
         return normalized.Trim();
     }
 
+    /// <summary>将两个文本按十进制数值进行比较。</summary>
     private static int CompareNumbers(string left, string right)
     {
         decimal leftValue = decimal.TryParse(left, NumberStyles.Float, CultureInfo.InvariantCulture, out decimal parsedLeft)
@@ -1341,16 +1357,19 @@ public static class SchemeExecutionService
         return leftValue.CompareTo(rightValue);
     }
 
+    /// <summary>安全读取指定索引的判断参数，不存在时返回空字符串。</summary>
     private static string GetValue(IReadOnlyList<string> values, int index)
     {
         return index >= 0 && index < values.Count ? values[index] : string.Empty;
     }
 
+    /// <summary>忽略首尾空白和大小写比较两个文本。</summary>
     private static bool TextEquals(string? left, string? right)
     {
         return string.Equals(left?.Trim(), right?.Trim(), StringComparison.OrdinalIgnoreCase);
     }
 
+    /// <summary>获取用于日志和界面展示的参数名称。</summary>
     private static string ResolveParameterDisplayName(InputParameter parameter)
     {
         if (!string.IsNullOrWhiteSpace(parameter.Value))
@@ -1366,6 +1385,7 @@ public static class SchemeExecutionService
         return string.Empty;
     }
 
+    /// <summary>规范化必填文本，空值统一转换为空字符串。</summary>
     private static string NormalizeRequiredText(string? value)
     {
         return value?.Trim() ?? string.Empty;
@@ -1373,20 +1393,25 @@ public static class SchemeExecutionService
 
     #endregion
 
-    #region �ڲ�ִ��������
+    #region 内部执行上下文
 
+    /// <summary>用于标识工位方案执行实例的复合键。</summary>
     private sealed class SchemeExecutionKey : IEquatable<SchemeExecutionKey>
     {
+        /// <summary>创建方案执行键。</summary>
         public SchemeExecutionKey(string stationNo, string schemeName)
         {
             StationNo = stationNo;
             SchemeName = schemeName;
         }
 
+        /// <summary>获取工位编号。</summary>
         public string StationNo { get; }
 
+        /// <summary>获取方案名称。</summary>
         public string SchemeName { get; }
 
+        /// <summary>判断两个方案执行键是否相等。</summary>
         public bool Equals(SchemeExecutionKey? other)
         {
             return other is not null &&
@@ -1394,11 +1419,13 @@ public static class SchemeExecutionService
                    string.Equals(SchemeName, other.SchemeName, StringComparison.OrdinalIgnoreCase);
         }
 
+        /// <summary>判断当前键是否与指定对象相等。</summary>
         public override bool Equals(object? obj)
         {
             return Equals(obj as SchemeExecutionKey);
         }
 
+        /// <summary>获取忽略大小写的组合哈希码。</summary>
         public override int GetHashCode()
         {
             return HashCode.Combine(
@@ -1407,28 +1434,39 @@ public static class SchemeExecutionService
         }
     }
 
+    /// <summary>保存单次方案运行所需的控制状态、取消令牌和执行日志。</summary>
     private sealed class SchemeExecutionContext : IControlledExecutionContext, IDisposable
     {
+        /// <summary>保护暂停状态和恢复信号的同步锁。</summary>
         private readonly object _pauseLock = new();
+        /// <summary>暂停期间用于等待继续命令的异步信号。</summary>
         private TaskCompletionSource<bool>? _resumeSignal;
+        /// <summary>指示当前执行是否处于暂停状态。</summary>
         private bool _isPaused;
 
+        /// <summary>创建方案执行上下文。</summary>
         public SchemeExecutionContext(SchemeExecutionKey key, DateTime startTime)
         {
             Key = key;
             StartTime = startTime;
         }
 
+        /// <summary>获取当前方案执行键。</summary>
         public SchemeExecutionKey Key { get; }
 
+        /// <summary>获取方案开始执行时间。</summary>
         public DateTime StartTime { get; }
 
+        /// <summary>获取用于终止执行的取消令牌源。</summary>
         public CancellationTokenSource CancellationTokenSource { get; } = new();
 
+        /// <summary>获取当前执行的取消令牌。</summary>
         public CancellationToken CancellationToken => CancellationTokenSource.Token;
 
+        /// <summary>获取本次方案执行产生的日志集合。</summary>
         public List<string> Logs { get; } = new();
 
+        /// <summary>获取当前是否处于暂停状态。</summary>
         public bool IsPaused
         {
             get
@@ -1440,6 +1478,7 @@ public static class SchemeExecutionService
             }
         }
 
+        /// <summary>将当前执行切换为暂停状态。</summary>
         public bool Pause()
         {
             lock (_pauseLock)
@@ -1455,6 +1494,7 @@ public static class SchemeExecutionService
             }
         }
 
+        /// <summary>恢复已经暂停的方案执行。</summary>
         public bool Resume()
         {
             TaskCompletionSource<bool>? resumeSignal;
@@ -1474,12 +1514,14 @@ public static class SchemeExecutionService
             return true;
         }
 
+        /// <summary>请求停止当前方案执行。</summary>
         public void Stop()
         {
             CancellationTokenSource.Cancel();
             Resume();
         }
 
+        /// <summary>暂停时异步等待继续信号，同时响应取消请求。</summary>
         public async Task WaitIfPausedAsync()
         {
             while (true)
@@ -1504,11 +1546,13 @@ public static class SchemeExecutionService
             }
         }
 
+        /// <summary>检查当前执行是否已收到取消请求。</summary>
         public void ThrowIfCancellationRequested()
         {
             CancellationToken.ThrowIfCancellationRequested();
         }
 
+        /// <summary>追加一条方案执行日志。</summary>
         public void AddLog(string message)
         {
             lock (Logs)
@@ -1517,6 +1561,7 @@ public static class SchemeExecutionService
             }
         }
 
+        /// <summary>创建当前运行状态的只读快照。</summary>
         public SchemeExecutionSnapshot CreateSnapshot()
         {
             DateTime snapshotTime = DateTime.Now;
@@ -1530,6 +1575,7 @@ public static class SchemeExecutionService
                 Logs.ToList());
         }
 
+        /// <summary>释放执行上下文持有的取消令牌资源。</summary>
         public void Dispose()
         {
             CancellationTokenSource.Dispose();
@@ -1539,10 +1585,12 @@ public static class SchemeExecutionService
     #endregion
 }
 
-#region ִ�н�����¼�ģ��?
+#region 执行结果与事件模型
 
+/// <summary>方案、工步和步骤生命周期事件共用的事件参数。</summary>
 public sealed class SchemeExecutionEventArgs : EventArgs
 {
+    /// <summary>创建方案执行事件参数。</summary>
     private SchemeExecutionEventArgs(
         string stationNo,
         string schemeName,
@@ -1572,32 +1620,46 @@ public sealed class SchemeExecutionEventArgs : EventArgs
             : null;
     }
 
+    /// <summary>获取工位编号。</summary>
     public string StationNo { get; }
 
+    /// <summary>获取方案名称。</summary>
     public string SchemeName { get; }
 
+    /// <summary>获取工步名称。</summary>
     public string WorkStepName { get; }
 
+    /// <summary>获取步骤名称。</summary>
     public string StepName { get; }
 
+    /// <summary>获取工步序号。</summary>
     public int WorkStepIndex { get; }
 
+    /// <summary>获取步骤序号。</summary>
     public int StepIndex { get; }
 
+    /// <summary>获取执行是否成功；执行前或执行中事件可能为空。</summary>
     public bool? IsSuccess { get; }
 
+    /// <summary>获取执行状态消息。</summary>
     public string Message { get; }
 
+    /// <summary>获取步骤返回结果。</summary>
     public object? Result { get; }
 
+    /// <summary>获取执行开始时间。</summary>
     public DateTime? StartTime { get; }
 
+    /// <summary>获取执行结束时间。</summary>
     public DateTime? EndTime { get; }
 
+    /// <summary>获取本次执行耗时。</summary>
     public TimeSpan? ExecutionTime { get; }
 
+    /// <summary>获取或设置订阅方是否取消后续执行。</summary>
     public bool Cancel { get; set; }
 
+    /// <summary>创建方案级生命周期事件参数。</summary>
     internal static SchemeExecutionEventArgs CreateScheme(
         string stationNo,
         SchemeProfile scheme,
@@ -1620,6 +1682,7 @@ public sealed class SchemeExecutionEventArgs : EventArgs
             endTime);
     }
 
+    /// <summary>创建工步级生命周期事件参数。</summary>
     internal static SchemeExecutionEventArgs CreateWorkStep(
         string stationNo,
         SchemeProfile scheme,
@@ -1644,6 +1707,7 @@ public sealed class SchemeExecutionEventArgs : EventArgs
             endTime);
     }
 
+    /// <summary>创建步骤级生命周期事件参数。</summary>
     internal static SchemeExecutionEventArgs CreateStep(
         string stationNo,
         SchemeProfile scheme,
@@ -1672,8 +1736,10 @@ public sealed class SchemeExecutionEventArgs : EventArgs
     }
 }
 
+/// <summary>方案或工步执行完成后的统一结果。</summary>
 public sealed class SchemeExecutionResult
 {
+    /// <summary>创建方案执行结果。</summary>
     public SchemeExecutionResult(
         bool isSuccess,
         bool isCanceled,
@@ -1693,20 +1759,28 @@ public sealed class SchemeExecutionResult
             : null;
     }
 
+    /// <summary>获取执行是否成功。</summary>
     public bool IsSuccess { get; }
 
+    /// <summary>获取执行是否被取消。</summary>
     public bool IsCanceled { get; }
 
+    /// <summary>获取结果说明。</summary>
     public string Message { get; }
 
+    /// <summary>获取执行日志或步骤信息。</summary>
     public IReadOnlyList<string> Steps { get; }
 
+    /// <summary>获取开始时间。</summary>
     public DateTime? StartTime { get; }
 
+    /// <summary>获取结束时间。</summary>
     public DateTime? EndTime { get; }
 
+    /// <summary>获取执行耗时。</summary>
     public TimeSpan? ExecutionTime { get; }
 
+    /// <summary>创建成功的方案执行结果。</summary>
     public static SchemeExecutionResult CreateSuccess(
         string message,
         IReadOnlyList<string>? steps = null,
@@ -1716,6 +1790,7 @@ public sealed class SchemeExecutionResult
         return new SchemeExecutionResult(true, false, message, steps, startTime, endTime);
     }
 
+    /// <summary>创建失败的方案执行结果。</summary>
     public static SchemeExecutionResult CreateFailure(
         string message,
         IReadOnlyList<string>? steps = null,
@@ -1725,6 +1800,7 @@ public sealed class SchemeExecutionResult
         return new SchemeExecutionResult(false, false, message, steps, startTime, endTime);
     }
 
+    /// <summary>创建已取消的方案执行结果。</summary>
     public static SchemeExecutionResult CreateCanceled(
         string message,
         IReadOnlyList<string>? steps = null,
@@ -1735,29 +1811,36 @@ public sealed class SchemeExecutionResult
     }
 }
 
+/// <summary>暂停、继续和停止等执行控制命令的结果。</summary>
 public sealed class SchemeExecutionControlActionResult
 {
+    /// <summary>创建执行控制结果。</summary>
     public SchemeExecutionControlActionResult(bool isSuccess, string message)
     {
         IsSuccess = isSuccess;
         Message = message ?? string.Empty;
     }
 
+    /// <summary>获取控制命令是否执行成功。</summary>
     public bool IsSuccess { get; }
 
+    /// <summary>获取控制结果说明。</summary>
     public string Message { get; }
 
+    /// <summary>创建成功的执行控制结果。</summary>
     public static SchemeExecutionControlActionResult CreateSuccess(string message)
     {
         return new SchemeExecutionControlActionResult(true, message);
     }
 
+    /// <summary>创建失败的执行控制结果。</summary>
     public static SchemeExecutionControlActionResult CreateFailure(string message)
     {
         return new SchemeExecutionControlActionResult(false, message);
     }
 }
 
+/// <summary>描述当前工位方案运行状态的只读快照。</summary>
 public sealed record SchemeExecutionSnapshot(
     string StationNo,
     string SchemeName,
@@ -1767,17 +1850,23 @@ public sealed record SchemeExecutionSnapshot(
     TimeSpan ExecutionTime,
     IReadOnlyList<string> Steps);
 
+/// <summary>为步骤执行提供暂停、取消和日志能力的受控执行上下文。</summary>
 internal interface IControlledExecutionContext
 {
+    /// <summary>获取当前执行的取消令牌。</summary>
     CancellationToken CancellationToken { get; }
 
+    /// <summary>若执行已暂停，则异步等待恢复。</summary>
     Task WaitIfPausedAsync();
 
+    /// <summary>检查并抛出当前执行的取消请求。</summary>
     void ThrowIfCancellationRequested();
 }
 
+/// <summary>单个步骤操作执行后的内部统一输出。</summary>
 internal sealed class SchemeStepExecutionOutput
 {
+    /// <summary>创建步骤执行输出。</summary>
     private SchemeStepExecutionOutput(bool isSuccess, string message, object? result)
     {
         IsSuccess = isSuccess;
@@ -1785,17 +1874,22 @@ internal sealed class SchemeStepExecutionOutput
         Result = result;
     }
 
+    /// <summary>获取步骤操作是否成功。</summary>
     public bool IsSuccess { get; }
 
+    /// <summary>获取步骤操作结果说明。</summary>
     public string Message { get; }
 
+    /// <summary>获取步骤操作返回值。</summary>
     public object? Result { get; }
 
+    /// <summary>创建成功的步骤执行输出。</summary>
     public static SchemeStepExecutionOutput Success(object? result)
     {
         return new SchemeStepExecutionOutput(true, string.Empty, result);
     }
 
+    /// <summary>创建失败的步骤执行输出。</summary>
     public static SchemeStepExecutionOutput Failure(string message, object? result = null)
     {
         return new SchemeStepExecutionOutput(false, message, result);
