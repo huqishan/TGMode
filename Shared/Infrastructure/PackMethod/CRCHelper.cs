@@ -8,6 +8,8 @@ namespace Shared.Infrastructure.PackMethod
 {
     public static class CRCHelper
     {
+        #region CRC 校验
+
         static readonly byte[] gabyCRCLo ={
                     0x00,0xc0,0xc1,0x01,0xc3,0x03,0x02,0xc2,0xc6,0x06,
                     0x07,0xc7,0x05,0xc5,0xc4,0x04,0xcc,0x0c,0x0d,0xcd,
@@ -65,6 +67,88 @@ namespace Shared.Infrastructure.PackMethod
                     0x00,0xc1,0x81,0x40,0x01,0xc0,0x80,0x41,0x01,0xc0,
                     0x80,0x41,0x00,0xc1,0x81,0x40
                     };
+        /// <summary>按照当前配置的 CRC 模式计算报文校验字节。</summary>
+        /// <param name="payloadBytes">待计算校验值的报文数据。</param>
+        /// <param name="crcMode">CRC 模式名称或兼容的数字编号。</param>
+        /// <returns>CRC 校验字节；未配置 CRC 模式时返回空数组。</returns>
+        public static byte[] BuildChecksum(byte[] payloadBytes, string crcMode)
+        {
+            return crcMode switch
+            {
+                "ModbusCrc16" or "1" => ComputeReflectedCrc16(payloadBytes, 0xFFFF),
+                "Crc16Ibm" or "2" => ComputeReflectedCrc16(payloadBytes, 0x0000),
+                "Crc16CcittFalse" or "3" => ComputeCrc16CcittFalse(payloadBytes),
+                "Crc32" or "4" => ComputeCrc32LittleEndian(payloadBytes),
+                _ => Array.Empty<byte>()
+            };
+        }
+
+        /// <summary>使用指定初始值计算反射式 CRC16 校验码。</summary>
+        /// <param name="data">待计算校验值的数据。</param>
+        /// <param name="seed">CRC 初始值。</param>
+        /// <returns>低字节在前的 CRC16 校验结果。</returns>
+        private static byte[] ComputeReflectedCrc16(byte[] data, ushort seed)
+        {
+            ushort crc = seed;
+            foreach (byte value in data)
+            {
+                crc ^= value;
+                for (int bit = 0; bit < 8; bit++)
+                {
+                    crc = (crc & 0x0001) != 0
+                        ? (ushort)((crc >> 1) ^ 0xA001)
+                        : (ushort)(crc >> 1);
+                }
+            }
+
+            return new[] { (byte)(crc & 0xFF), (byte)((crc >> 8) & 0xFF) };
+        }
+
+        /// <summary>计算 CRC16/CCITT-FALSE 校验码。</summary>
+        /// <param name="data">待计算校验值的数据。</param>
+        /// <returns>高字节在前的 CRC16 校验结果。</returns>
+        private static byte[] ComputeCrc16CcittFalse(byte[] data)
+        {
+            ushort crc = 0xFFFF;
+            foreach (byte value in data)
+            {
+                crc ^= (ushort)(value << 8);
+                for (int bit = 0; bit < 8; bit++)
+                {
+                    crc = (crc & 0x8000) != 0
+                        ? (ushort)((crc << 1) ^ 0x1021)
+                        : (ushort)(crc << 1);
+                }
+            }
+
+            return new[] { (byte)((crc >> 8) & 0xFF), (byte)(crc & 0xFF) };
+        }
+
+        /// <summary>计算并按小端字节序输出 CRC32 校验码。</summary>
+        /// <param name="data">待计算校验值的数据。</param>
+        /// <returns>小端字节序的 CRC32 校验结果。</returns>
+        private static byte[] ComputeCrc32LittleEndian(byte[] data)
+        {
+            uint crc = 0xFFFFFFFF;
+            foreach (byte value in data)
+            {
+                crc ^= value;
+                for (int bit = 0; bit < 8; bit++)
+                {
+                    crc = (crc & 0x00000001) != 0
+                        ? (crc >> 1) ^ 0xEDB88320
+                        : crc >> 1;
+                }
+            }
+
+            crc ^= 0xFFFFFFFF;
+            byte[] bytes = BitConverter.GetBytes(crc);
+            return BitConverter.IsLittleEndian ? bytes : bytes.Reverse().ToArray();
+        }
+
+        /// <summary>计算 Modbus 协议使用的 CRC16 校验码。</summary>
+        /// <param name="pData">待计算校验值的数据。</param>
+        /// <returns>Modbus CRC16 校验结果。</returns>
         public static byte[] ModbusCRC16(byte[] pData)
         {
             byte byCRCHi = 0xff;
@@ -84,5 +168,7 @@ namespace Shared.Infrastructure.PackMethod
             result = BitConverter.GetBytes(crc).Reverse().Skip(2).ToArray();
             return result;
         }
+
+        #endregion
     }
 }

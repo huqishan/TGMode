@@ -201,11 +201,14 @@ namespace Module.Communication.Features.ProtocolConfig.Services
                 message = "返回数据 Lua 解析预览已生成。";
             }
 
+            IReadOnlyList<string> parsedKeys = string.IsNullOrWhiteSpace(command.ParseRulesText)
+                ? LuaExecutionHelper.GetReturnValueNames(parsedValue)
+                : LuaExecutionHelper.GetReturnValueNamesFromScript(command.ParseRulesText);
             result = new ProtocolResponsePreviewResult(
                 responseBytes.ByteArrayToHexString(),
                 FormatBytesAsAscii(responseBytes),
                 FormatParsedValue(parsedValue),
-                ExtractParsedResultKeys(parsedValue));
+                parsedKeys);
             return true;
         }
 
@@ -434,7 +437,7 @@ namespace Module.Communication.Features.ProtocolConfig.Services
         private static string BuildLuaParsePrelude(string data)
         {
             StringBuilder script = new();
-            script.Append("data = ").Append(ToLuaStringLiteral(data)).AppendLine();
+            script.Append("data = ").Append(LuaExecutionHelper.ToLuaStringLiteral(data)).AppendLine();
             return script.ToString();
         }
 
@@ -490,106 +493,6 @@ namespace Module.Communication.Features.ProtocolConfig.Services
                 ["Data"] = value
             };
             return JsonSerializer.Serialize(wrappedValue, ParsedJsonOptions);
-        }
-
-        private static IEnumerable<string> ExtractParsedResultKeys(object? value)
-        {
-            if (value is null)
-            {
-                return Enumerable.Empty<string>();
-            }
-
-            if (value is IReadOnlyDictionary<string, object?> readOnlyDictionary)
-            {
-                return readOnlyDictionary.Keys;
-            }
-
-            if (value is IDictionary<string, object?> dictionary)
-            {
-                return dictionary.Keys;
-            }
-
-            return new[] { "Data" };
-        }
-
-        private static string ToLuaStringLiteral(string value)
-        {
-            StringBuilder builder = new(value.Length + 2);
-            builder.Append('"');
-            foreach (char character in value)
-            {
-                builder.Append(character switch
-                {
-                    '\\' => "\\\\",
-                    '"' => "\\\"",
-                    '\r' => "\\r",
-                    '\n' => "\\n",
-                    '\t' => "\\t",
-                    _ => character.ToString()
-                });
-            }
-
-            builder.Append('"');
-            return builder.ToString();
-        }
-
-        private static bool TryApplyParseRules(
-            string parseRulesText,
-            byte[] responseBytes,
-            string originalResponseText,
-            ProtocolPayloadFormat responseFormat,
-            out Dictionary<string, object?> parsedValues,
-            out string message)
-        {
-            parsedValues = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
-            string[] lines = SplitLines(parseRulesText);
-            for (int index = 0; index < lines.Length; index++)
-            {
-                string line = lines[index].Trim();
-                if (string.IsNullOrWhiteSpace(line) ||
-                    line.StartsWith("#", StringComparison.Ordinal) ||
-                    line.StartsWith("//", StringComparison.Ordinal))
-                {
-                    continue;
-                }
-
-                int equalsIndex = line.IndexOf('=');
-                if (equalsIndex <= 0)
-                {
-                    message = $"解析规则第 {index + 1} 行格式错误，请使用 Field=Expression。";
-                    return false;
-                }
-
-                string fieldName = line[..equalsIndex].Trim();
-                string expression = line[(equalsIndex + 1)..].Trim();
-                if (string.IsNullOrWhiteSpace(fieldName))
-                {
-                    message = $"解析规则第 {index + 1} 行缺少字段名。";
-                    return false;
-                }
-
-                if (!TryEvaluateExpression(
-                        expression,
-                        responseBytes,
-                        originalResponseText,
-                        responseFormat,
-                        out string value,
-                        out string expressionError))
-                {
-                    message = $"解析规则第 {index + 1} 行错误：{expressionError}";
-                    return false;
-                }
-
-                parsedValues[fieldName] = value;
-            }
-
-            if (parsedValues.Count == 0)
-            {
-                parsedValues = CreateDefaultParsedValues(responseBytes, originalResponseText, responseFormat);
-            }
-
-            message = string.Empty;
-            return true;
         }
 
         private static bool TryEvaluateExpression(

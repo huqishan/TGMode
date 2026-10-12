@@ -47,7 +47,7 @@ internal static class DataStructureExcelImporter
         basicInformation.TryGetValue("结构类型", out string? structureType);
         return new DataStructureExcelImportResult(
             name ?? string.Empty,
-            string.IsNullOrWhiteSpace(structureType) ? DataStructureTypes.Json : structureType,
+            string.IsNullOrWhiteSpace(structureType) ? "JSON" : structureType,
             structure);
     }
 
@@ -89,7 +89,7 @@ internal static class DataStructureExcelImporter
 
             DataStructureLayout field = new()
             {
-                DataType = DataStructureFieldDataTypes.Normalize(dataType),
+                DataType = dataType,
                 ClientCode = clientCode,
                 MesCode = mesCode,
                 DefaultValue = GetValue(values, 5),

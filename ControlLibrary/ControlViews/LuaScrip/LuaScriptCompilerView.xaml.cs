@@ -35,6 +35,9 @@ namespace ControlLibrary.ControlViews.LuaScrip
 
         public event PropertyChangedEventHandler? PropertyChanged;
 
+        /// <summary>在执行脚本前通知外部更新执行前缀。</summary>
+        public event EventHandler? BeforeExecute;
+
         public static readonly DependencyProperty ScriptTextProperty =
             DependencyProperty.Register(
                 nameof(ScriptText),
@@ -79,6 +82,8 @@ namespace ControlLibrary.ControlViews.LuaScrip
         {
             string script = NormalizeLuaLineEndings(LuaScriptEditorControl.Text);
             UpdateScriptTextProperty(script);
+            BeforeExecute?.Invoke(this, EventArgs.Empty);
+
             string executionScript = string.IsNullOrWhiteSpace(ExecutionPrefixScript)
                 ? script
                 : $"{ExecutionPrefixScript}{Environment.NewLine}{script}";

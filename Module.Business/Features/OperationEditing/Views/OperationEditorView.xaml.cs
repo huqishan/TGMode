@@ -141,6 +141,18 @@ public partial class OperationEditorView : UserControl
     }
 
     /// <summary>
+    /// Lua 编辑器执行脚本前提交参数表，并生成 name=value 格式的执行前缀。
+    /// </summary>
+    private void LuaEditView_BeforeExecute(object? sender, EventArgs e)
+    {
+        if (ViewModel?.IsLuaOperationSelected != true)
+        {
+            return;
+        }
+        luaEditView.ExecutionPrefixScript = ViewModel.BuildLuaExecutionPrefixScript();
+    }
+
+    /// <summary>
     /// 在任一参数值下拉框展开前刷新共享工步值集合，确保当前弹框中刚输入且尚未保存的新工步值立即可选。
     /// </summary>
     private void ParameterValueComboBox_DropDownOpened(object sender, EventArgs e)
@@ -305,7 +317,6 @@ public partial class OperationEditorView : UserControl
             _isRefreshingReturnParameters = true;
             try
             {
-                ViewModel.EditingOperation.ReturnValue = string.Empty;
                 ViewModel.ClearStepEditorReturnParameterRows();
             }
             finally

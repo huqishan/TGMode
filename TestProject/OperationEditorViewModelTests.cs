@@ -42,6 +42,89 @@ public sealed class OperationEditorViewModelTests
     }
 
     /// <summary>
+    /// 验证保存 Lua 步骤时根据返回表键生成并保存返回值定义。
+    /// </summary>
+    [Test]
+    public void Save_LuaOperationReturningTables_SavesDistinctKeysFromAllReturns()
+    {
+        OperationEditorViewModel viewModel = new();
+        WorkStepOperation? savedOperation = null;
+        viewModel.OperationSaved += (_, e) => savedOperation = e.Operation;
+        viewModel.Open(new WorkStepOperation
+        {
+            OperationObjectName = "Lua",
+            PCommandName = "Lua",
+            ReturnValue = "结果集合",
+            LuaScript = "if Data == \"first\" then return { Status = Data, First = 1 } end return { Status = \"ok\", Second = 2 }",
+            Parameters = new ObservableCollection<InputParameter>
+            {
+                new() { Num = 1, ParameterName = "Data", Value = "25" }
+            }
+        }, isNewOperation: true);
+
+        viewModel.Save();
+
+        Assert.That(savedOperation, Is.Not.Null);
+        Assert.That(savedOperation!.ReturnValues.Select(item => item.ReturnParameterName).ToArray(),
+            Is.EqualTo(new[] { "First", "Second", "Status" }));
+        Assert.That(savedOperation.Parameters.Single().Value, Is.EqualTo("25"));
+    }
+
+    /// <summary>
+    /// 验证保存 Lua 步骤时将标量返回值映射为 Data 返回键。
+    /// </summary>
+    [Test]
+    public void Save_LuaOperationReturningScalar_SavesDataReturnKey()
+    {
+        OperationEditorViewModel viewModel = new();
+        WorkStepOperation? savedOperation = null;
+        viewModel.OperationSaved += (_, e) => savedOperation = e.Operation;
+        viewModel.Open(new WorkStepOperation
+        {
+            OperationObjectName = "Lua",
+            PCommandName = "Lua",
+            ReturnValue = "计算结果",
+            LuaScript = "return tonumber(Data) * 2",
+            Parameters = new ObservableCollection<InputParameter>
+            {
+                new() { Num = 1, ParameterName = "Data", Value = "25" }
+            }
+        }, isNewOperation: true);
+
+        viewModel.Save();
+
+        Assert.That(savedOperation, Is.Not.Null);
+        Assert.That(savedOperation!.ReturnValues.Select(item => item.ReturnParameterName).ToArray(),
+            Is.EqualTo(new[] { "Data" }));
+    }
+
+    /// <summary>
+    /// 验证没有返回值的 Lua 脚本无需填写返回值集合名也可以保存。
+    /// </summary>
+    [Test]
+    public void Save_LuaOperationWithoutReturnValue_SavesEmptyReturnValues()
+    {
+        OperationEditorViewModel viewModel = new();
+        WorkStepOperation? savedOperation = null;
+        viewModel.OperationSaved += (_, e) => savedOperation = e.Operation;
+        viewModel.Open(new WorkStepOperation
+        {
+            OperationObjectName = "Lua",
+            PCommandName = "Lua",
+            LuaScript = "local value = Data",
+            Parameters = new ObservableCollection<InputParameter>
+            {
+                new() { Num = 1, ParameterName = "Data", Value = "25" }
+            }
+        }, isNewOperation: true);
+
+        viewModel.Save();
+
+        Assert.That(savedOperation, Is.Not.Null);
+        Assert.That(savedOperation!.ReturnValues, Is.Empty);
+    }
+
+    /// <summary>
     /// 验证连续新增过程中重建参数集合时，新出现的返回值参数行会装载已有步骤的最新返回值名称。
     /// </summary>
     [Test]

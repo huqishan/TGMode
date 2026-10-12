@@ -8,20 +8,16 @@ using Module.Business.Features.WorkStep.Services;
 using Module.Business.Features.WorkStep.ViewModels.PresentationModels;
 using Shared.Infrastructure.Communication;
 using Shared.Infrastructure.Events;
-using Shared.Infrastructure.Extensions;
 using Shared.Infrastructure.Lua;
 using Shared.Infrastructure.Mediator;
+using Shared.Infrastructure.PackMethod;
 using Shared.Models.Communication;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Globalization;
-using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Text;
-using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
@@ -44,8 +40,6 @@ public static class SchemeExecutionService
     /// <summary>当前正在执行的方案，以工位编号作为唯一占用键。</summary>
     private static readonly ConcurrentDictionary<string, SchemeExecutionContext> ActiveExecutions =
         new(StringComparer.OrdinalIgnoreCase);
-    /// <summary>方案执行期间可跨步骤读取的全局值。</summary>
-    private static readonly ConcurrentDictionary<string, string> GlobalValues = new(StringComparer.OrdinalIgnoreCase);
     /// <summary>用于发布测试状态事件的事件聚合器。</summary>
     private static IEventAggregator? _eventAggregator;
     /// <summary>用于向通信模块发送请求的中介器。</summary>
@@ -631,42 +625,35 @@ public static class SchemeExecutionService
         SchemeWorkStepItem schemeStep,
         IReadOnlyDictionary<string, string> returnValues)
     {
-        if (IsLuaOperation(operation))
+        return operation.OperationObjectName switch
         {
-            return ExecuteLua(operation);
-        }
-
-        if (IsJudgeOperation(operation))
-        {
-            return ExecuteJudge(operation, schemeStep, returnValues);
-        }
-
-        if (TryResolveBusinessOperation(operation, out string deviceId, out string operationId))
-        {
-            return await ExecuteCatalogBusinessOperationAsync(
-                    context,
-                    operation,
-                    schemeStep,
-                    returnValues,
-                    deviceId,
-                    operationId)
-                .ConfigureAwait(false);
-        }
-
-        if (IsSystemOperation(operation))
-        {
-            return await ExecuteSystemMethodAsync(operation, schemeStep, returnValues)
-                .ConfigureAwait(false);
-        }
-
-        return await ExecuteDeviceOperationAsync(context, operation, schemeStep, returnValues)
-            .ConfigureAwait(false);
+            "Lua" => ExecuteLua(operation, schemeStep, returnValues),
+            "System" => await ExecuteSystemMethodAsync(operation, schemeStep, returnValues).ConfigureAwait(false),
+            "判断" => ExecuteJudge(operation, schemeStep, returnValues),
+            _=> TryResolveBusinessOperation(operation, out string deviceId, out string operationId)
+                ? await ExecuteCatalogBusinessOperationAsync(context,operation,schemeStep,returnValues,deviceId,operationId).ConfigureAwait(false)
+                : await ExecuteDeviceOperationAsync(context, operation, schemeStep, returnValues).ConfigureAwait(false)
+        };
     }
 
-    /// <summary>执行步骤中配置的 Lua 脚本并返回脚本结果。</summary>
-    private static SchemeStepExecutionOutput ExecuteLua(WorkStepOperation operation)
+    /// <summary>将输入参数注入 Lua 脚本前缀，执行脚本并返回脚本结果。</summary>
+    private static SchemeStepExecutionOutput ExecuteLua(
+        WorkStepOperation operation,
+        SchemeWorkStepItem schemeStep,
+        IReadOnlyDictionary<string, string> returnValues)
     {
-        object[] results = new LuaManage().DoString(operation.LuaScript ?? string.Empty);
+        string parameterAssignments = string.Join(
+            Environment.NewLine,
+            operation.Parameters
+                .OrderBy(parameter => parameter.Num)
+                .Where(parameter => !string.IsNullOrWhiteSpace(parameter.ParameterName))
+                .Select(parameter =>
+                    $"{parameter.ParameterName.Trim()}={ResolveParameterValue(parameter, schemeStep, returnValues)}"));
+        string script = string.IsNullOrEmpty(parameterAssignments)
+            ? operation.LuaScript ?? string.Empty
+            : $"{parameterAssignments}{Environment.NewLine}{operation.LuaScript}";
+
+        object[] results = new LuaManage().DoString(script);
         if (results.Length == 1 && results[0] is Exception ex)
         {
             return SchemeStepExecutionOutput.Failure(ex.Message, ex);
@@ -845,109 +832,6 @@ public static class SchemeExecutionService
 
     #endregion
 
-    #region 协议配置读取与报文构建
-
-    /// <summary>解析设备所绑定协议中的命令配置及请求格式。</summary>
-    private static bool TryResolveProtocolCommand(
-        string protocolName,
-        string commandName,
-        IReadOnlyDictionary<string, string> parameterValues,
-        out string message)
-    {
-        message = string.Empty;
-        if (string.IsNullOrWhiteSpace(protocolName) || string.IsNullOrWhiteSpace(commandName))
-        {
-            return false;
-        }
-
-        JsonElement? command = FindProtocolCommand(protocolName.Trim(), commandName.Trim());
-        if (command is null)
-        {
-            return false;
-        }
-
-        string template = GetJsonString(command.Value, "ContentTemplate");
-        if (string.IsNullOrWhiteSpace(template))
-        {
-            return false;
-        }
-
-        Dictionary<string, string> values = ParseKeyValueLines(GetJsonString(command.Value, "PlaceholderValuesText"));
-        foreach (KeyValuePair<string, string> parameter in parameterValues)
-        {
-            values[parameter.Key] = parameter.Value;
-        }
-
-        string rendered = PlaceholderRegex.Replace(template, match =>
-        {
-            string name = match.Groups["name"].Value.Trim();
-            return values.TryGetValue(name, out string? value) ? value : match.Value;
-        });
-
-        string requestFormat = GetJsonString(command.Value, "RequestFormat");
-        string crcMode = GetJsonString(command.Value, "CrcMode");
-        if (IsHexRequestFormat(requestFormat))
-        {
-            string normalizedHex = NormalizeHexString(rendered);
-            byte[] payloadBytes = normalizedHex.HexStringToByteArray();
-            byte[] checksum = BuildChecksum(payloadBytes, crcMode);
-            message = "0x" + payloadBytes.Concat(checksum).ToArray().ByteArrayToHexString();
-            return true;
-        }
-
-        message = rendered;
-        return true;
-    }
-
-    /// <summary>从协议配置文件中查找指定协议和命令的 JSON 定义。</summary>
-    private static JsonElement? FindProtocolCommand(string protocolName, string commandName)
-    {
-        string directory = Path.Combine(AppContext.BaseDirectory, "Config", "Protocol");
-        if (!Directory.Exists(directory))
-        {
-            return null;
-        }
-
-        foreach (string filePath in Directory.EnumerateFiles(directory, "*.json", SearchOption.TopDirectoryOnly))
-        {
-            try
-            {
-                using JsonDocument document = JsonDocument.Parse(ReadPossiblyEncryptedText(filePath));
-                JsonElement root = document.RootElement;
-                if (!string.Equals(GetJsonString(root, "Name"), protocolName, StringComparison.OrdinalIgnoreCase))
-                {
-                    continue;
-                }
-
-                if (root.TryGetProperty("Commands", out JsonElement commandsElement) &&
-                    commandsElement.ValueKind == JsonValueKind.Array)
-                {
-                    foreach (JsonElement commandElement in commandsElement.EnumerateArray())
-                    {
-                        if (string.Equals(GetJsonString(commandElement, "Name"), commandName, StringComparison.OrdinalIgnoreCase))
-                        {
-                            return commandElement.Clone();
-                        }
-                    }
-                }
-
-                if (string.Equals(GetJsonString(root, "CommandName"), commandName, StringComparison.OrdinalIgnoreCase) ||
-                    string.Equals(commandName, "指令 1", StringComparison.OrdinalIgnoreCase))
-                {
-                    return root.Clone();
-                }
-            }
-            catch
-            {
-                // Ignore broken protocol files during runtime lookup.
-            }
-        }
-
-        return null;
-    }
-
-    #endregion
-
     #region 系统参数解析与返回值处理
 
     /// <summary>依据反射参数定义和步骤配置构造系统方法调用参数。</summary>
@@ -997,7 +881,7 @@ public static class SchemeExecutionService
         {
             "设置值" or "工步值" => ResolveSchemeStepParameterValue(parameter, schemeStep),
             "返回值" => returnValues.TryGetValue(value, out string? returnValue) ? returnValue : string.Empty,
-            "系统值" or "全局值" => GlobalValues.TryGetValue(value, out string? globalValue) ? globalValue : string.Empty,
+            "全局值" => string.Empty,
             _ => value
         };
     }
@@ -1073,26 +957,6 @@ public static class SchemeExecutionService
     #endregion
 
     #region 操作类型、事件与通用工具
-
-    /// <summary>判断步骤是否为系统操作。</summary>
-    private static bool IsSystemOperation(WorkStepOperation operation)
-    {
-        return string.Equals(operation.OperationObjectName?.Trim(), "System", StringComparison.OrdinalIgnoreCase) ||
-               string.Equals(operation.OperationObjectName?.Trim(), "System", StringComparison.OrdinalIgnoreCase);
-    }
-
-    /// <summary>判断步骤是否为 Lua 脚本操作。</summary>
-    private static bool IsLuaOperation(WorkStepOperation operation)
-    {
-        return string.Equals(operation.OperationObjectName?.Trim(), "Lua", StringComparison.OrdinalIgnoreCase);
-    }
-
-    /// <summary>判断步骤是否为内置判断操作。</summary>
-    private static bool IsJudgeOperation(WorkStepOperation operation)
-    {
-        return string.Equals(operation.OperationObjectName?.Trim(), "判断", StringComparison.OrdinalIgnoreCase);
-    }
-
     /// <summary>安全触发方案执行生命周期事件。</summary>
     private static void Raise(EventHandler<SchemeExecutionEventArgs>? handler, SchemeExecutionEventArgs args)
     {
@@ -1199,152 +1063,6 @@ public static class SchemeExecutionService
         return Convert.ChangeType(value, type, CultureInfo.InvariantCulture);
     }
 
-    /// <summary>将逐行键值文本解析为忽略大小写的参数字典。</summary>
-    private static Dictionary<string, string> ParseKeyValueLines(string text)
-    {
-        Dictionary<string, string> values = new(StringComparer.OrdinalIgnoreCase);
-        foreach (string rawLine in (text ?? string.Empty).Split(new[] { "\r\n", "\n", "\r" }, StringSplitOptions.None))
-        {
-            string line = rawLine.Trim();
-            if (string.IsNullOrWhiteSpace(line) ||
-                line.StartsWith("#", StringComparison.Ordinal) ||
-                line.StartsWith("//", StringComparison.Ordinal))
-            {
-                continue;
-            }
-
-            int equalsIndex = line.IndexOf('=');
-            if (equalsIndex <= 0)
-            {
-                continue;
-            }
-
-            values[line[..equalsIndex].Trim()] = line[(equalsIndex + 1)..].Trim();
-        }
-
-        return values;
-    }
-
-    /// <summary>按照配置的 CRC 模式计算设备报文校验字节。</summary>
-    private static byte[] BuildChecksum(byte[] payloadBytes, string crcMode)
-    {
-        return crcMode switch
-        {
-            "ModbusCrc16" or "1" => ComputeReflectedCrc16(payloadBytes, 0xFFFF),
-            "Crc16Ibm" or "2" => ComputeReflectedCrc16(payloadBytes, 0x0000),
-            "Crc16CcittFalse" or "3" => ComputeCrc16CcittFalse(payloadBytes),
-            "Crc32" or "4" => ComputeCrc32LittleEndian(payloadBytes),
-            _ => Array.Empty<byte>()
-        };
-    }
-
-    /// <summary>使用指定初始值计算反射式 CRC16 校验码。</summary>
-    private static byte[] ComputeReflectedCrc16(byte[] data, ushort seed)
-    {
-        ushort crc = seed;
-        foreach (byte value in data)
-        {
-            crc ^= value;
-            for (int bit = 0; bit < 8; bit++)
-            {
-                crc = (crc & 0x0001) != 0
-                    ? (ushort)((crc >> 1) ^ 0xA001)
-                    : (ushort)(crc >> 1);
-            }
-        }
-
-        return new[] { (byte)(crc & 0xFF), (byte)((crc >> 8) & 0xFF) };
-    }
-
-    /// <summary>计算 CRC16/CCITT-FALSE 校验码。</summary>
-    private static byte[] ComputeCrc16CcittFalse(byte[] data)
-    {
-        ushort crc = 0xFFFF;
-        foreach (byte value in data)
-        {
-            crc ^= (ushort)(value << 8);
-            for (int bit = 0; bit < 8; bit++)
-            {
-                crc = (crc & 0x8000) != 0
-                    ? (ushort)((crc << 1) ^ 0x1021)
-                    : (ushort)(crc << 1);
-            }
-        }
-
-        return new[] { (byte)((crc >> 8) & 0xFF), (byte)(crc & 0xFF) };
-    }
-
-    /// <summary>计算按小端字节序输出的 CRC32 校验码。</summary>
-    private static byte[] ComputeCrc32LittleEndian(byte[] data)
-    {
-        uint crc = 0xFFFFFFFF;
-        foreach (byte value in data)
-        {
-            crc ^= value;
-            for (int bit = 0; bit < 8; bit++)
-            {
-                crc = (crc & 0x00000001) != 0
-                    ? (crc >> 1) ^ 0xEDB88320
-                    : crc >> 1;
-            }
-        }
-
-        crc ^= 0xFFFFFFFF;
-        byte[] bytes = BitConverter.GetBytes(crc);
-        return BitConverter.IsLittleEndian ? bytes : bytes.Reverse().ToArray();
-    }
-
-    /// <summary>读取协议配置文本，并兼容项目中已加密的配置文件。</summary>
-    private static string ReadPossiblyEncryptedText(string filePath)
-    {
-        string text = File.ReadAllText(filePath, Encoding.UTF8);
-        try
-        {
-            return text.DesDecrypt();
-        }
-        catch
-        {
-            return text;
-        }
-    }
-
-    /// <summary>从 JSON 对象读取指定属性的文本值，不存在时返回空字符串。</summary>
-    private static string GetJsonString(JsonElement element, string propertyName)
-    {
-        if (!element.TryGetProperty(propertyName, out JsonElement propertyElement))
-        {
-            return string.Empty;
-        }
-
-        return propertyElement.ValueKind switch
-        {
-            JsonValueKind.String => propertyElement.GetString() ?? string.Empty,
-            JsonValueKind.Number => propertyElement.GetRawText(),
-            JsonValueKind.True => bool.TrueString,
-            JsonValueKind.False => bool.FalseString,
-            _ => string.Empty
-        };
-    }
-
-    /// <summary>判断协议请求格式是否为十六进制报文。</summary>
-    private static bool IsHexRequestFormat(string requestFormat)
-    {
-        return string.Equals(requestFormat, "Hex", StringComparison.OrdinalIgnoreCase) ||
-               string.Equals(requestFormat, "0", StringComparison.OrdinalIgnoreCase);
-    }
-
-    /// <summary>移除十六进制文本中的分隔符并规范为连续字符。</summary>
-    private static string NormalizeHexString(string value)
-    {
-        string normalized = value.Replace("0x", string.Empty, StringComparison.OrdinalIgnoreCase);
-        foreach (string separator in new[] { " ", "-", ",", "_", "\r", "\n", "\t" })
-        {
-            normalized = normalized.Replace(separator, string.Empty, StringComparison.OrdinalIgnoreCase);
-        }
-
-        return normalized.Trim();
-    }
-
     /// <summary>将两个文本按十进制数值进行比较。</summary>
     private static int CompareNumbers(string left, string right)
     {
@@ -1369,22 +1087,6 @@ public static class SchemeExecutionService
         return string.Equals(left?.Trim(), right?.Trim(), StringComparison.OrdinalIgnoreCase);
     }
 
-    /// <summary>获取用于日志和界面展示的参数名称。</summary>
-    private static string ResolveParameterDisplayName(InputParameter parameter)
-    {
-        if (!string.IsNullOrWhiteSpace(parameter.Value))
-        {
-            return parameter.Value.Trim();
-        }
-
-        if (!string.IsNullOrWhiteSpace(parameter.ParameterName))
-        {
-            return parameter.ParameterName.Trim();
-        }
-
-        return string.Empty;
-    }
-
     /// <summary>规范化必填文本，空值统一转换为空字符串。</summary>
     private static string NormalizeRequiredText(string? value)
     {
@@ -1396,7 +1098,7 @@ public static class SchemeExecutionService
     #region 内部执行上下文
 
     /// <summary>用于标识工位方案执行实例的复合键。</summary>
-    private sealed class SchemeExecutionKey : IEquatable<SchemeExecutionKey>
+    private sealed class SchemeExecutionKey
     {
         /// <summary>创建方案执行键。</summary>
         public SchemeExecutionKey(string stationNo, string schemeName)
@@ -1411,27 +1113,6 @@ public static class SchemeExecutionService
         /// <summary>获取方案名称。</summary>
         public string SchemeName { get; }
 
-        /// <summary>判断两个方案执行键是否相等。</summary>
-        public bool Equals(SchemeExecutionKey? other)
-        {
-            return other is not null &&
-                   string.Equals(StationNo, other.StationNo, StringComparison.OrdinalIgnoreCase) &&
-                   string.Equals(SchemeName, other.SchemeName, StringComparison.OrdinalIgnoreCase);
-        }
-
-        /// <summary>判断当前键是否与指定对象相等。</summary>
-        public override bool Equals(object? obj)
-        {
-            return Equals(obj as SchemeExecutionKey);
-        }
-
-        /// <summary>获取忽略大小写的组合哈希码。</summary>
-        public override int GetHashCode()
-        {
-            return HashCode.Combine(
-                StringComparer.OrdinalIgnoreCase.GetHashCode(StationNo),
-                StringComparer.OrdinalIgnoreCase.GetHashCode(SchemeName));
-        }
     }
 
     /// <summary>保存单次方案运行所需的控制状态、取消令牌和执行日志。</summary>

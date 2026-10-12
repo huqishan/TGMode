@@ -30,6 +30,23 @@ public class MesDataConvertTests
     }
 
     [Test]
+    public void Convert_类型转换失败_应返回当前字段上下文()
+    {
+        MesDataInfoTree sourceData = CreateSourceData(new MesDataInfoItem("ClientValue", "not-number"));
+        DataSruct layout = CreateJsonLayout(new TreeModel
+        {
+            ClientCode = "ClientValue",
+            MESCode = "MesValue",
+            DataType = "INT",
+            IsNull = true
+        });
+
+        Exception exception = Assert.Throws<Exception>(() => MesDataConvert.Convert(sourceData, layout));
+
+        Assert.That(exception.Message, Does.Contain("ClientName:ClientValue MesName:MesValue Value:not-number"));
+    }
+
+    [Test]
     public void Convert_根节点为无名称List_应直接生成Json数组()
     {
         MesDataInfoTree sourceData = CreateSourceData(new MesDataInfoItem("ClientValue", 12));
@@ -132,7 +149,7 @@ public class MesDataConvertTests
         {
             Assert.That(result.Value<string>("Mes01"), Is.EqualTo("A"));
             Assert.That(result.Value<string>("Mes02"), Is.EqualTo("B"));
-            Assert.That(whileField.MESCode, Is.EqualTo("Mes02"));
+            Assert.That(whileField.MESCode, Is.EqualTo("Mes[01]"));
         });
     }
 
@@ -231,7 +248,7 @@ public class MesDataConvertTests
         {
             MESCode = "Envelope",
             DataType = "MODEL",
-            XMLNameSpace = "urn:test",
+            XMLNamespace = "urn:test",
             Children = new List<TreeModel>
             {
                 new()
@@ -304,7 +321,7 @@ public class MesDataConvertTests
                     ClientCode = "CreateTime",
                     MESCode = "CreateTime",
                     DataType = "DATETIME",
-                    DefectValue = "yyyyMMddHHmmss",
+                    DefaultValue = "yyyyMMddHHmmss",
                     IsNull = true
                 }
             }
@@ -313,6 +330,67 @@ public class MesDataConvertTests
         XElement result = XElement.Parse(MesDataConvert.Convert(sourceData, layout));
 
         Assert.That(result.Element("CreateTime")?.Value, Is.EqualTo("20260810131415"));
+    }
+
+    /// <summary>
+    /// 验证 SOAP StepModel 按工步名称展开，并沿用字段映射、空值过滤和父级命名空间。
+    /// </summary>
+    [Test]
+    public void Convert_SOAPStepModel_应按工步生成重复元素并映射字段()
+    {
+        MesDataInfoTree sourceData = CreateSourceData(
+            new MesDataInfoItem("Step1_StepName", "Assembly"),
+            new MesDataInfoItem("Step1_Result", "1"),
+            new MesDataInfoItem("Step1_Optional", "Present"),
+            new MesDataInfoItem("Step2_StepName", "Inspection"),
+            new MesDataInfoItem("Step2_Result", "0"));
+        DataSruct layout = CreateSoapLayout(new TreeModel
+        {
+            MESCode = "Root",
+            DataType = "MODEL",
+            XMLNamespace = "urn:test",
+            Children = new List<TreeModel>
+            {
+                new()
+                {
+                    MESCode = "Step",
+                    DataType = "StepModel",
+                    Children = new List<TreeModel>
+                    {
+                        new()
+                        {
+                            ClientCode = "Result",
+                            MESCode = "Outcome",
+                            DataType = "STRING",
+                            IsNull = true,
+                            JudgeValue = "1",
+                            OKText = "PASS",
+                            NGText = "FAIL"
+                        },
+                        new()
+                        {
+                            ClientCode = "Optional",
+                            MESCode = "Optional",
+                            DataType = "STRING",
+                            IsNull = false
+                        }
+                    }
+                }
+            }
+        });
+
+        XElement result = XElement.Parse(MesDataConvert.Convert(sourceData, layout));
+        XNamespace ns = "urn:test";
+        List<XElement> steps = result.Elements(ns + "Step").ToList();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(steps, Has.Count.EqualTo(2));
+            Assert.That(steps[0].Element(ns + "Outcome")?.Value, Is.EqualTo("PASS"));
+            Assert.That(steps[0].Element(ns + "Optional")?.Value, Is.EqualTo("Present"));
+            Assert.That(steps[1].Element(ns + "Outcome")?.Value, Is.EqualTo("FAIL"));
+            Assert.That(steps[1].Element(ns + "Optional"), Is.Null);
+        });
     }
 
     #endregion
@@ -361,6 +439,60 @@ public class MesDataConvertTests
         string result = MesDataConvert.Convert(sourceData, layout);
 
         Assert.That(result, Is.EqualTo("A|PASS|X,Y"));
+    }
+
+    [Test]
+    public void Convert_Joint日期字段_应按配置格式输出并追加分隔符()
+    {
+        MesDataInfoTree sourceData = CreateSourceData(
+            new MesDataInfoItem("CreateTime", new DateTime(2026, 8, 10, 13, 14, 15)));
+        DataSruct layout = new()
+        {
+            StructureType = "JOINT",
+            Structure = new List<TreeModel>
+            {
+                new()
+                {
+                    ClientCode = "CreateTime",
+                    MESCode = "|",
+                    DataType = "DATETIME",
+                    DefaultValue = "yyyyMMddHHmmss",
+                    IsNull = true
+                }
+            }
+        };
+
+        string result = MesDataConvert.Convert(sourceData, layout);
+
+        Assert.That(result, Is.EqualTo("20260810131415|"));
+    }
+
+    [Test]
+    public void Convert_Joint循环字段_空值跳过且仅在有效值之间追加分隔符()
+    {
+        MesDataInfoTree sourceData = CreateSourceData(
+            new MesDataInfoItem("Value1_", "A"),
+            new MesDataInfoItem("Value3_", "B"));
+        DataSruct layout = new()
+        {
+            StructureType = "JOINT",
+            Structure = new List<TreeModel>
+            {
+                new()
+                {
+                    ClientCode = "Value_",
+                    MESCode = ",",
+                    DataType = "STRING",
+                    IsWhile = true,
+                    WhileCount = 3,
+                    IsNull = false
+                }
+            }
+        };
+
+        string result = MesDataConvert.Convert(sourceData, layout);
+
+        Assert.That(result, Is.EqualTo("A,B"));
     }
 
     #endregion

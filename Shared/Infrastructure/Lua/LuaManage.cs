@@ -15,6 +15,7 @@ namespace Shared.Infrastructure.Lua
         private NLua.Lua _Lua = null;
         public List<string> LuaMethodNames = new List<string>();
         private MesDataInfoTree _SourceData;
+        private string _ExecutionPrefixScript = null;
         public LuaManage(MesDataInfoTree sourceData) : base()
         {
             _SourceData = sourceData;
@@ -27,12 +28,20 @@ namespace Shared.Infrastructure.Lua
                 RegisterFunction();
             }
         }
+        /// <summary>
+        /// 设置前置脚本，该脚本将在每次执行 Lua 脚本前运行。可以用于初始化环境或定义全局变量。
+        /// </summary>
+        /// <param name="script"></param>
+        public void SetExecutionPrefixScript(string script)
+        {
+            _ExecutionPrefixScript = script;
+        }
         public object[] DoString(string lua)
         {
             try
             {
                 _Lua.State.Encoding = Encoding.UTF8;
-                return _Lua.DoString(lua).Select(ConvertLuaValue).ToArray();
+                return _Lua.DoString($"{_ExecutionPrefixScript ?? ""}{Environment.NewLine}{lua}").Select(ConvertLuaValue).ToArray();
             }
             catch (Exception ex)
             {

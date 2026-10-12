@@ -127,10 +127,8 @@
                 <Label Content="{DynamicResource 数据类型|}" Style="{DynamicResource LabelStyle}"/>
                 <ComboBox Style="{StaticResource InputComboBoxStyle}" Width="120"
 ItemContainerStyle="{StaticResource InputComboBoxItemStyle}"
-DisplayMemberPath="DisplayName"
 ItemsSource="{Binding DataTypes}"
-SelectedValue="{Binding DataType, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-SelectedValuePath="Value" />
+SelectedValue="{Binding DataType, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
 
                 <!--<Label Content="{DynamicResource 默认值|}" Style="{DynamicResource LabelStyle}"/>
                 <TextBox Text="{Binding DefaultValue, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Style="{DynamicResource DataStructureTextBoxStyle}"/>-->
@@ -260,10 +258,8 @@ CornerRadius="999">
                                 <TextBlock Style="{StaticResource FieldLabelStyle}" Text="{DynamicResource 结构类型}" />
                                 <ComboBox Style="{StaticResource InputComboBoxStyle}" Width="120"
 ItemContainerStyle="{StaticResource InputComboBoxItemStyle}"
-DisplayMemberPath="DisplayName"
 ItemsSource="{Binding StructureTypes}"
-SelectedValue="{Binding SelectedProfile.StructureType, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-SelectedValuePath="Value" />
+SelectedValue="{Binding SelectedProfile.StructureType, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
                             </StackPanel>
                         </Grid>
                         <TextBlock Margin="0,8,0,0"
@@ -476,27 +472,25 @@ IsHitTestVisible="False">
                                         <TextBox Style="{StaticResource InputTextBoxStyle}"
                                                  Text="{Binding ClientCode, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                                     </StackPanel>
-
                                     <StackPanel Grid.Row="0" Grid.Column="2" Margin="0,0,0,12">
+                                        <TextBlock Style="{StaticResource FieldLabelStyle}" Text="{DynamicResource 默认值}" />
+                                        <TextBox Style="{StaticResource InputTextBoxStyle}"
+Text="{Binding DefaultValue, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Row="1" Margin="0,0,0,12">
                                         <TextBlock Style="{StaticResource FieldLabelStyle}" Text="{DynamicResource 上传MESCode}" />
                                         <TextBox Style="{StaticResource InputTextBoxStyle}"
                                                  Text="{Binding MesCode, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                                     </StackPanel>
 
-                                    <StackPanel Grid.Row="1" Margin="0,0,0,12">
-                                        <TextBlock Style="{StaticResource FieldLabelStyle}" Text="{DynamicResource 默认值}" />
-                                        <TextBox Style="{StaticResource InputTextBoxStyle}"
-             Text="{Binding DefaultValue, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                    </StackPanel>
+                                    
                                     <StackPanel Grid.Row="1" Grid.Column="2" Orientation="Horizontal">
                                         <StackPanel>
                                             <TextBlock Style="{StaticResource FieldLabelStyle}" Text="{DynamicResource 数据类型}" />
                                             <ComboBox Style="{StaticResource InputComboBoxStyle}"  Width="220"
-ItemContainerStyle="{StaticResource InputComboBoxItemStyle}" HorizontalAlignment="Left"
-DisplayMemberPath="DisplayName"
+ItemContainerStyle="{StaticResource InputComboBoxItemStyle}" HorizontalAlignment="Left" Height="37"
 ItemsSource="{Binding DataTypes}"
-SelectedValue="{Binding DataType, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-SelectedValuePath="Value" />
+SelectedValue="{Binding DataType, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
                                         </StackPanel>
                                         <StackPanel Margin="12,0,0,0">
                                             <TextBlock Style="{StaticResource FieldLabelStyle}" Text="{DynamicResource 保留位数}" />

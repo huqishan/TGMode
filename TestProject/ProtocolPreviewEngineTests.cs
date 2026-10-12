@@ -31,13 +31,13 @@ public class ProtocolPreviewEngineTests
     }
 
     [Test]
-    public void TryBuildResponsePreview_WhenLuaReturnsTable_ExposesTableKeys()
+    public void TryBuildResponsePreview_WhenLuaReturnsMultipleTables_ExposesDistinctKeysFromAllReturns()
     {
         ProtocolCommandConfig command = new()
         {
             ResponseFormat = ProtocolPayloadFormat.Ascii,
             SampleResponseText = "OK,T1,25.6",
-            ParseRulesText = "return { Status = string.sub(data, 1, 2), Value = string.sub(data, 7) }"
+            ParseRulesText = "if string.sub(data, 1, 2) == \"NO\" then return { Status = \"No\", First = 1 } end return { Status = string.sub(data, 1, 2), Value = string.sub(data, 7) }"
         };
 
         bool success = ProtocolPreviewEngine.TryBuildResponsePreview(
@@ -47,7 +47,7 @@ public class ProtocolPreviewEngineTests
 
         Assert.That(success, Is.True, message);
         Assert.That(previewResult, Is.Not.Null);
-        Assert.That(previewResult!.ParsedKeys, Is.EquivalentTo(new[] { "Status", "Value" }));
+        Assert.That(previewResult!.ParsedKeys, Is.EquivalentTo(new[] { "First", "Status", "Value" }));
     }
 
     [Test]

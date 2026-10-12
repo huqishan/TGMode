@@ -22,12 +22,12 @@ namespace Shared.Models.MES
         public string ClientCode { get; set; }
         public string MESCode { get; set; }
         public string DataType { get; set; }
-        public string DefectValue { get; set; }
+        public string DefaultValue { get; set; }
         public bool IsWhile { get; set; }
         public bool IsNull { get; set; }
         public int WhileCount { get; set; }
         public string KeepDecimalLength { get; set; }
-        public string XMLNameSpace { get; set; }
+        public string XMLNamespace { get; set; }
         public List<TreeModel> Children { get; set; } = new List<TreeModel>();
         public string JudgeValue { get; set; }
         public string OKText { get; set; }

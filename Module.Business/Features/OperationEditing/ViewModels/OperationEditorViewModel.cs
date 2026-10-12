@@ -6,6 +6,8 @@ using Module.Business.Features.OperationEditing.ViewModels.PresentationModels;
 using Module.Business.Features.Scheme.ViewModels.PresentationModels;
 using Module.Business.Models;
 using Module.Business.Services.BusinessOperations;
+using Shared.Infrastructure.Lua;
+using System;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.ComponentModel;
@@ -50,6 +52,8 @@ public sealed class OperationEditorViewModel : ViewModelProperties
         AttachEditingOperation(_editingOperation);
         SaveCommand = new RelayCommand(_ => Save());
         CloseCommand = new RelayCommand(_ => Close());
+        AddParametersCommand = new RelayCommand(_ => AddParameters());
+        DeleteParametersCommand = new RelayCommand(_ => DeleteParameters());
         RefreshOperationObjectOptions();
         RefreshLuaScriptTemplateOptions();
     }
@@ -173,7 +177,9 @@ public sealed class OperationEditorViewModel : ViewModelProperties
     public ICommand SaveCommand { get; }
 
     public ICommand CloseCommand { get; }
+    public ICommand AddParametersCommand { get; }
 
+    public ICommand DeleteParametersCommand { get; }
     #endregion
 
     #region 编辑器事件
@@ -278,6 +284,121 @@ public sealed class OperationEditorViewModel : ViewModelProperties
     #endregion
 
     #region 模板与方法应用
+
+    #region Command
+    /// <summary>
+    /// 将当前编辑状态一次性构建成最终业务实体并发布，编辑器不直接修改方案集合。
+    /// </summary>
+    public void Save()
+    {
+        ObservableCollection<ReturnValue> luaReturnValues = new();
+        if (IsLuaOperationSelected)
+        {
+            IReadOnlyList<string> returnValueNames = LuaExecutionHelper.GetReturnValueNamesFromScript(EditingOperation.LuaScript);
+            luaReturnValues = new ObservableCollection<ReturnValue>(returnValueNames
+                .Select((name, index) => new ReturnValue { Num = index + 1, ReturnParameterName = name }));
+        }
+
+        // 返回值键只有在指定返回值集合名后才能形成可供后续步骤引用的完整名称。
+        // Lua 脚本中未解析到返回键时不要求填写集合名。
+        bool hasReturnValueKey = (IsLuaOperationSelected ? luaReturnValues : EditingOperation.ReturnValues)
+            .Any(returnValue => !string.IsNullOrWhiteSpace(returnValue.ReturnParameterName));
+        if (hasReturnValueKey && string.IsNullOrWhiteSpace(EditingOperation.ReturnValue))
+        {
+            MessageDialog.Show(
+                "当前步骤存在返回值键，请先填写返回值集合名称。",
+                "保存步骤",
+                MessageDialogButtons.Ok,
+                MessageDialogIcon.Warning);
+            return;
+        }
+
+        WorkStepOperation result = EditingOperation.Clone();
+        result.OperationObjectName = result.OperationObjectName.Trim();
+        result.PCommandName = IsLuaOperationSelected ? "Lua" : result.PCommandName.Trim();
+        result.ReturnValue = result.ReturnValue.Trim();
+        result.LuaScript = result.LuaScript;
+        result.Summary = result.Summary.Trim();
+        result.Parameters = new ObservableCollection<InputParameter>(EditingOperation.Parameters.OrderBy(parameter => parameter.Num).Select(parameter => parameter.Clone()));
+        result.ReturnValues = IsLuaOperationSelected
+            ? luaReturnValues
+            : new ObservableCollection<ReturnValue>(EditingOperation.ReturnValues.OrderBy(parameter => parameter.Num).Select(parameter => parameter.Clone()));
+
+        OperationSaved?.Invoke(this, new OperationEditorSavedEventArgs(result, _isNewOperation));
+        EditingOperation = result.Clone();
+        if (_isNewOperation)
+        {
+            // 连续新增时当前保存结果已经成为前置步骤，新草稿使用新编号，使上下文包含刚保存的返回值。
+            EditingOperation.Id = Guid.NewGuid().ToString("N");
+        }
+        foreach (InputParameter parameter in EditingOperation.Parameters)
+        {
+            parameter.Id = Guid.NewGuid().ToString("N");
+        }
+
+        // 保存事件会先由宿主把新增或修改结果写回步骤集合，此时重新读取上下文即可取得最新返回值名称。
+        // 修改步骤时保留原步骤编号用于定位，只读取当前步骤之前的数据；连续新增则读取全部已保存步骤。
+        // 可编辑 ComboBox 在候选集合刷新期间可能暂时失去选中项，并通过 Text 双向绑定回写空值。
+        // 保存前后明确保护条件左右值，候选刷新不得改变用户已编辑的业务数据。
+        string conditionLeftValue = EditingOperation.ConditionExecution.LeftValue;
+        string conditionRightValue = EditingOperation.ConditionExecution.RightValue;
+        RefreshOperationContext(EditingOperation, _operationContext);
+        EditingOperation.ConditionExecution.LeftValue = conditionLeftValue;
+        EditingOperation.ConditionExecution.RightValue = conditionRightValue;
+        SelectedEditingInvokeParameter = EditingOperation.Parameters.FirstOrDefault();
+        SelectedEditingReturnParameter = EditingOperation.ReturnValues.FirstOrDefault();
+    }
+
+    /// <summary>
+    /// 根据当前输入参数生成 Lua 脚本执行前缀，编辑器预览和保存时使用相同格式。
+    /// </summary>
+    public string BuildLuaExecutionPrefixScript()
+    {
+        return string.Join(
+            Environment.NewLine,
+            EditingOperation.Parameters
+                .OrderBy(parameter => parameter.Num)
+                .Where(parameter => !string.IsNullOrWhiteSpace(parameter.ParameterName))
+                .Select(parameter =>
+                    $"{parameter.ParameterName.Trim()}={LuaExecutionHelper.ToLuaStringLiteral(parameter.Value?.Trim() ?? string.Empty)}"));
+    }
+
+    /// <summary>
+    /// 关闭编辑器并清理当前编辑副本和选中状态。
+    /// </summary>
+    public void Close()
+    {
+        IsOpen = false;
+        EditingOperation = new WorkStepOperation();
+        _isNewOperation = false;
+        _operationContext = null;
+        EditingOperation.Parameters.Clear();
+        EditingOperation.ReturnValues.Clear();
+        SelectedEditingInvokeParameter = null;
+        SelectedEditingReturnParameter = null;
+    }
+
+    /// <summary>
+    /// 添加输入参数。
+    /// </summary>
+    public void AddParameters()
+    {
+        EditingOperation.Parameters.Add(new InputParameter
+        {
+            Num = EditingOperation.Parameters.Count + 1,
+            ParameterName = $"data{EditingOperation.Parameters.Count + 1}",
+            ParameterType = ParameterTypeOptions.First(),
+        });
+    }
+
+    /// <summary>
+    /// 删除输入参数。
+    /// </summary>
+    public void DeleteParameters()
+    {
+        EditingOperation.Parameters.Remove(SelectedEditingInvokeParameter);
+    }
+    #endregion
 
     #region 操作元数据与默认参数
 
@@ -477,74 +598,69 @@ public sealed class OperationEditorViewModel : ViewModelProperties
         InvokeMethodRemarkOptions.Clear();
         StationOperationMethodCollection.Clear();
 
-        if (IsLuaOperationSelected)
+        switch (EditingOperation.OperationObjectName)
         {
-            EditingOperation.PCommandName = "Lua";
-            EditingOperation.Parameters.Clear();
-            EditingOperation.ReturnValues.Clear();
-            OnPropertyChanged(nameof(StationOperationMethodCollection));
-            return;
-        }
-
-        if (IsSystemOperationSelected)
-        {
-            foreach (BusinessOperationDescriptor operation in BusinessOperationCatalog.GetOperations("System"))
-            {
-                InvokeMethodOptions.Add(operation.OperationId);
-                InvokeMethodRemarkOptions.Add(string.IsNullOrWhiteSpace(operation.Description) ? operation.DisplayName : operation.Description);
-                StationOperationMethodCollection.Add(new StationOperationMethodItem
+            case "Lua":
+                InvokeMethodOptions.Add("Lua");
+                break;
+            case "System":
+                foreach (BusinessOperationDescriptor operation in BusinessOperationCatalog.GetOperations("System"))
                 {
-                    Kind = "方法",
-                    OperationType = "系统",
-                    OperationObject = "System",
-                    InvokeMethod = operation.OperationId,
-                    Summary = string.IsNullOrWhiteSpace(operation.Description) ? operation.DisplayName : operation.Description,
-                    ParameterCount = operation.Parameters.Count
-                });
-            }
-        }
-        else
-        {
-            foreach (string protocol in OperationConfigurationStore.LoadDeviceSupportedProtocolNames(EditingOperation.OperationObjectName))
-            {
-                ProtocolOptions.Add(protocol);
-                foreach (string command in OperationConfigurationStore.LoadProtocolCommandNames(protocol))
-                {
-                    CommandOptions.Add(command);
-                    InvokeMethodOptions.Add(command);
+                    InvokeMethodOptions.Add(operation.OperationId);
+                    InvokeMethodRemarkOptions.Add(string.IsNullOrWhiteSpace(operation.Description) ? operation.DisplayName : operation.Description);
                     StationOperationMethodCollection.Add(new StationOperationMethodItem
                     {
-                        Kind = "指令",
-                        OperationType = "设备",
-                        OperationObject = EditingOperation.OperationObjectName,
-                        ProtocolName = protocol,
-                        CommandName = command,
-                        InvokeMethod = command,
-                        Summary = protocol,
-                        ParameterCount = OperationConfigurationStore.LoadProtocolCommandPlaceholders(protocol, command).Count
+                        Kind = "方法",
+                        OperationType = "系统",
+                        OperationObject = "System",
+                        InvokeMethod = operation.OperationId,
+                        Summary = string.IsNullOrWhiteSpace(operation.Description) ? operation.DisplayName : operation.Description,
+                        ParameterCount = operation.Parameters.Count
                     });
                 }
-            }
-
-            foreach (BusinessOperationDescriptor operation in BusinessOperationBindingResolver.GetOperationsForOperationObject(EditingOperation.OperationObjectName))
-            {
-                InvokeMethodOptions.Add(operation.OperationId);
-                StationOperationMethodCollection.Add(new StationOperationMethodItem
+                break;
+            default:
+                foreach (string protocol in OperationConfigurationStore.LoadDeviceSupportedProtocolNames(EditingOperation.OperationObjectName))
                 {
-                    Kind = "业务",
-                    OperationType = "业务",
-                    OperationObject = EditingOperation.OperationObjectName,
-                    InvokeMethod = operation.OperationId,
-                    Summary = string.IsNullOrWhiteSpace(operation.Description) ? operation.DisplayName : operation.Description,
-                    ParameterCount = operation.Parameters.Count
-                });
-            }
+                    ProtocolOptions.Add(protocol);
+                    foreach (string command in OperationConfigurationStore.LoadProtocolCommandNames(protocol))
+                    {
+                        CommandOptions.Add(command);
+                        InvokeMethodOptions.Add(command);
+                        StationOperationMethodCollection.Add(new StationOperationMethodItem
+                        {
+                            Kind = "指令",
+                            OperationType = "设备",
+                            OperationObject = EditingOperation.OperationObjectName,
+                            ProtocolName = protocol,
+                            CommandName = command,
+                            InvokeMethod = command,
+                            Summary = protocol,
+                            ParameterCount = OperationConfigurationStore.LoadProtocolCommandPlaceholders(protocol, command).Count
+                        });
+                    }
+                }
 
+                foreach (BusinessOperationDescriptor operation in BusinessOperationBindingResolver.GetOperationsForOperationObject(EditingOperation.OperationObjectName))
+                {
+                    InvokeMethodOptions.Add(operation.OperationId);
+                    StationOperationMethodCollection.Add(new StationOperationMethodItem
+                    {
+                        Kind = "业务",
+                        OperationType = "业务",
+                        OperationObject = EditingOperation.OperationObjectName,
+                        InvokeMethod = operation.OperationId,
+                        Summary = string.IsNullOrWhiteSpace(operation.Description) ? operation.DisplayName : operation.Description,
+                        ParameterCount = operation.Parameters.Count
+                    });
+                }
+                break;
         }
-
         if (string.IsNullOrWhiteSpace(EditingOperation.PCommandName) || !InvokeMethodOptions.Contains(EditingOperation.PCommandName))
         {
-            EditingOperation.PCommandName = InvokeMethodOptions.FirstOrDefault() ?? string.Empty;
+            EditingOperation.Parameters?.Clear();
+            EditingOperation.ReturnValues?.Clear();
+            EditingOperation.PCommandName = string.Empty;
         }
 
         // 方法集合填充完成后通知视图恢复当前步骤对应的选中行。
@@ -666,78 +782,6 @@ public sealed class OperationEditorViewModel : ViewModelProperties
         }
 
         RefreshMetadataForProperty(nameof(EditingOperation.OperationObjectName));
-    }
-
-    /// <summary>
-    /// 将当前编辑状态一次性构建成最终业务实体并发布，编辑器不直接修改方案集合。
-    /// </summary>
-    public void Save()
-    {
-        // 返回值键只有在指定返回值集合名后才能形成可供后续步骤引用的完整名称。
-        // 在最终保存入口统一校验，避免界面刷新时已经生成返回参数，但步骤保存后无法被引用。
-        bool hasReturnValueKey = !IsLuaOperationSelected && EditingOperation.ReturnValues
-            .Any(returnValue => !string.IsNullOrWhiteSpace(returnValue.ReturnParameterName));
-        if (hasReturnValueKey && string.IsNullOrWhiteSpace(EditingOperation.ReturnValue))
-        {
-            MessageDialog.Show(
-                "当前步骤存在返回值键，请先填写返回值。",
-                "保存步骤",
-                MessageDialogButtons.Ok,
-                MessageDialogIcon.Warning);
-            return;
-        }
-
-        WorkStepOperation result = EditingOperation.Clone();
-        result.OperationObjectName = result.OperationObjectName.Trim();
-        result.PCommandName = IsLuaOperationSelected ? string.Empty : result.PCommandName.Trim();
-        result.ReturnValue = IsLuaOperationSelected ? string.Empty : result.ReturnValue.Trim();
-        result.LuaScript = IsLuaOperationSelected ? result.LuaScript : string.Empty;
-        result.Summary = result.Summary.Trim();
-        result.Parameters = IsLuaOperationSelected
-            ? new ObservableCollection<InputParameter>()
-            : new ObservableCollection<InputParameter>(EditingOperation.Parameters.OrderBy(parameter => parameter.Num).Select(parameter => parameter.Clone()));
-        result.ReturnValues = IsLuaOperationSelected
-            ? new ObservableCollection<ReturnValue>()
-            : new ObservableCollection<ReturnValue>(EditingOperation.ReturnValues.OrderBy(parameter => parameter.Num).Select(parameter => parameter.Clone()));
-
-        OperationSaved?.Invoke(this, new OperationEditorSavedEventArgs(result, _isNewOperation));
-        EditingOperation = result.Clone();
-        if (_isNewOperation)
-        {
-            // 连续新增时当前保存结果已经成为前置步骤，新草稿使用新编号，使上下文包含刚保存的返回值。
-            EditingOperation.Id = Guid.NewGuid().ToString("N");
-        }
-        foreach (InputParameter parameter in EditingOperation.Parameters)
-        {
-            parameter.Id = Guid.NewGuid().ToString("N");
-        }
-
-        // 保存事件会先由宿主把新增或修改结果写回步骤集合，此时重新读取上下文即可取得最新返回值名称。
-        // 修改步骤时保留原步骤编号用于定位，只读取当前步骤之前的数据；连续新增则读取全部已保存步骤。
-        // 可编辑 ComboBox 在候选集合刷新期间可能暂时失去选中项，并通过 Text 双向绑定回写空值。
-        // 保存前后明确保护条件左右值，候选刷新不得改变用户已编辑的业务数据。
-        string conditionLeftValue = EditingOperation.ConditionExecution.LeftValue;
-        string conditionRightValue = EditingOperation.ConditionExecution.RightValue;
-        RefreshOperationContext(EditingOperation, _operationContext);
-        EditingOperation.ConditionExecution.LeftValue = conditionLeftValue;
-        EditingOperation.ConditionExecution.RightValue = conditionRightValue;
-        SelectedEditingInvokeParameter = EditingOperation.Parameters.FirstOrDefault();
-        SelectedEditingReturnParameter = EditingOperation.ReturnValues.FirstOrDefault();
-    }
-
-    /// <summary>
-    /// 关闭编辑器并清理当前编辑副本和选中状态。
-    /// </summary>
-    public void Close()
-    {
-        IsOpen = false;
-        EditingOperation = new WorkStepOperation();
-        _isNewOperation = false;
-        _operationContext = null;
-        EditingOperation.Parameters.Clear();
-        EditingOperation.ReturnValues.Clear();
-        SelectedEditingInvokeParameter = null;
-        SelectedEditingReturnParameter = null;
     }
 
     /// <summary>

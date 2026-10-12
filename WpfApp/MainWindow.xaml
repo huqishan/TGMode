@@ -8,8 +8,8 @@
         xmlns:loading="clr-namespace:ControlLibrary.Controls.Loading;assembly=ControlLibrary"
         xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
         mc:Ignorable="d"
-        MinWidth="1450" WindowStyle="None"
-        MinHeight="1200"
+        Width="1900" WindowStyle="None"
+        Height="1060"
         ResizeMode="CanResize"
         Background="{DynamicResource AppBackgroundBrush}">
     <shell:WindowChrome.WindowChrome>

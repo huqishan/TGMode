@@ -27,7 +27,7 @@
                                 CornerRadius="4" />
 
                         <Border x:Name="SelectionBoxHost"
-                                Margin="1,1,0,1"
+                                Margin="1,1,20,1"
                                 Padding="{TemplateBinding Padding}"
                                 IsHitTestVisible="False">
                             <ContentPresenter x:Name="ContentSite"

@@ -62,10 +62,9 @@ Text="{Binding EditingOperation.DelayMilliseconds, Mode=TwoWay, UpdateSourceTrig
             <StackPanel x:Name="operationObj" Width="200">
                 <TextBlock Style="{StaticResource FieldLabelStyle}"
  Text="{DynamicResource 操作对象}" />
-                <ComboBox Style="{StaticResource EditableInputComboBoxStyle}" x:Name="OperationObject"
-ItemContainerStyle="{StaticResource InputComboBoxItemStyle}" Height="35"
-ItemsSource="{Binding OperationObjectOptions}"
-Text="{Binding EditingOperation.OperationObjectName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                <ComboBox Style="{StaticResource InputComboBoxStyle}" x:Name="OperationObject"
+ItemContainerStyle="{StaticResource InputComboBoxItemStyle}" Height="38"
+ItemsSource="{Binding OperationObjectOptions}" SelectedItem="{Binding EditingOperation.OperationObjectName}"/>
                 <StackPanel Visibility="{Binding ElementName=luaEdit, Path=Visibility, Converter={StaticResource in2v}}">
                     <TextBlock Style="{StaticResource FieldLabelStyle}" Text="支持的方法/指令" />
                 </StackPanel>
@@ -78,9 +77,9 @@ Text="{Binding EditingOperation.ReturnValue, Mode=TwoWay, UpdateSourceTrigger=Pr
             </StackPanel>
         </StackPanel>
 
-        <StackPanel Grid.Row="1" Grid.Column="2" Margin="16,6,6,0">
+        <StackPanel Grid.Row="1" Grid.Column="2" Margin="0,5,0,0" Visibility="{Binding EditingOperation.OperationObjectName, Converter={StaticResource comp2v}, ConverterParameter='Lua'}">
             <TextBlock Style="{StaticResource FieldLabelStyle}" Text="Lua脚本模版" />
-            <ComboBox x:Name="LuaScriptTemplateComboBox"
+            <ComboBox x:Name="LuaScriptTemplateComboBox" Height="38"
 Style="{StaticResource EditableInputComboBoxStyle}"
 ItemContainerStyle="{StaticResource InputComboBoxItemStyle}"
 ItemsSource="{Binding LuaScriptTemplateOptions}"
@@ -108,22 +107,91 @@ Style="{StaticResource ColumnsDataGridStyle}">
                 </DataGrid.Columns>
             </DataGrid>
         </Grid>
-        <Grid Grid.Row="2" Grid.ColumnSpan="3" x:Name="luaEdit" VerticalAlignment="Stretch" Margin="0,14,0,0" Visibility="{Binding ElementName=OperationObject, Path=SelectedItem, Converter={StaticResource comp2v}, ConverterParameter='Lua'}">
-            <luaEditor:LuaScriptCompilerView ScriptText="{Binding EditingOperation.LuaScript, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+        <!--Lua-->
+        <Grid Grid.Row="2" Grid.ColumnSpan="3" x:Name="luaEdit" VerticalAlignment="Stretch" Visibility="{Binding EditingOperation.OperationObjectName, Converter={StaticResource comp2v}, ConverterParameter='Lua'}">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="1*" />
+                <ColumnDefinition Width="16" />
+                <ColumnDefinition Width="1.35*" />
+            </Grid.ColumnDefinitions>
+            <Grid Grid.Row="0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+                <TextBlock Style="{StaticResource FieldLabelStyle}"
+Text="{DynamicResource 输入参数}" />
+                <DockPanel HorizontalAlignment="Right" Margin="0,0,-10,0">
+                    <Button
+Command="{Binding AddParametersCommand}" Height="30" Width="30"
+Content="+" Padding="0"
+Style="{StaticResource ActionButtonStyle}"
+ToolTip="添加输入参数" />
+                    <Button
+Command="{Binding DeleteParametersCommand}" Height="30" Width="30"
+Content="-"  Padding="0"
+Style="{StaticResource ActionButtonStyle}"
+ToolTip="删除输入参数" />
+                </DockPanel>
+                
+                <DataGrid Grid.Row="1" AutoGenerateColumns="False"
+HorizontalScrollBarVisibility="Disabled"
+IsReadOnly="False"
+ItemsSource="{Binding EditingParameterRows}"
+SelectedValuePath="Parameter"
+SelectedValue="{Binding SelectedEditingInvokeParameter, Mode=TwoWay}"
+Style="{StaticResource ColumnsDataGridStyle}">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Width="Auto"
+                  Header="{DynamicResource 参数名称}"
+                  ElementStyle="{StaticResource CellTextBlockStyle}"
+                  EditingElementStyle="{StaticResource CellTextBoxStyle}"
+                  Binding="{Binding Parameter.ParameterName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                        <DataGridTemplateColumn Width="1*"
+                      Header="{DynamicResource 参数类型}">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <ComboBox Style="{StaticResource InputComboBoxStyle}"
+                    ItemContainerStyle="{StaticResource InputComboBoxItemStyle}"
+                    ItemsSource="{Binding DataContext.ParameterTypeOptions, RelativeSource={RelativeSource AncestorType={x:Type UserControl}}}"
+                    SelectedItem="{Binding Parameter.ParameterType, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTemplateColumn Width="1.35*"
+                      Header="{DynamicResource 参数值}">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <Grid>
+                                        <TextBox Style="{StaticResource CellTextBoxStyle}" ToolTip="{Binding Parameter.Value}"
+                       Visibility="{Binding Parameter.ParameterType, Converter={StaticResource comp2v}, ConverterParameter=设置值}"
+                       Text="{Binding Parameter.Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                        <ComboBox ItemContainerStyle="{StaticResource InputComboBoxItemStyle}" ToolTip="{Binding Parameter.Value}"
+                        Style="{StaticResource EditableInputComboBoxStyle}" Padding="0" Height="34"
+                        DropDownOpened="ParameterValueComboBox_DropDownOpened"
+                        Visibility="{Binding Parameter.ParameterType, Converter={StaticResource comp2v}, ConverterParameter=返回值|工步值|全局值}"
+                        Text="{Binding Parameter.Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
+                                            <ComboBox.ItemsSource>
+                                                <MultiBinding Converter="{StaticResource ParameterValueOptionsConverter}">
+                                                    <Binding Path="Parameter.ParameterType" />
+                                                    <Binding Path="DataContext.ParameterReturnValueOptions" RelativeSource="{RelativeSource AncestorType={x:Type UserControl}}" />
+                                                    <Binding Path="DataContext.WorkStepValueOptions" RelativeSource="{RelativeSource AncestorType={x:Type UserControl}}" />
+                                                </MultiBinding>
+                                            </ComboBox.ItemsSource>
+                                        </ComboBox>
+                                    </Grid>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </Grid>
+            <luaEditor:LuaScriptCompilerView x:Name="luaEditView" BeforeExecute="LuaEditView_BeforeExecute" Margin="0,14,0,0" Grid.Column="2" ScriptText="{Binding EditingOperation.LuaScript, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
         </Grid>
-        <ScrollViewer Grid.Column="2" Grid.RowSpan="3"
+        <!--其它操作对象-->
+        <ScrollViewer Grid.Column="2" Grid.RowSpan="3"  Visibility="{Binding ElementName=luaEdit, Path=Visibility, Converter={StaticResource in2v}}"
                       VerticalScrollBarVisibility="Auto"
                       HorizontalScrollBarVisibility="Disabled">
-            <ScrollViewer.Style>
-                <Style TargetType="{x:Type ScrollViewer}">
-                    <Setter Property="Visibility" Value="Visible" />
-                    <Style.Triggers>
-                        <DataTrigger Binding="{Binding IsLuaOperationSelected}" Value="True">
-                            <Setter Property="Visibility" Value="Collapsed" />
-                        </DataTrigger>
-                    </Style.Triggers>
-                </Style>
-            </ScrollViewer.Style>
 
             <Grid Margin="0,0,4,0">
                 <Grid.RowDefinitions>

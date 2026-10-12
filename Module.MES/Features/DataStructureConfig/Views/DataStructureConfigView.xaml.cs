@@ -40,16 +40,31 @@ namespace Module.MES.Features.DataStructureConfig.Views
             InitializeComponent();
             DataContext = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
 
-            if (ViewModel is not null)
-            {
-                ViewModel.PropertyChanged += ViewModel_PropertyChanged;
-            }
-
+            // TabControl 切换内容时会触发视图卸载，生命周期事件负责维护 ViewModel 订阅。
+            Loaded += DataStructureConfigView_Loaded;
             Unloaded += DataStructureConfigView_Unloaded;
         }
 
         private DataStructureConfigViewModel? ViewModel => DataContext as DataStructureConfigViewModel;
 
+        /// <summary>
+        /// 视图重新加载时恢复状态订阅，并同步抽屉当前状态。
+        /// </summary>
+        private void DataStructureConfigView_Loaded(object sender, RoutedEventArgs e)
+        {
+            if (ViewModel is null)
+            {
+                return;
+            }
+
+            ViewModel.PropertyChanged -= ViewModel_PropertyChanged;
+            ViewModel.PropertyChanged += ViewModel_PropertyChanged;
+            UpdateCommandDrawerVisual(animate: false);
+        }
+
+        /// <summary>
+        /// 视图卸载时取消状态订阅，避免视图离开 Tab 后继续持有事件引用。
+        /// </summary>
         private void DataStructureConfigView_Unloaded(object sender, RoutedEventArgs e)
         {
             if (ViewModel is not null)
