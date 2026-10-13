@@ -75,10 +75,42 @@ namespace Module.Communication.Services
 
             foreach (DeviceCommunicationProfile profile in profiles)
             {
-                results.Add(InitializeDevice(profile));
+                try
+                {
+                    results.Add(InitializeDevice(profile));
+                }
+                catch (Exception ex)
+                {
+                    results.Add(DeviceExecutionActionResult.CreateFailure(
+                        $"Device '{profile.LocalName}' initialize exception: {ex.Message}",
+                        profile.LocalName));
+                }
             }
 
             return new DeviceInitializationResult(results);
+        }
+
+        /// <summary>
+        /// 读取设备管理中已保存的全部有效设备配置快照。
+        /// </summary>
+        /// <returns>设备配置快照集合。</returns>
+        public IReadOnlyList<DeviceCommunicationProfile> GetConfiguredDeviceProfiles()
+        {
+            return LoadDeviceProfiles()
+                .Select(profile => profile.Clone(profile.LocalName))
+                .ToArray();
+        }
+
+        /// <summary>
+        /// 获取已创建运行时通信实例的最新连接状态快照。
+        /// </summary>
+        /// <returns>以设备名称为键的连接状态集合。</returns>
+        public IReadOnlyDictionary<string, ConnectState> GetActiveDeviceConnectionStates()
+        {
+            return ActiveDevices.ToDictionary(
+                item => item.Key,
+                item => item.Value.Communication.IsConnected,
+                StringComparer.OrdinalIgnoreCase);
         }
 
         /// <summary>

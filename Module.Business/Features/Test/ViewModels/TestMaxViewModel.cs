@@ -2,6 +2,7 @@
 using ControlLibrary.Controls.TestDataTable.Models;
 using ControlLibrary.Models.EventsModels.Test;
 using ControlLibrary.Models.MediatorModels.Business;
+using Module.Business.Services;
 using Shared.Infrastructure.Events;
 using Shared.Infrastructure.Mediator;
 using System;
@@ -40,7 +41,11 @@ public sealed class TestMaxViewModel : ViewModelProperties, IDisposable
     private string _currentWorkStepName = "等待启动";
     private string _currentWorkStepElapsedTimeText = "0.0 s";
     private Brush _statusBrush = IdleBrush;
+    /// <summary>当前单步测试是否正在执行。</summary>
+    private bool _isBusy;
     private bool _disposed;
+    /// <summary>防止同一工位重复启动单步测试的异步命令。</summary>
+    private readonly AsyncRelayCommand _singleStepTestCommand;
 
     public TestMaxViewModel(IEventAggregator eventAggregator, IMediator mediator)
         : this("工位 1", eventAggregator, mediator)
@@ -54,7 +59,10 @@ public sealed class TestMaxViewModel : ViewModelProperties, IDisposable
         _eventAggregator = eventAggregator ?? throw new ArgumentNullException(nameof(eventAggregator));
         _mediator = mediator ?? throw new ArgumentNullException(nameof(mediator));
 
-        SingleStepTestCommand = new RelayCommand(_ => StartSingleStepTest());
+        _singleStepTestCommand = new AsyncRelayCommand(
+            _ => StartSingleStepTestAsync(),
+            _ => !IsBusy && SelectedProfile is not null && SelectedWorkStep is not null);
+        SingleStepTestCommand = _singleStepTestCommand;
         ContinuousTestCommand = new RelayCommand(_ => StartContinuousTest());
         StopTestCommand = new RelayCommand(_ => StopTest());
         RefreshProductsCommand = new RelayCommand(_ => RefreshProducts());
@@ -140,6 +148,20 @@ public sealed class TestMaxViewModel : ViewModelProperties, IDisposable
             if (SetField(ref _selectedProfile, value))
             {
                 ApplySelectedProfile();
+                _singleStepTestCommand.RaiseCanExecuteChanged();
+            }
+        }
+    }
+
+    /// <summary>当前是否正在执行单步测试。</summary>
+    public bool IsBusy
+    {
+        get => _isBusy;
+        private set
+        {
+            if (SetField(ref _isBusy, value))
+            {
+                _singleStepTestCommand.RaiseCanExecuteChanged();
             }
         }
     }
@@ -190,6 +212,7 @@ public sealed class TestMaxViewModel : ViewModelProperties, IDisposable
         set
         {
             SelectWorkStep(value);
+            _singleStepTestCommand.RaiseCanExecuteChanged();
         }
     }
 
@@ -251,17 +274,61 @@ public sealed class TestMaxViewModel : ViewModelProperties, IDisposable
         _disposed = true;
     }
 
-    private void StartSingleStepTest()
+    #region 测试命令
+
+    /// <summary>执行当前选中的方案工步，并同步界面状态与工步结果。</summary>
+    private async Task StartSingleStepTestAsync()
     {
         TestDataDisplayItem? targetWorkStep = SelectedWorkStep;
-        if (targetWorkStep is null && WorkSteps.Count > 0)
+        TestProfileOption? profile = SelectedProfile;
+        if (targetWorkStep is null || profile is null)
         {
-            targetWorkStep = WorkSteps.FirstOrDefault(step =>
-                !string.Equals(step.Result, "OK", StringComparison.OrdinalIgnoreCase)) ?? WorkSteps[0];
-            SelectedWorkStep = targetWorkStep;
+            return;
         }
 
+        int selectedIndex = WorkSteps.IndexOf(targetWorkStep);
+        if (selectedIndex < 0 || selectedIndex >= profile.WorkSteps.Count)
+        {
+            return;
+        }
+
+        TestProfileWorkStepOption selectedOption = profile.WorkSteps[selectedIndex];
+        IsBusy = true;
         StartTest("单步测试", targetWorkStep);
+        try
+        {
+            SchemeExecutionResult result = await SchemeExecutionService.ExecuteWorkStepAsync(
+                StationName,
+                profile.SchemeId,
+                selectedOption.Id);
+
+            _elapsedStopwatch.Stop();
+            UpdateElapsedTime();
+            ApplyCurrentWorkStepElapsedTime(ElapsedTimeText, targetWorkStep);
+            targetWorkStep.Result = result.IsSuccess ? "OK" : result.IsCanceled ? "已停止" : "NG";
+            TestStatus = result.IsSuccess ? "单步测试完成" : result.IsCanceled ? "已停止" : "单步测试失败";
+            RunStateText = result.IsSuccess ? "测试OK" : result.IsCanceled ? "已停止" : "测试NG";
+            StatusBrush = result.IsSuccess ? SuccessBrush : result.IsCanceled ? IdleBrush : FailureBrush;
+            AddLog(RunningLogs, $"{DateTime.Now:HH:mm:ss} 工步 {targetWorkStep.WorkStep}：{result.Message}");
+            if (!result.IsSuccess && !result.IsCanceled)
+            {
+                AddLog(ExceptionLogs, $"{DateTime.Now:HH:mm:ss} {result.Message}");
+            }
+        }
+        catch (Exception ex)
+        {
+            _elapsedStopwatch.Stop();
+            UpdateElapsedTime();
+            targetWorkStep.Result = "NG";
+            TestStatus = "单步测试失败";
+            RunStateText = "测试NG";
+            StatusBrush = FailureBrush;
+            AddLog(ExceptionLogs, $"{DateTime.Now:HH:mm:ss} {StationName} 单步测试失败：{ex.Message}");
+        }
+        finally
+        {
+            IsBusy = false;
+        }
     }
 
     private void StartContinuousTest()
@@ -271,6 +338,11 @@ public sealed class TestMaxViewModel : ViewModelProperties, IDisposable
 
     private void StopTest()
     {
+        if (IsBusy)
+        {
+            SchemeExecutionService.Stop(StationName);
+        }
+
         _elapsedStopwatch.Stop();
         UpdateElapsedTime();
         ApplyCurrentWorkStepElapsedTime(ElapsedTimeText);
@@ -293,6 +365,8 @@ public sealed class TestMaxViewModel : ViewModelProperties, IDisposable
         ApplyCurrentWorkStepElapsedTime(ElapsedTimeText, targetWorkStep);
         AddLog(RunningLogs, $"{DateTime.Now:HH:mm:ss} {StationName} 开始{statusText}，执行 {CurrentWorkStepName}。");
     }
+
+    #endregion
 
     private void UpdateElapsedTime()
     {
@@ -369,6 +443,13 @@ public sealed class TestMaxViewModel : ViewModelProperties, IDisposable
         {
             RunStateText = "测试OK";
             StatusBrush = SuccessBrush;
+        }
+        else if (message.IsSuccess == false &&
+                 (message.TestStatus.Contains("停止", StringComparison.OrdinalIgnoreCase) ||
+                  message.TestStatus.Contains("取消", StringComparison.OrdinalIgnoreCase)))
+        {
+            RunStateText = "已停止";
+            StatusBrush = IdleBrush;
         }
         else if (message.IsSuccess == false)
         {

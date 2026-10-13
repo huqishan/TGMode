@@ -203,6 +203,124 @@ public static class SchemeExecutionService
             context.Dispose();
         }
     }
+    /// <summary>按方案与工步标识执行选中的单个工步。</summary>
+    public static async Task<SchemeExecutionResult> ExecuteWorkStepAsync(
+        string stationNo,
+        string schemeId,
+        string workStepId)
+    {
+        string normalizedStationNo = NormalizeRequiredText(stationNo);
+        string normalizedSchemeId = NormalizeRequiredText(schemeId);
+        string normalizedWorkStepId = NormalizeRequiredText(workStepId);
+        DateTime startTime = DateTime.Now;
+        if (string.IsNullOrWhiteSpace(normalizedStationNo) ||
+            string.IsNullOrWhiteSpace(normalizedSchemeId) ||
+            string.IsNullOrWhiteSpace(normalizedWorkStepId))
+        {
+            return SchemeExecutionResult.CreateFailure(
+                "工位、方案和工步标识不能为空。",
+                startTime: startTime,
+                endTime: DateTime.Now);
+        }
+
+        SchemeProfile? scheme;
+        try
+        {
+            SchemeConfigurationCatalog catalog = await Task.Run(SchemeConfigurationStore.LoadCatalog)
+                .ConfigureAwait(false);
+            scheme = catalog.Schemes.FirstOrDefault(item =>
+                string.Equals(item.Id, normalizedSchemeId, StringComparison.OrdinalIgnoreCase));
+        }
+        catch (Exception ex)
+        {
+            string message = $"加载方案失败：{ex.Message}";
+            PublishTestStatus(normalizedStationNo, "执行失败", string.Empty, string.Empty, string.Empty, message, false);
+            return SchemeExecutionResult.CreateFailure(message, startTime: startTime, endTime: DateTime.Now);
+        }
+
+        if (scheme is null)
+        {
+            string message = $"未找到方案标识 {normalizedSchemeId}。";
+            PublishTestStatus(normalizedStationNo, "执行失败", string.Empty, string.Empty, string.Empty, message, false);
+            return SchemeExecutionResult.CreateFailure(message, startTime: startTime, endTime: DateTime.Now);
+        }
+
+        SchemeExecutionKey key = new(normalizedStationNo, scheme.SchemeName);
+        SchemeExecutionContext context = new(key, startTime);
+        if (!ActiveExecutions.TryAdd(normalizedStationNo, context))
+        {
+            context.Dispose();
+            string message = $"工位 {normalizedStationNo} 已有正在执行的方案。";
+            PublishSchemeStatus(normalizedStationNo, "启动失败", scheme, message, false);
+            return SchemeExecutionResult.CreateFailure(message, startTime: startTime, endTime: DateTime.Now);
+        }
+
+        try
+        {
+            int workStepIndex = -1;
+            SchemeWorkStepItem? schemeStep = null;
+            for (int index = 0; index < scheme.Steps.Count; index++)
+            {
+                if (!string.Equals(scheme.Steps[index].Id, normalizedWorkStepId, StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                schemeStep = scheme.Steps[index];
+                workStepIndex = index + 1;
+                break;
+            }
+
+            if (schemeStep is null)
+            {
+                string message = $"方案 {scheme.SchemeName} 中未找到选中的工步。";
+                PublishSchemeStatus(normalizedStationNo, "执行失败", scheme, message, false);
+                return SchemeExecutionResult.CreateFailure(message, context.Logs, startTime, DateTime.Now);
+            }
+
+            IReadOnlyCollection<WorkStepProfile> configuredWorkSteps = await Task.Run(WorkStepConfigurationStore.Load)
+                .ConfigureAwait(false);
+            WorkStepProfile? configuredWorkStep = configuredWorkSteps.FirstOrDefault(item =>
+                string.Equals(item.Name, schemeStep.StepType, StringComparison.OrdinalIgnoreCase));
+            if (configuredWorkStep is null || configuredWorkStep.Operations.Count == 0)
+            {
+                string message = $"工步 {schemeStep.StepName} 未配置可执行步骤。";
+                PublishSchemeStatus(normalizedStationNo, "执行失败", scheme, message, false);
+                return SchemeExecutionResult.CreateFailure(message, context.Logs, startTime, DateTime.Now);
+            }
+
+            PublishSchemeStatus(normalizedStationNo, "单步测试中", scheme, $"开始执行工步：{schemeStep.StepName}");
+            SchemeExecutionResult result = await ExecuteWorkStepAsync(
+                    context,
+                    scheme,
+                    schemeStep,
+                    configuredWorkStep.Operations,
+                    workStepIndex)
+                .ConfigureAwait(false);
+
+            string finalStatus = result.IsSuccess ? "单步测试通过" : result.IsCanceled ? "单步测试已停止" : "单步测试失败";
+            PublishSchemeStatus(normalizedStationNo, finalStatus, scheme, result.Message, result.IsSuccess);
+            return result;
+        }
+        catch (OperationCanceledException)
+        {
+            string message = $"工位 {normalizedStationNo} 的工步执行已停止。";
+            PublishSchemeStatus(normalizedStationNo, "单步测试已停止", scheme, message, false);
+            return SchemeExecutionResult.CreateCanceled(message, context.Logs, startTime, DateTime.Now);
+        }
+        catch (Exception ex)
+        {
+            string message = $"工步 {scheme.SchemeName} 执行失败：{ex.Message}";
+            PublishSchemeStatus(normalizedStationNo, "单步测试失败", scheme, message, false);
+            return SchemeExecutionResult.CreateFailure(message, context.Logs, startTime, DateTime.Now);
+        }
+        finally
+        {
+            ActiveExecutions.TryRemove(normalizedStationNo, out _);
+            context.Dispose();
+        }
+    }
+
     /// <summary>暂停指定工位当前正在运行的方案。</summary>
     public static SchemeExecutionControlActionResult Pause(string stationNo)
     {
@@ -630,8 +748,8 @@ public static class SchemeExecutionService
             "Lua" => ExecuteLua(operation, schemeStep, returnValues),
             "System" => await ExecuteSystemMethodAsync(operation, schemeStep, returnValues).ConfigureAwait(false),
             "判断" => ExecuteJudge(operation, schemeStep, returnValues),
-            _=> TryResolveBusinessOperation(operation, out string deviceId, out string operationId)
-                ? await ExecuteCatalogBusinessOperationAsync(context,operation,schemeStep,returnValues,deviceId,operationId).ConfigureAwait(false)
+            _ => TryResolveBusinessOperation(operation, out string deviceId, out string operationId)
+                ? await ExecuteCatalogBusinessOperationAsync(context, operation, schemeStep, returnValues, deviceId, operationId).ConfigureAwait(false)
                 : await ExecuteDeviceOperationAsync(context, operation, schemeStep, returnValues).ConfigureAwait(false)
         };
     }
@@ -648,7 +766,7 @@ public static class SchemeExecutionService
                 .OrderBy(parameter => parameter.Num)
                 .Where(parameter => !string.IsNullOrWhiteSpace(parameter.ParameterName))
                 .Select(parameter =>
-                    $"{parameter.ParameterName.Trim()}={ResolveParameterValue(parameter, schemeStep, returnValues)}"));
+                    $"{parameter.ParameterName.Trim()}=\"{ResolveParameterValue(parameter, schemeStep, returnValues)}\""));
         string script = string.IsNullOrEmpty(parameterAssignments)
             ? operation.LuaScript ?? string.Empty
             : $"{parameterAssignments}{Environment.NewLine}{operation.LuaScript}";
@@ -879,7 +997,8 @@ public static class SchemeExecutionService
 
         return type switch
         {
-            "设置值" or "工步值" => ResolveSchemeStepParameterValue(parameter, schemeStep),
+            "设置值" => value,
+            "工步值" => ResolveSchemeStepParameterValue(parameter, schemeStep),
             "返回值" => returnValues.TryGetValue(value, out string? returnValue) ? returnValue : string.Empty,
             "全局值" => string.Empty,
             _ => value

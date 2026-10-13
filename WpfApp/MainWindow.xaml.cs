@@ -68,6 +68,7 @@ namespace WpfApp
             if (homeItem is not null)
             {
                 NavigationBar.SelectItem(homeItem);
+                OpenContentTab(homeItem);
             }
         }
 

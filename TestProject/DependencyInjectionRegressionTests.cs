@@ -1,7 +1,10 @@
+using System;
+using System.Diagnostics;
 using Autofac;
 using ControlLibrary.Controls.MessageDialog;
 using ControlLibrary.Controls.TestDataTable.Models;
 using ControlLibrary.Models.EventsModels.Test;
+using ControlLibrary.Models.MediatorModels.Business;
 using Module.MES.Features.ApiConfig.ViewModels;
 using Module.Business.Test.ViewModels;
 using Module.User.Features.AccountManagement.Services;
@@ -154,16 +157,31 @@ public sealed class DependencyInjectionRegressionTests
     {
         using IContainer container = BuildApplicationContainer();
         using TestMaxViewModel viewModel = container.Resolve<TestMaxViewModel>();
+        viewModel.SelectedProfile = TestProfileOption.FromScheme(new BusinessSchemeInfo(
+            "test-scheme",
+            "测试方案",
+            [
+                new BusinessSchemeWorkStepInfo("first-step", 1, "首个工步", "首个工步", 1),
+                new BusinessSchemeWorkStepInfo("selected-step", 2, "测试工步", "测试工步", 1)
+            ]));
         TestDataDisplayItem selectedStep = viewModel.WorkSteps.Last();
 
         viewModel.SelectedWorkStep = selectedStep;
+        Assert.That(viewModel.SingleStepTestCommand.CanExecute(null), Is.True);
         viewModel.SingleStepTestCommand.Execute(null);
+        Assert.That(viewModel.IsBusy, Is.True);
+        Assert.That(viewModel.SingleStepTestCommand.CanExecute(null), Is.False);
+        bool executionCompleted = WaitForDispatcherCondition(
+            () => !viewModel.IsBusy,
+            TimeSpan.FromSeconds(5));
 
         Assert.Multiple(() =>
         {
+            Assert.That(executionCompleted, Is.True);
             Assert.That(viewModel.CurrentWorkStepName, Is.EqualTo(selectedStep.WorkStep));
             Assert.That(viewModel.SelectedWorkStep, Is.SameAs(selectedStep));
             Assert.That(viewModel.RunningLogs.First(), Does.Contain(selectedStep.WorkStep));
+            Assert.That(viewModel.IsBusy, Is.False);
         });
     }
 
@@ -208,6 +226,32 @@ public sealed class DependencyInjectionRegressionTests
             null);
 
         Dispatcher.PushFrame(frame);
+    }
+
+    private static bool WaitForDispatcherCondition(Func<bool> condition, TimeSpan timeout)
+    {
+        if (condition())
+        {
+            return true;
+        }
+
+        Stopwatch stopwatch = Stopwatch.StartNew();
+        DispatcherFrame frame = new();
+        DispatcherTimer timer = new()
+        {
+            Interval = TimeSpan.FromMilliseconds(10)
+        };
+        timer.Tick += (_, _) =>
+        {
+            if (condition() || stopwatch.Elapsed >= timeout)
+            {
+                timer.Stop();
+                frame.Continue = false;
+            }
+        };
+        timer.Start();
+        Dispatcher.PushFrame(frame);
+        return condition();
     }
 
     private static void EnsureApplicationResources()

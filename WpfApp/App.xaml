@@ -19,6 +19,7 @@
                 <ResourceDictionary Source="Resources/TitleStyle.xaml" />
                 <ResourceDictionary Source="Resources/BorderStyle.xaml" />
                 <ResourceDictionary Source="Resources/LabelStyle.xaml" />
+                <ResourceDictionary Source="Resources/HomeDashboardStyles.xaml" />
                 <ResourceDictionary Source="Resources/ListBoxStyle.xaml" />
                 <ResourceDictionary Source="Resources/ContextMenuStyle.xaml" />
                 <ResourceDictionary Source="Resources/ToolTipStyle.xaml" />
