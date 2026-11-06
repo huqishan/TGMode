@@ -1,4 +1,4 @@
-using ControlLibrary;
+﻿using ControlLibrary;
 using Module.Business.Features.OperationEditing.ViewModels.PresentationModels;
 using Module.Business.Features.Scheme.ViewModels.PresentationModels;
 using Module.Business.Features.WorkStep.ViewModels.PresentationModels;
@@ -9,8 +9,8 @@ using System.Threading.Tasks;
 namespace Module.Business.Features.Scheme.ViewModels;
 
 /// <summary>
-/// 方案判断条件编辑器，按工步连续展示并统一编辑方案工步的输入参数和返回参数。
-/// 本编辑器只回写内存中的方案工步参数，不负责方案持久化。
+/// 方案判断条件编辑器，按业务连续展示并统一编辑方案业务的输入参数和返回参数。
+/// 本编辑器只回写内存中的方案业务参数，不负责方案持久化。
 /// </summary>
 public sealed class SchemeConditionEditorViewModel : ViewModelProperties
 {
@@ -37,7 +37,7 @@ public sealed class SchemeConditionEditorViewModel : ViewModelProperties
         CloseCommand = new RelayCommand(_ => Close());
     }
 
-    /// <summary>当前筛选后显示的工步分组。</summary>
+    /// <summary>当前筛选后显示的业务分组。</summary>
     public ObservableCollection<SchemeConditionWorkStepGroup> Groups { get; } = new();
 
     /// <summary>参数类型固定筛选集合。</summary>
@@ -83,7 +83,7 @@ public sealed class SchemeConditionEditorViewModel : ViewModelProperties
     public ICommand CloseCommand { get; }
 
     /// <summary>
-    /// 判断条件编辑结果已经回写方案工步参数时触发，供方案配置页面刷新当前参数副本。
+    /// 判断条件编辑结果已经回写方案业务参数时触发，供方案配置页面刷新当前参数副本。
     /// </summary>
     public event Action<SchemeProfile>? ParametersSaved;
 
@@ -92,15 +92,15 @@ public sealed class SchemeConditionEditorViewModel : ViewModelProperties
     #region 打开、保存与关闭
 
     /// <summary>
-    /// 打开编辑器并从方案工步实例生成连续分组参数行。
+    /// 打开编辑器并从方案业务实例生成连续分组参数行。
     /// </summary>
     public async Task OpenAsync(SchemeProfile scheme, IReadOnlyCollection<WorkStepProfile> configuredWorkSteps)
     {
         ArgumentNullException.ThrowIfNull(scheme);
         ArgumentNullException.ThrowIfNull(configuredWorkSteps);
 
-        // 先把每个方案工步与最新内置工步参数对齐：同名参数保留方案已编辑值，新参数按配置默认值补入，
-        // 已从内置工步删除的遗留参数继续保留但标记为停用，因此不会进入判断条件配置界面。
+        // 先把每个方案业务与最新内置业务参数对齐：同名参数保留方案已编辑值，新参数按配置默认值补入，
+        // 已从内置业务删除的遗留参数继续保留但标记为停用，因此不会进入判断条件配置界面。
         foreach (SchemeWorkStepItem workStep in scheme.Steps)
         {
             WorkStepProfile? configuredWorkStep = configuredWorkSteps.FirstOrDefault(item => string.Equals(
@@ -117,7 +117,7 @@ public sealed class SchemeConditionEditorViewModel : ViewModelProperties
             List<SchemeWorkStepParameterItem> latestInputs = configuredWorkStep.Operations
                 .OrderBy(operation => operation.Num)
                 .SelectMany(operation => operation.Parameters.OrderBy(parameter => parameter.Num))
-                .Where(parameter => string.Equals(parameter.ParameterType?.Trim(), "工步值", StringComparison.Ordinal))
+                .Where(parameter => string.Equals(parameter.ParameterType?.Trim(), "业务值", StringComparison.Ordinal))
                 .DistinctBy(parameter => parameter.Value?.Trim() ?? string.Empty, StringComparer.OrdinalIgnoreCase)
                 .Select(parameter => new SchemeWorkStepParameterItem
                 {
@@ -207,7 +207,7 @@ public sealed class SchemeConditionEditorViewModel : ViewModelProperties
                 List<InputParameter> configuredInputs = operations
                     .OrderBy(operation => operation.Num)
                     .SelectMany(operation => operation.Parameters.OrderBy(parameter => parameter.Num))
-                    .Where(parameter => string.Equals(parameter.ParameterType?.Trim(), "工步值", StringComparison.Ordinal))
+                    .Where(parameter => string.Equals(parameter.ParameterType?.Trim(), "业务值", StringComparison.Ordinal))
                     .DistinctBy(parameter => parameter.Value?.Trim() ?? string.Empty, StringComparer.OrdinalIgnoreCase)
                     .ToList();
                 List<SchemeConditionEditorItem> rows = new();
@@ -267,7 +267,7 @@ public sealed class SchemeConditionEditorViewModel : ViewModelProperties
     }
 
     /// <summary>
-    /// 将编辑行统一回写到对应方案工步参数集合，不执行方案持久化。
+    /// 将编辑行统一回写到对应方案业务参数集合，不执行方案持久化。
     /// </summary>
     private void Save()
     {

@@ -36,10 +36,10 @@ namespace Module.Business.Business
             return Environment.UserName;
         }
 
-        /// <summary>根据工步名称执行工步配置中的全部操作。</summary>
-        /// <param name="workStepName">工步配置名称。</param>
-        [BusinessOperation("ExecuteWorkStep", "执行工步")]
-        public static Task ExecuteWorkStep([BusinessParam("工步名称")] string workStepName)
+        /// <summary>根据业务名称执行业务配置中的全部操作。</summary>
+        /// <param name="workStepName">业务配置名称。</param>
+        [BusinessOperation("ExecuteWorkStep", "执行业务")]
+        public static Task ExecuteWorkStep([BusinessParam("业务名称")] string workStepName)
         {
             return SchemeExecutionService.ExecuteWorkStepByNameAsync(workStepName);
         }

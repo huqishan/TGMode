@@ -1,4 +1,4 @@
-using ControlLibrary;
+﻿using ControlLibrary;
 using Module.Business.Features.OperationEditing.ViewModels.PresentationModels;
 using Newtonsoft.Json;
 using System;
@@ -10,14 +10,14 @@ using System.Linq;
 namespace Module.Business.Features.WorkStep.ViewModels.PresentationModels;
 
 /// <summary>
-/// 独立工步配置。工步只描述可复用的操作步骤，不承载方案中的启用、排序和重测配置。
+/// 独立业务配置。业务只描述可复用的操作步骤，不承载方案中的启用、排序和重测配置。
 /// </summary>
 public sealed class WorkStepProfile : ViewModelProperties
 {
     #region 私有字段
 
     private string _id = Guid.NewGuid().ToString("N");
-    private string _name = "工步 1";
+    private string _name = "业务 1";
     private DateTime _lastModifiedAt = DateTime.Now;
     private ObservableCollection<WorkStepOperation> _operations = new();
     private bool _isModified;
@@ -137,7 +137,7 @@ public sealed class WorkStepProfile : ViewModelProperties
 
     private void Operation_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        // 勾选状态仅服务于界面批量操作，不属于工步业务内容，不应触发最后修改时间变化。
+        // 勾选状态仅服务于界面批量操作，不属于业务业务内容，不应触发最后修改时间变化。
         if (e.PropertyName != nameof(WorkStepOperation.IsChecked))
         {
             OnPropertyChanged(nameof(Operations));

@@ -1,4 +1,4 @@
-using Newtonsoft.Json.Linq;
+﻿using Newtonsoft.Json.Linq;
 using Shared.Infrastructure.PackMethod;
 using Shared.Models.MES;
 using System.Xml.Linq;
@@ -333,10 +333,10 @@ public class MesDataConvertTests
     }
 
     /// <summary>
-    /// 验证 SOAP StepModel 按工步名称展开，并沿用字段映射、空值过滤和父级命名空间。
+    /// 验证 SOAP StepModel 按业务名称展开，并沿用字段映射、空值过滤和父级命名空间。
     /// </summary>
     [Test]
-    public void Convert_SOAPStepModel_应按工步生成重复元素并映射字段()
+    public void Convert_SOAPStepModel_应按业务生成重复元素并映射字段()
     {
         MesDataInfoTree sourceData = CreateSourceData(
             new MesDataInfoItem("Step1_StepName", "Assembly"),

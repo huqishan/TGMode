@@ -1,4 +1,4 @@
-using ControlLibrary;
+﻿using ControlLibrary;
 using Module.Business.Features.OperationEditing.ViewModels.PresentationModels;
 using Newtonsoft.Json;
 using System;
@@ -13,7 +13,7 @@ using System.Threading.Tasks;
 namespace Module.Business.Features.Scheme.ViewModels.PresentationModels
 {
     /// <summary>
-    /// 方案工步抽屉中的内置工步参数展示行。
+    /// 方案业务抽屉中的内置业务参数展示行。
     /// </summary>
     public sealed class SchemeWorkStepParameterItem : ViewModelProperties
     {
@@ -39,7 +39,7 @@ namespace Module.Business.Features.Scheme.ViewModels.PresentationModels
         /// <summary>返回参数判断值。</summary>
         public string JudgeValue { get => _judgeValue; set => SetField(ref _judgeValue, value ?? string.Empty, true); }
 
-        /// <summary>方案执行时是否继续使用该参数；切换内置工步后遗留参数默认为不使用。</summary>
+        /// <summary>方案执行时是否继续使用该参数；切换内置业务后遗留参数默认为不使用。</summary>
         public bool IsUsed { get => _isUsed; set => SetField(ref _isUsed, value, true); }
 
         /// <summary>创建参数配置副本。</summary>
@@ -56,7 +56,7 @@ namespace Module.Business.Features.Scheme.ViewModels.PresentationModels
 
     /// <summary>
     /// 判断条件表格参数行，统一承载输入参数和返回参数。
-    /// 编辑过程使用独立字段，只有点击保存后才回写方案工步。
+    /// 编辑过程使用独立字段，只有点击保存后才回写方案业务。
     /// </summary>
     public sealed class SchemeConditionEditorItem : ViewModelProperties
     {
@@ -120,7 +120,7 @@ namespace Module.Business.Features.Scheme.ViewModels.PresentationModels
     }
 
     /// <summary>
-    /// 判断条件表格中的工步分组，工步信息作为纵向合并单元格显示。
+    /// 判断条件表格中的业务分组，业务信息作为纵向合并单元格显示。
     /// </summary>
     public sealed class SchemeConditionWorkStepGroup
     {
@@ -207,7 +207,7 @@ namespace Module.Business.Features.Scheme.ViewModels.PresentationModels
         }
 
         /// <summary>
-        /// 工步项集合
+        /// 业务项集合
         /// </summary>
         public ObservableCollection<SchemeWorkStepItem> Steps
         {
@@ -373,7 +373,7 @@ namespace Module.Business.Features.Scheme.ViewModels.PresentationModels
     }
 
     /// <summary>
-    /// 方案中的工步项
+    /// 方案中的业务项
     /// </summary>
     public sealed class SchemeWorkStepItem : ViewModelProperties
     {
@@ -396,7 +396,7 @@ namespace Module.Business.Features.Scheme.ViewModels.PresentationModels
         #region 属性
 
         /// <summary>
-        /// 工步唯一标识
+        /// 业务唯一标识
         /// </summary>
         public string Id
         {
@@ -414,7 +414,7 @@ namespace Module.Business.Features.Scheme.ViewModels.PresentationModels
         }
 
         /// <summary>
-        /// 工步名称
+        /// 业务名称
         /// </summary>
         public string StepName
         {
@@ -423,7 +423,7 @@ namespace Module.Business.Features.Scheme.ViewModels.PresentationModels
         }
 
         /// <summary>
-        /// 工步类型。
+        /// 业务类型。
         /// </summary>
         public string StepType
         {
@@ -477,14 +477,14 @@ namespace Module.Business.Features.Scheme.ViewModels.PresentationModels
             set => SetField(ref _isConfirmReTest, value);
         }
 
-        /// <summary>方案工步实例的可编辑输入参数。</summary>
+        /// <summary>方案业务实例的可编辑输入参数。</summary>
         public ObservableCollection<SchemeWorkStepParameterItem> InputParameters
         {
             get => _inputParameters;
             set => SetField(ref _inputParameters, value ?? new ObservableCollection<SchemeWorkStepParameterItem>());
         }
 
-        /// <summary>方案工步实例的可编辑显示返回参数。</summary>
+        /// <summary>方案业务实例的可编辑显示返回参数。</summary>
         public ObservableCollection<SchemeWorkStepParameterItem> ReturnParameters
         {
             get => _returnParameters;

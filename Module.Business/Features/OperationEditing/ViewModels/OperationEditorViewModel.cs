@@ -1,4 +1,4 @@
-using ControlLibrary;
+﻿using ControlLibrary;
 using ControlLibrary.Controls.MessageDialog;
 using Module.Business.Features.OperationEditing.Models;
 using Module.Business.Features.OperationEditing.Services;
@@ -75,7 +75,7 @@ public sealed class OperationEditorViewModel : ViewModelProperties
     public ObservableCollection<string> ParameterReturnValueOptions { get; } = new();
 
     /// <summary>
-    /// 工步值类型的统一候选集合，输入参数和条件执行左右参数共用同一实例。
+    /// 业务值类型的统一候选集合，输入参数和条件执行左右参数共用同一实例。
     /// </summary>
     public ObservableCollection<string> WorkStepValueOptions { get; } = new();
 
@@ -83,7 +83,7 @@ public sealed class OperationEditorViewModel : ViewModelProperties
     {
         "设置值",
         "返回值",
-        "工步值",
+        "业务值",
         "全局值",
     };
 
@@ -1029,8 +1029,8 @@ public sealed class OperationEditorViewModel : ViewModelProperties
     }
 
     /// <summary>
-    /// 使用当前尚未保存的编辑副本刷新工步值共享候选集合。
-    /// 编辑已有步骤时按原位置替换宿主数据，新增步骤时追加到当前工步末尾，保持候选的步骤顺序。
+    /// 使用当前尚未保存的编辑副本刷新业务值共享候选集合。
+    /// 编辑已有步骤时按原位置替换宿主数据，新增步骤时追加到当前业务末尾，保持候选的步骤顺序。
     /// </summary>
     public void RefreshWorkStepValueOptionsFromEditingOperation()
     {
@@ -1038,7 +1038,7 @@ public sealed class OperationEditorViewModel : ViewModelProperties
     }
 
     /// <summary>
-    /// 根据当前工步操作顺序建立编辑器所需的返回值上下文，方案层无需保存编辑临时状态。
+    /// 根据当前业务操作顺序建立编辑器所需的返回值上下文，方案层无需保存编辑临时状态。
     /// </summary>
     private void RefreshOperationContext(WorkStepOperation editingOperation, IEnumerable<WorkStepOperation>? operations)
     {
@@ -1052,7 +1052,7 @@ public sealed class OperationEditorViewModel : ViewModelProperties
 
         List<WorkStepOperation> previousOperations = operationList.Take(editingIndex).ToList();
 
-        // 工步值需要实时反映当前弹框中尚未保存的输入。已有步骤按原位置替换，新增步骤则作为当前工步的最后一步。
+        // 业务值需要实时反映当前弹框中尚未保存的输入。已有步骤按原位置替换，新增步骤则作为当前业务的最后一步。
         List<WorkStepOperation> workStepValueOperations = operationList.ToList();
         if (editingIndex < workStepValueOperations.Count)
         {
@@ -1063,25 +1063,25 @@ public sealed class OperationEditorViewModel : ViewModelProperties
             workStepValueOperations.Add(EditingOperation);
         }
 
-        // 工步值候选来自当前工步所有已有步骤的输入参数，不受当前编辑步骤位置限制。
+        // 业务值候选来自当前业务所有已有步骤的输入参数，不受当前编辑步骤位置限制。
         // 保持步骤顺序及步骤内参数顺序，重复值只保留首次出现的位置，不再按名称排序。
         _workStepValueOptions.Clear();
         _workStepValueOptions.AddRange(workStepValueOperations
             .SelectMany(item => item.Parameters)
-            .Where(parameter => string.Equals(parameter.ParameterType?.Trim(), "工步值", StringComparison.Ordinal)
+            .Where(parameter => string.Equals(parameter.ParameterType?.Trim(), "业务值", StringComparison.Ordinal)
                 && !string.IsNullOrWhiteSpace(parameter.Value))
             .Select(parameter => parameter.Value.Trim())
             .Distinct(StringComparer.OrdinalIgnoreCase));
 
-        // 条件执行左右参数也可以定义工步值名称，当前弹框中尚未保存的值需立即追加到共享候选。
+        // 条件执行左右参数也可以定义业务值名称，当前弹框中尚未保存的值需立即追加到共享候选。
         // 左参数优先于右参数，与界面编辑顺序保持一致；已在输入参数中出现的名称不重复添加。
         ConditionExecution condition = EditingOperation.ConditionExecution;
         IEnumerable<string> conditionWorkStepValues = new[]
         {
-            string.Equals(condition.LeftParameterType?.Trim(), "工步值", StringComparison.Ordinal)
+            string.Equals(condition.LeftParameterType?.Trim(), "业务值", StringComparison.Ordinal)
                 ? condition.LeftValue
                 : string.Empty,
-            string.Equals(condition.RightParameterType?.Trim(), "工步值", StringComparison.Ordinal)
+            string.Equals(condition.RightParameterType?.Trim(), "业务值", StringComparison.Ordinal)
                 ? condition.RightValue
                 : string.Empty
         };

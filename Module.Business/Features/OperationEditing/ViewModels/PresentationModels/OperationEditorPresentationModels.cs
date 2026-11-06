@@ -1,4 +1,4 @@
-using ControlLibrary;
+﻿using ControlLibrary;
 using Newtonsoft.Json;
 using System;
 using System.Collections.ObjectModel;
@@ -9,7 +9,7 @@ using System.Linq;
 namespace Module.Business.Features.OperationEditing.ViewModels.PresentationModels
 {
     /// <summary>
-    /// 业务方案工步操作
+    /// 业务方案业务操作
     /// </summary>
     public sealed class WorkStepOperation : ViewModelProperties
     {
@@ -294,7 +294,7 @@ namespace Module.Business.Features.OperationEditing.ViewModels.PresentationModel
         }
 
         /// <summary>
-        /// 将条件子实体的字段变化提升为步骤实体变化，保证工步页面能够识别未保存修改。
+        /// 将条件子实体的字段变化提升为步骤实体变化，保证业务页面能够识别未保存修改。
         /// </summary>
         private void ConditionExecution_PropertyChanged(object? sender, PropertyChangedEventArgs e)
         {

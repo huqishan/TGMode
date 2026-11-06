@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections;
 using System.Globalization;
 using System.Linq;
@@ -14,7 +14,7 @@ namespace Module.Business.Features.OperationEditing.Converters;
 public sealed class ParameterValueOptionsConverter : IMultiValueConverter
 {
     /// <summary>
-    /// 使用参数类型从返回值和工步值共享集合中选择一个作为下拉候选。
+    /// 使用参数类型从返回值和业务值共享集合中选择一个作为下拉候选。
     /// </summary>
     public object Convert(object[] values, Type targetType, object parameter, CultureInfo culture)
     {
@@ -22,7 +22,7 @@ public sealed class ParameterValueOptionsConverter : IMultiValueConverter
         return parameterType switch
         {
             "返回值" when values.Length > 1 && values[1] is IEnumerable returnValueOptions => returnValueOptions,
-            "工步值" when values.Length > 2 && values[2] is IEnumerable workStepValueOptions => workStepValueOptions,
+            "业务值" when values.Length > 2 && values[2] is IEnumerable workStepValueOptions => workStepValueOptions,
             _ => Array.Empty<string>()
         };
     }

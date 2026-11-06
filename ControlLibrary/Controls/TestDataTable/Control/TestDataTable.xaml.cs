@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Specialized;
@@ -242,7 +242,7 @@ public partial class TestDataTable : UserControl
             columnWidths.JudgmentCondition);
         headerGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(HeaderHeight) });
 
-        AddHeaderCell(headerGrid, 0, "工步");
+        AddHeaderCell(headerGrid, 0, "业务");
         AddHeaderCell(headerGrid, 1, "名称");
         AddHeaderCell(headerGrid, 2, "测试值");
         AddHeaderCell(headerGrid, 3, "结果");

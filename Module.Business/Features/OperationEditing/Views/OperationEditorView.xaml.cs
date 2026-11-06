@@ -1,4 +1,4 @@
-using Module.Business.Features.OperationEditing.ViewModels;
+﻿using Module.Business.Features.OperationEditing.ViewModels;
 using Module.Business.Features.OperationEditing.ViewModels.PresentationModels;
 using Module.Business.Features.OperationEditing.Models;
 using System.Collections.ObjectModel;
@@ -136,7 +136,7 @@ public partial class OperationEditorView : UserControl
     {
         EnableParameterEditing();
 
-        // CellEditEnding 发生时编辑控件尚未将最新参数类型和参数值回写到实体，延后到本次提交完成后刷新共享工步值集合。
+        // CellEditEnding 发生时编辑控件尚未将最新参数类型和参数值回写到实体，延后到本次提交完成后刷新共享业务值集合。
         Dispatcher.BeginInvoke(() => ViewModel?.RefreshWorkStepValueOptionsFromEditingOperation());
     }
 
@@ -153,7 +153,7 @@ public partial class OperationEditorView : UserControl
     }
 
     /// <summary>
-    /// 在任一参数值下拉框展开前刷新共享工步值集合，确保当前弹框中刚输入且尚未保存的新工步值立即可选。
+    /// 在任一参数值下拉框展开前刷新共享业务值集合，确保当前弹框中刚输入且尚未保存的新业务值立即可选。
     /// </summary>
     private void ParameterValueComboBox_DropDownOpened(object sender, EventArgs e)
     {

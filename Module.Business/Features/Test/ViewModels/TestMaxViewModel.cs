@@ -276,7 +276,7 @@ public sealed class TestMaxViewModel : ViewModelProperties, IDisposable
 
     #region 测试命令
 
-    /// <summary>执行当前选中的方案工步，并同步界面状态与工步结果。</summary>
+    /// <summary>执行当前选中的方案业务，并同步界面状态与业务结果。</summary>
     private async Task StartSingleStepTestAsync()
     {
         TestDataDisplayItem? targetWorkStep = SelectedWorkStep;
@@ -309,7 +309,7 @@ public sealed class TestMaxViewModel : ViewModelProperties, IDisposable
             TestStatus = result.IsSuccess ? "单步测试完成" : result.IsCanceled ? "已停止" : "单步测试失败";
             RunStateText = result.IsSuccess ? "测试OK" : result.IsCanceled ? "已停止" : "测试NG";
             StatusBrush = result.IsSuccess ? SuccessBrush : result.IsCanceled ? IdleBrush : FailureBrush;
-            AddLog(RunningLogs, $"{DateTime.Now:HH:mm:ss} 工步 {targetWorkStep.WorkStep}：{result.Message}");
+            AddLog(RunningLogs, $"{DateTime.Now:HH:mm:ss} 业务 {targetWorkStep.WorkStep}：{result.Message}");
             if (!result.IsSuccess && !result.IsCanceled)
             {
                 AddLog(ExceptionLogs, $"{DateTime.Now:HH:mm:ss} {result.Message}");
@@ -582,7 +582,7 @@ public sealed class TestMaxViewModel : ViewModelProperties, IDisposable
         FunctionLogs.Clear();
 
         RunningLogs.Add($"{DateTime.Now:HH:mm:ss} {StationName} 已加载默认方案，等待启动。");
-        RunningLogs.Add($"{DateTime.Now:HH:mm:ss} 当前工步：{CurrentWorkStepName}。");
+        RunningLogs.Add($"{DateTime.Now:HH:mm:ss} 当前业务：{CurrentWorkStepName}。");
         MesLogs.Add($"{DateTime.Now:HH:mm:ss} MES 连接正常，等待上传。");
         ExceptionLogs.Add($"{DateTime.Now:HH:mm:ss} 暂无异常。");
         FunctionLogs.Add($"{DateTime.Now:HH:mm:ss} 测试模块初始化完成。");
@@ -732,9 +732,9 @@ public sealed class TestProfileOption
         return new TestProfileOption(
             scheme.Id,
             scheme.SchemeName,
-            $"{workSteps.Length} 个工步",
+            $"{workSteps.Length} 个业务",
             workSteps.Length == 0
-                ? "未配置工步。"
+                ? "未配置业务。"
                 : string.Join(" / ", workSteps.Select(step => step.StepName)),
             workSteps);
     }

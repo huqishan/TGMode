@@ -1,4 +1,4 @@
-using ControlLibrary;
+﻿using ControlLibrary;
 using Module.Business.Features.OperationEditing.ViewModels;
 using Module.Business.Features.OperationEditing.ViewModels.PresentationModels;
 using Module.Business.Features.WorkStep.Services;
@@ -15,7 +15,7 @@ using System.Windows.Media;
 namespace Module.Business.Features.WorkStep.ViewModels;
 
 /// <summary>
-/// 工步配置页面视图模型，独立维护工步模板并组合现有步骤编辑器。
+/// 业务配置页面视图模型，独立维护业务模板并组合现有步骤编辑器。
 /// </summary>
 public sealed class WorkStepConfigurationViewModel : ViewModelProperties
 {
@@ -54,7 +54,7 @@ public sealed class WorkStepConfigurationViewModel : ViewModelProperties
             (SelectedOperation is not null || SelectedWorkStep.Operations.Any(operation => operation.IsChecked)));
 
         SelectedWorkStep = WorkSteps.FirstOrDefault();
-        SetStatus(WorkSteps.Count == 0 ? "暂无工步配置，请点击新建。" : $"已加载 {WorkSteps.Count} 个工步。", NeutralBrush);
+        SetStatus(WorkSteps.Count == 0 ? "暂无业务配置，请点击新建。" : $"已加载 {WorkSteps.Count} 个业务。", NeutralBrush);
     }
 
     public ObservableCollection<WorkStepProfile> WorkSteps { get; }
@@ -164,16 +164,16 @@ public sealed class WorkStepConfigurationViewModel : ViewModelProperties
 
     #endregion
 
-    #region 工步管理
+    #region 业务管理
 
     private void NewWorkStep()
     {
-        WorkStepProfile workStep = new() { Name = GenerateUniqueName("工步") };
+        WorkStepProfile workStep = new() { Name = GenerateUniqueName("业务") };
         WorkSteps.Add(workStep);
         SearchText = string.Empty;
         WorkStepsView.Refresh();
         SelectedWorkStep = workStep;
-        SetStatus("已新增工步，保存后生效。", SuccessBrush);
+        SetStatus("已新增业务，保存后生效。", SuccessBrush);
     }
 
     private void DuplicateWorkStep()
@@ -205,7 +205,7 @@ public sealed class WorkStepConfigurationViewModel : ViewModelProperties
         SearchText = string.Empty;
         WorkStepsView.Refresh();
         SelectedWorkStep = copy;
-        SetStatus($"已复制工步：{copy.Name}。", SuccessBrush);
+        SetStatus($"已复制业务：{copy.Name}。", SuccessBrush);
     }
 
     private void DeleteWorkStep()
@@ -218,12 +218,12 @@ public sealed class WorkStepConfigurationViewModel : ViewModelProperties
         int index = WorkSteps.IndexOf(SelectedWorkStep);
         WorkSteps.Remove(SelectedWorkStep);
         SelectedWorkStep = WorkSteps.Count == 0 ? null : WorkSteps[Math.Clamp(index, 0, WorkSteps.Count - 1)];
-        SetStatus("已删除工步，保存后生效。", WarningBrush);
+        SetStatus("已删除业务，保存后生效。", WarningBrush);
     }
 
     private void SaveWorkSteps()
     {
-        // 工步名称作为方案配置引用内置工步的标识，保存前按去除首尾空格且忽略大小写的规则判重。
+        // 业务名称作为方案配置引用内置业务的标识，保存前按去除首尾空格且忽略大小写的规则判重。
         string? duplicateName = WorkSteps
             .Where(workStep => !string.IsNullOrWhiteSpace(workStep.Name))
             .GroupBy(workStep => workStep.Name.Trim(), StringComparer.OrdinalIgnoreCase)
@@ -231,7 +231,7 @@ public sealed class WorkStepConfigurationViewModel : ViewModelProperties
             ?.Key;
         if (!string.IsNullOrWhiteSpace(duplicateName))
         {
-            SetStatus($"工步名称“{duplicateName}”重复，请修改后再保存。", WarningBrush);
+            SetStatus($"业务名称“{duplicateName}”重复，请修改后再保存。", WarningBrush);
             return;
         }
 
@@ -265,7 +265,7 @@ public sealed class WorkStepConfigurationViewModel : ViewModelProperties
             throw;
         }
 
-        SetStatus($"已保存 {WorkSteps.Count} 个工步。", SuccessBrush);
+        SetStatus($"已保存 {WorkSteps.Count} 个业务。", SuccessBrush);
     }
 
     #endregion
@@ -319,7 +319,7 @@ public sealed class WorkStepConfigurationViewModel : ViewModelProperties
         }
 
         RenumberOperations();
-        SetStatus("步骤内容已更新，保存工步后生效。", SuccessBrush);
+        SetStatus("步骤内容已更新，保存业务后生效。", SuccessBrush);
     }
 
     public void MoveOperation(WorkStepOperation source, WorkStepOperation target, bool insertAfter)
@@ -350,7 +350,7 @@ public sealed class WorkStepConfigurationViewModel : ViewModelProperties
     }
 
     /// <summary>
-    /// 将用户输入的序号解释为步骤在当前工步中的目标位置。
+    /// 将用户输入的序号解释为步骤在当前业务中的目标位置。
     /// 移动完成后统一连续编号，避免直接排序产生重复序号和位置不确定的问题。
     /// </summary>
     public void MoveOperationToNumber(WorkStepOperation operation)
@@ -476,7 +476,7 @@ public sealed class WorkStepConfigurationViewModel : ViewModelProperties
 
     private string GenerateUniqueName(string baseName)
     {
-        string normalizedBaseName = string.IsNullOrWhiteSpace(baseName) ? "工步" : baseName.Trim();
+        string normalizedBaseName = string.IsNullOrWhiteSpace(baseName) ? "业务" : baseName.Trim();
         if (WorkSteps.All(workStep => !string.Equals(workStep.Name, normalizedBaseName, StringComparison.OrdinalIgnoreCase)))
         {
             return normalizedBaseName;

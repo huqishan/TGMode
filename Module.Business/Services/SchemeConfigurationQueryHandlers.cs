@@ -1,4 +1,4 @@
-using ControlLibrary.Models.MediatorModels.Business;
+﻿using ControlLibrary.Models.MediatorModels.Business;
 using Module.Business.Features.StationConfiguration;
 using Module.Business.Features.Scheme.ViewModels.PresentationModels;
 using Module.Business.Features.WorkStep.Services;
@@ -12,7 +12,7 @@ using System.Threading.Tasks;
 namespace Module.Business.Services;
 
 /// <summary>
-/// 业务方案查询请求处理器，用于向其他模块提供方案与工步摘要。
+/// 业务方案查询请求处理器，用于向其他模块提供方案与业务摘要。
 /// </summary>
 public sealed class GetBusinessSchemesRequestHandler
     : IRequestHandler<GetBusinessSchemesRequest, GetBusinessSchemesResponse>
@@ -60,10 +60,10 @@ public sealed class GetBusinessSchemesRequestHandler
     #region 名称解析
 
     /// <summary>
-    /// 解析方案工步显示名称，优先使用工步模板名。
+    /// 解析方案业务显示名称，优先使用业务模板名。
     /// </summary>
-    /// <param name="step">方案工步配置。</param>
-    /// <returns>用于展示的工步名称。</returns>
+    /// <param name="step">方案业务配置。</param>
+    /// <returns>用于展示的业务名称。</returns>
     private static string ResolveWorkStepName(SchemeWorkStepItem step)
     {
         return step.StepName;

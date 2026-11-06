@@ -1,4 +1,4 @@
-using Module.Business.Features.Scheme.ViewModels;
+﻿using Module.Business.Features.Scheme.ViewModels;
 using Module.Business.Features.Scheme.ViewModels.PresentationModels;
 using Module.Business.Models;
 using System;
@@ -16,7 +16,7 @@ using System.Windows.Threading;
 namespace Module.Business.Features.Scheme.Views
 {
     /// <summary>
-    /// 方案配置视图，负责方案与方案工步的维护及拖拽排序。
+    /// 方案配置视图，负责方案与方案业务的维护及拖拽排序。
     /// </summary>
     public partial class SchemeConfigurationView : UserControl
     {
@@ -92,7 +92,7 @@ namespace Module.Business.Features.Scheme.Views
         }
 
         /// <summary>
-        /// 工步参数抽屉状态变化时播放底部侧滑动画。
+        /// 业务参数抽屉状态变化时播放底部侧滑动画。
         /// </summary>
         private void ViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
@@ -108,7 +108,7 @@ namespace Module.Business.Features.Scheme.Views
         }
 
         /// <summary>
-        /// 点击遮罩时关闭工步参数抽屉。
+        /// 点击遮罩时关闭业务参数抽屉。
         /// </summary>
         private void WorkStepParameterDrawerBackdrop_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
@@ -116,7 +116,7 @@ namespace Module.Business.Features.Scheme.Views
         }
 
         /// <summary>
-        /// 点击遮罩时关闭批量工步浏览抽屉。
+        /// 点击遮罩时关闭批量业务浏览抽屉。
         /// </summary>
         private void BatchWorkStepDrawerBackdrop_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
@@ -124,7 +124,7 @@ namespace Module.Business.Features.Scheme.Views
         }
 
         /// <summary>
-        /// 用户改变内置工步下拉选项时仅同步工步名称；输入、返回参数在保存后刷新。
+        /// 用户改变内置业务下拉选项时仅同步业务名称；输入、返回参数在保存后刷新。
         /// </summary>
         private void WorkStepTypeComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
@@ -178,7 +178,7 @@ namespace Module.Business.Features.Scheme.Views
         }
 
         /// <summary>
-        /// 根据视图模型状态更新批量工步抽屉的透明度、横向偏移和鼠标命中状态。
+        /// 根据视图模型状态更新批量业务抽屉的透明度、横向偏移和鼠标命中状态。
         /// </summary>
         private void UpdateBatchWorkStepDrawerVisual(bool animate)
         {
@@ -230,7 +230,7 @@ namespace Module.Business.Features.Scheme.Views
         /// <summary>
         #endregion
 
-        #region 方案工步拖拽
+        #region 方案业务拖拽
 
         /// <summary>
         /// 处理界面按钮点击事件。
@@ -247,7 +247,7 @@ namespace Module.Business.Features.Scheme.Views
         }
 
         /// <summary>
-        /// 提交输入参数和返回参数表格的当前编辑，再保存方案工步参数。
+        /// 提交输入参数和返回参数表格的当前编辑，再保存方案业务参数。
         /// </summary>
         private void SaveWorkStepParameterDrawerButton_Click(object sender, RoutedEventArgs e)
         {
@@ -509,7 +509,7 @@ namespace Module.Business.Features.Scheme.Views
         #endregion
 
         /// <summary>
-        /// 双击方案工步行时打开底部参数编辑抽屉；编辑控件自身的双击仍保留原行为。
+        /// 双击方案业务行时打开底部参数编辑抽屉；编辑控件自身的双击仍保留原行为。
         /// </summary>
         private void SchemeStepsDataGrid_MouseDoubleClick(object sender, MouseButtonEventArgs e)
         {
@@ -525,7 +525,7 @@ namespace Module.Business.Features.Scheme.Views
         }
 
         /// <summary>
-        /// 记录批量工步列表中的拖拽起点和待添加的内置工步名称。
+        /// 记录批量业务列表中的拖拽起点和待添加的内置业务名称。
         /// </summary>
         private void BatchWorkStepsListBox_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
@@ -534,7 +534,7 @@ namespace Module.Business.Features.Scheme.Views
         }
 
         /// <summary>
-        /// 鼠标移动超过系统拖拽阈值后启动内置工步复制拖拽。
+        /// 鼠标移动超过系统拖拽阈值后启动内置业务复制拖拽。
         /// </summary>
         private void BatchWorkStepsListBox_PreviewMouseMove(object sender, MouseEventArgs e)
         {
@@ -558,7 +558,7 @@ namespace Module.Business.Features.Scheme.Views
         }
 
         /// <summary>
-        /// 序号单元格提交后按照输入值移动工步，并重新生成连续序号。
+        /// 序号单元格提交后按照输入值移动业务，并重新生成连续序号。
         /// 延迟到 DataGrid 完成编辑事务后再移动集合，避免提交过程中修改 ItemsSource。
         /// </summary>
         private void SchemeStepsDataGrid_CellEditEnding(object sender, DataGridCellEditEndingEventArgs e)
@@ -649,7 +649,7 @@ namespace Module.Business.Features.Scheme.Views
         }
 
         /// <summary>
-        /// 完成当前工步内的步骤移动并清理拖拽状态。
+        /// 完成当前业务内的步骤移动并清理拖拽状态。
         /// </summary>
         private void OperationsDataGrid_Drop(object sender, DragEventArgs e)
         {

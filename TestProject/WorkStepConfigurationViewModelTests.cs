@@ -1,4 +1,4 @@
-using Module.Business.Features.OperationEditing.ViewModels.PresentationModels;
+﻿using Module.Business.Features.OperationEditing.ViewModels.PresentationModels;
 using Module.Business.Features.WorkStep.ViewModels;
 using Module.Business.Features.WorkStep.ViewModels.PresentationModels;
 using System.Collections.ObjectModel;
@@ -6,7 +6,7 @@ using System.Collections.ObjectModel;
 namespace TestProject;
 
 /// <summary>
-/// 工步配置步骤排序回归测试。
+/// 业务配置步骤排序回归测试。
 /// </summary>
 public sealed class WorkStepConfigurationViewModelTests
 {
@@ -20,7 +20,7 @@ public sealed class WorkStepConfigurationViewModelTests
         WorkStepOperation third = new() { Num = 3, Summary = "第三步" };
         WorkStepProfile workStep = new()
         {
-            Name = "排序测试工步",
+            Name = "排序测试业务",
             Operations = new ObservableCollection<WorkStepOperation> { first, second, third }
         };
         WorkStepConfigurationViewModel viewModel = new();

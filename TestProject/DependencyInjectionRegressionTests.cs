@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Diagnostics;
 using Autofac;
 using ControlLibrary.Controls.MessageDialog;
@@ -161,8 +161,8 @@ public sealed class DependencyInjectionRegressionTests
             "test-scheme",
             "测试方案",
             [
-                new BusinessSchemeWorkStepInfo("first-step", 1, "首个工步", "首个工步", 1),
-                new BusinessSchemeWorkStepInfo("selected-step", 2, "测试工步", "测试工步", 1)
+                new BusinessSchemeWorkStepInfo("first-step", 1, "首个业务", "首个业务", 1),
+                new BusinessSchemeWorkStepInfo("selected-step", 2, "测试业务", "测试业务", 1)
             ]));
         TestDataDisplayItem selectedStep = viewModel.WorkSteps.Last();
 

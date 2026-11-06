@@ -1,4 +1,4 @@
-using Module.Business.Features.OperationEditing.ViewModels.PresentationModels;
+﻿using Module.Business.Features.OperationEditing.ViewModels.PresentationModels;
 using Module.Business.Features.WorkStep.ViewModels;
 using Module.Business.Features.WorkStep.ViewModels.PresentationModels;
 using System;
@@ -13,7 +13,7 @@ using System.Windows.Threading;
 namespace Module.Business.Features.WorkStep.Views;
 
 /// <summary>
-/// 工步配置视图，负责提交界面编辑以及步骤拖拽交互。
+/// 业务配置视图，负责提交界面编辑以及步骤拖拽交互。
 /// </summary>
 public partial class WorkStepConfigurationView : UserControl
 {

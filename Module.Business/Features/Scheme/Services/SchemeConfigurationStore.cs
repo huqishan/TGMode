@@ -1,4 +1,4 @@
-using Module.Business.Models;
+﻿using Module.Business.Models;
 using Module.Business.Features.Scheme.ViewModels.PresentationModels;
 using Module.Business.Features.OperationEditing.ViewModels.PresentationModels;
 using System;
@@ -142,13 +142,13 @@ public static class SchemeConfigurationStore
 
     #endregion
 
-    #region 工步与操作规范化
+    #region 业务与操作规范化
 
     /// <summary>
-    /// 规范化单个工步操作。
+    /// 规范化单个业务操作。
     /// </summary>
-    /// <param name="operation">原始工步操作。</param>
-    /// <returns>规范化后的工步操作。</returns>
+    /// <param name="operation">原始业务操作。</param>
+    /// <returns>规范化后的业务操作。</returns>
     private static WorkStepOperation NormalizeOperation(WorkStepOperation operation)
     {
         string operationObject = ResolveOperationObject(operation);
@@ -194,7 +194,7 @@ public static class SchemeConfigurationStore
     /// <summary>
     /// 根据旧版和新版字段解析操作对象。
     /// </summary>
-    /// <param name="operation">需要解析的工步操作。</param>
+    /// <param name="operation">需要解析的业务操作。</param>
     /// <returns>标准化操作对象名称。</returns>
     private static string ResolveOperationObject(WorkStepOperation operation)
     {
@@ -280,7 +280,7 @@ public static class SchemeConfigurationStore
 
                 if (string.IsNullOrWhiteSpace(normalizedStep.StepName))
                 {
-                    normalizedStep.StepName = $"工步 {normalizedSteps.Count + 1}";
+                    normalizedStep.StepName = $"业务 {normalizedSteps.Count + 1}";
                 }
 
                 normalizedSteps.Add(normalizedStep);

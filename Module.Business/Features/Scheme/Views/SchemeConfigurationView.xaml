@@ -1,4 +1,4 @@
-<UserControl x:Class="Module.Business.Features.Scheme.Views.SchemeConfigurationView"
+﻿<UserControl x:Class="Module.Business.Features.Scheme.Views.SchemeConfigurationView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
@@ -34,7 +34,7 @@
                         </DockPanel>
                         <TextBlock Margin="0,8,0,0"
                                    Foreground="{DynamicResource AppMutedTextBrush}"
-                                   Text="{DynamicResource 维护方案、工步顺序与步骤内容。}"
+                                   Text="{DynamicResource 维护方案、业务顺序与步骤内容。}"
                                    TextWrapping="Wrap" />
                     </StackPanel>
 
@@ -115,7 +115,7 @@
                 </Grid>
             </Border>
 
-            <!-- 批量工步抽屉支持筛选并将内置工步拖入右侧方案工步表格。 -->
+            <!-- 批量业务抽屉支持筛选并将内置业务拖入右侧方案业务表格。 -->
             <Grid x:Name="BatchWorkStepDrawerHost"
                   Panel.ZIndex="33"
                   IsHitTestVisible="False"
@@ -140,7 +140,7 @@
                         <DockPanel LastChildFill="False">
                             <TextBlock VerticalAlignment="Center"
                                        Style="{StaticResource SectionTitleStyle}"
-                                       Text="内置工步" />
+                                       Text="内置业务" />
                             <Button Margin="12,0,0,0"
                                     DockPanel.Dock="Right"
                                     Content="关闭"
@@ -150,7 +150,7 @@
 
                         <searchBox:SearchBox Grid.Row="1"
                                              Margin="0,16,0,16"
-                                             PlaceholderText="搜索内置工步..."
+                                             PlaceholderText="搜索内置业务..."
                                              Text="{Binding BatchWorkStepSearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
 
                         <ListBox x:Name="BatchWorkStepsListBox"
@@ -174,7 +174,7 @@
             </Grid>
         </Grid>
 
-        <!-- 右侧方案工步与参数区域 -->
+        <!-- 右侧方案业务与参数区域 -->
         <Grid Grid.Column="2"
               HorizontalAlignment="Stretch"
               VerticalAlignment="Stretch">
@@ -215,7 +215,7 @@
                                     <ColumnDefinition />
                                 </Grid.ColumnDefinitions>
 
-                                <!-- 方案工步表格区域 -->
+                                <!-- 方案业务表格区域 -->
                                 <Grid>
                                     <Grid.RowDefinitions>
                                         <RowDefinition Height="Auto" />
@@ -225,19 +225,19 @@
 
                                     <DockPanel Grid.Row="0" LastChildFill="False">
                                         <StackPanel DockPanel.Dock="Left">
-                                            <TextBlock Style="{StaticResource SectionTitleStyle}" Text="{DynamicResource 方案工步}" />
+                                            <TextBlock Style="{StaticResource SectionTitleStyle}" Text="{DynamicResource 方案业务}" />
                                         </StackPanel>
 
                                         <StackPanel DockPanel.Dock="Right"
                                                     HorizontalAlignment="Right"
                                                     Orientation="Horizontal">
                                             <Button Margin="12,0,0,0"
-                                                    Content="{DynamicResource 添加工步}"
+                                                    Content="{DynamicResource 添加业务}"
                                                     Command="{Binding AddWorkStepToSchemeCommand}"
                                                     Style="{StaticResource PrimaryActionButtonStyle}" />
-                                            <!-- 批量增加工步功能入口，当前仅提供内置工步浏览和筛选界面。 -->
+                                            <!-- 批量增加业务功能入口，当前仅提供内置业务浏览和筛选界面。 -->
                                             <Button Margin="12,0,0,0"
-                                                    Content="批量增加工步"
+                                                    Content="批量增加业务"
                                                     Command="{Binding OpenBatchWorkStepDrawerCommand}"
                                                     Style="{StaticResource PrimaryActionButtonStyle}" />
                                             <Button Margin="12,0,0,0"
@@ -250,7 +250,7 @@
                                     <TextBlock Grid.Row="1"
                                                Margin="0,8,0,10"
                                                Foreground="{DynamicResource AppMutedTextBrush}"
-                                               Text="{DynamicResource 直接在方案中维护工步，拖拽可调整顺序。}"
+                                               Text="{DynamicResource 直接在方案中维护业务，拖拽可调整顺序。}"
                                                TextWrapping="Wrap" />
 
                                     <Grid Grid.Row="2">
@@ -272,7 +272,7 @@
                                             <DataGrid.ContextMenu>
                                                 <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}"
                                                              Style="{StaticResource StructureContextMenuStyle}">
-                                                    <MenuItem Header="{DynamicResource 添加工步}"
+                                                    <MenuItem Header="{DynamicResource 添加业务}"
                                                               Command="{Binding AddWorkStepToSchemeCommand}"
                                                               Style="{StaticResource StructureContextMenuItemStyle}">
                                                         <MenuItem.Icon>
@@ -284,7 +284,7 @@
                                                             </Viewbox>
                                                         </MenuItem.Icon>
                                                     </MenuItem>
-                                                    <MenuItem Header="{DynamicResource 删除工步}"
+                                                    <MenuItem Header="{DynamicResource 删除业务}"
                                                               Command="{Binding RemoveWorkStepFromSchemeCommand}"
                                                               Style="{StaticResource StructureContextMenuItemStyle}">
                                                         <MenuItem.Icon>
@@ -326,7 +326,7 @@
                                                                     EditingElementStyle="{StaticResource CellTextBoxStyle}" />
 
                                                 <DataGridTextColumn Width="1.45*"
-                                                                    Header="{DynamicResource 工步名称}"
+                                                                    Header="{DynamicResource 业务名称}"
                                                                     IsReadOnly="True"
                                                                     Binding="{Binding StepName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                                                     ElementStyle="{StaticResource CellTextBlockStyle}"
@@ -353,7 +353,7 @@
                                             </DataGrid.Columns>
                                         </DataGrid>
 
-                                        <!-- 工步拖拽排序时显示的插入指示线 -->
+                                        <!-- 业务拖拽排序时显示的插入指示线 -->
                                         <Canvas x:Name="SchemeStepDropIndicatorCanvas"
                                                 HorizontalAlignment="Stretch"
                                                 VerticalAlignment="Stretch"
@@ -365,7 +365,7 @@
                                                     Background="{DynamicResource PrimaryButtonBrush}" />
                                         </Canvas>
 
-                                        <!-- 工步参数从页面下方向上滑入，编辑值直接绑定当前方案工步。 -->
+                                        <!-- 业务参数从页面下方向上滑入，编辑值直接绑定当前方案业务。 -->
                                         <Grid x:Name="WorkStepParameterDrawerHost"
                                               Grid.ColumnSpan="3"
                                               Panel.ZIndex="32"
@@ -391,10 +391,10 @@
 
                                                     <DockPanel LastChildFill="False">
                                                         <StackPanel DockPanel.Dock="Left">
-                                                            <TextBlock Style="{StaticResource SectionTitleStyle}" Text="{DynamicResource 工步参数}" />
+                                                            <TextBlock Style="{StaticResource SectionTitleStyle}" Text="{DynamicResource 业务参数}" />
                                                             <TextBlock Margin="0,6,0,0"
                                                                        Foreground="{DynamicResource AppMutedTextBrush}"
-                                                                       Text="配置工步执行参数，保存后才会写入方案。" />
+                                                                       Text="配置业务执行参数，保存后才会写入方案。" />
                                                         </StackPanel>
                                                         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
                                                             <Button Content="{DynamicResource 关闭}"
@@ -413,7 +413,7 @@
                                                             <RowDefinition Height="Auto" />
                                                         </Grid.RowDefinitions>
 
-                                                        <!-- 第一行：工步名称与内置工步并排，宽度随窗体自适应 -->
+                                                        <!-- 第一行：业务名称与内置业务并排，宽度随窗体自适应 -->
                                                         <Grid>
                                                             <Grid.ColumnDefinitions>
                                                                 <ColumnDefinition Width="*" />
@@ -422,7 +422,7 @@
                                                             </Grid.ColumnDefinitions>
 
                                                             <StackPanel Grid.Column="0">
-                                                                <TextBlock VerticalAlignment="Center" Text="工步名称" />
+                                                                <TextBlock VerticalAlignment="Center" Text="业务名称" />
                                                                 <TextBox Margin="0,8,0,0"
                                                                          MinHeight="38"
                                                                          Style="{StaticResource InputTextBoxStyle}"
@@ -430,7 +430,7 @@
                                                             </StackPanel>
 
                                                             <StackPanel Grid.Column="2">
-                                                                <TextBlock VerticalAlignment="Center" Text="内置工步" />
+                                                                <TextBlock VerticalAlignment="Center" Text="内置业务" />
                                                                 <ComboBox Margin="0,8,0,0"
                                                                           MinHeight="38"
                                                                           Style="{StaticResource InputComboBoxStyle}"
@@ -512,7 +512,7 @@
                                                 Command="{Binding CleanupUnusedParametersCommand}"
                                                 Content="清理参数"
                                                 Style="{StaticResource ActionButtonStyle}"
-                                                ToolTip="清理当前工步中已标记为不使用的输入参数和返回参数" />
+                                                ToolTip="清理当前业务中已标记为不使用的输入参数和返回参数" />
 
                                         <DataGrid x:Name="InvokeParameterDataGrid"
                                                   Grid.Row="1"
@@ -525,7 +525,7 @@
                                             <DataGrid.Columns>
                                                 <DataGridTextColumn Width="0.5*"
                                                                     IsReadOnly="True"
-                                                                    Header="工步值名称"
+                                                                    Header="业务值名称"
                                                                     ElementStyle="{StaticResource CellTextBlockStyle}"
                                                                     Binding="{Binding Name}" />
                                                 <DataGridTemplateColumn Width="*" Header="{DynamicResource 参数值}">

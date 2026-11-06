@@ -1,4 +1,4 @@
-using ControlLibrary;
+﻿using ControlLibrary;
 using ControlLibrary.Controls.Loading;
 using Module.Business.Models;
 using Module.Business.Features.OperationEditing.ViewModels.PresentationModels;
@@ -57,7 +57,7 @@ public sealed class SchemeConfigurationViewModel : ViewModelProperties
     public ObservableCollection<SchemeProfile> Schemes => _catalog.Schemes;
 
     /// <summary>
-    /// 工步配置中已有的工步名称集合，供方案工步类型下拉选择。
+    /// 业务配置中已有的业务名称集合，供方案业务类型下拉选择。
     /// </summary>
     public ObservableCollection<string> WorkStepTypes { get; } = new(
         WorkStepConfigurationStore.Load()
@@ -66,10 +66,10 @@ public sealed class SchemeConfigurationViewModel : ViewModelProperties
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .OrderBy(name => name));
 
-    /// <summary>当前内置工步中类型为“工步值”的输入参数。</summary>
+    /// <summary>当前内置业务中类型为“业务值”的输入参数。</summary>
     public ObservableCollection<SchemeWorkStepParameterItem> WorkStepInputParameters { get; } = new();
 
-    /// <summary>当前内置工步中勾选显示到界面的返回参数。</summary>
+    /// <summary>当前内置业务中勾选显示到界面的返回参数。</summary>
     public ObservableCollection<SchemeWorkStepParameterItem> WorkStepReturnParameters { get; } = new();
 
     /// <summary>返回参数判断符号固定集合。</summary>
@@ -90,7 +90,7 @@ public sealed class SchemeConfigurationViewModel : ViewModelProperties
         "白名单",
     };
     /// <summary>
-    /// 根据内置工步名称刷新抽屉中的输入参数和返回参数展示。
+    /// 根据内置业务名称刷新抽屉中的输入参数和返回参数展示。
     /// </summary>
     public void SelectBuiltInWorkStep(string workStepName)
     {
@@ -105,8 +105,8 @@ public sealed class SchemeConfigurationViewModel : ViewModelProperties
 
         foreach (InputParameter parameter in workStep.Operations
                      .SelectMany(operation => operation.Parameters)
-                     .Where(parameter => string.Equals(parameter.ParameterType?.Trim(), "工步值", StringComparison.Ordinal))
-                     // 同一内置工步的多个步骤可能引用同名工步值，界面只保留首次出现项。
+                     .Where(parameter => string.Equals(parameter.ParameterType?.Trim(), "业务值", StringComparison.Ordinal))
+                     // 同一内置业务的多个步骤可能引用同名业务值，界面只保留首次出现项。
                      .DistinctBy(
                          parameter => parameter.Value?.Trim() ?? string.Empty,
                          StringComparer.OrdinalIgnoreCase))
@@ -142,7 +142,7 @@ public sealed class SchemeConfigurationViewModel : ViewModelProperties
     }
 
     /// <summary>
-    /// 切换内置工步并合并参数；新工步中不存在的旧参数继续保留，但标记为不使用。
+    /// 切换内置业务并合并参数；新业务中不存在的旧参数继续保留，但标记为不使用。
     /// </summary>
     public void SwitchBuiltInWorkStep(string workStepName)
     {
@@ -203,14 +203,14 @@ public sealed class SchemeConfigurationViewModel : ViewModelProperties
     public ICollectionView SchemesView { get; private set; } = null!;
 
     /// <summary>
-    /// 批量工步抽屉中经过名称筛选的内置工步视图。
+    /// 批量业务抽屉中经过名称筛选的内置业务视图。
     /// </summary>
     public ICollectionView BatchWorkStepsView { get; private set; } = null!;
 
     public string CurrentSchemeStepName => SelectedSchemeStep?.StepName ?? string.Empty;
 
     /// <summary>
-    /// 是否显示方案工步参数配置抽屉。
+    /// 是否显示方案业务参数配置抽屉。
     /// </summary>
     public bool IsWorkStepParameterDrawerOpen
     {
@@ -219,7 +219,7 @@ public sealed class SchemeConfigurationViewModel : ViewModelProperties
     }
 
     /// <summary>
-    /// 是否显示批量工步浏览抽屉。
+    /// 是否显示批量业务浏览抽屉。
     /// </summary>
     public bool IsBatchWorkStepDrawerOpen
     {
@@ -228,7 +228,7 @@ public sealed class SchemeConfigurationViewModel : ViewModelProperties
     }
 
     /// <summary>
-    /// 批量工步抽屉中的名称筛选文本。
+    /// 批量业务抽屉中的名称筛选文本。
     /// </summary>
     public string BatchWorkStepSearchText
     {
@@ -243,7 +243,7 @@ public sealed class SchemeConfigurationViewModel : ViewModelProperties
     }
 
     /// <summary>
-    /// 抽屉中正在编辑的工步副本；保存前不会修改方案集合。
+    /// 抽屉中正在编辑的业务副本；保存前不会修改方案集合。
     /// </summary>
     public SchemeWorkStepItem? EditingSchemeWorkStep
     {
@@ -316,12 +316,12 @@ public sealed class SchemeConfigurationViewModel : ViewModelProperties
 
     #endregion
 
-    #region 当前方案工步
+    #region 当前方案业务
 
     private SchemeWorkStepItem? _selectedSchemeStep;
 
     /// <summary>
-    /// 当前方案工步。
+    /// 当前方案业务。
     /// </summary>
     public SchemeWorkStepItem? SelectedSchemeStep
     {
@@ -333,7 +333,7 @@ public sealed class SchemeConfigurationViewModel : ViewModelProperties
                 return;
             }
 
-            // 右侧参数表格直接编辑页面集合，切换工步前必须先回写旧工步，避免被新工步默认值覆盖。
+            // 右侧参数表格直接编辑页面集合，切换业务前必须先回写旧业务，避免被新业务默认值覆盖。
             SaveDisplayedParametersToSelectedSchemeStep();
             if (_selectedSchemeStep is not null)
             {
@@ -347,13 +347,13 @@ public sealed class SchemeConfigurationViewModel : ViewModelProperties
                 _selectedSchemeStep.PropertyChanged += SelectedSchemeStep_PropertyChanged;
             }
 
-            // 表格选中工步切换时先生成最新默认参数，再按参数名称合并方案工步已保存的数据。
-            // 已存在的名称保留实例值，仅补充内置工步后来新增的参数名称。
+            // 表格选中业务切换时先生成最新默认参数，再按参数名称合并方案业务已保存的数据。
+            // 已存在的名称保留实例值，仅补充内置业务后来新增的参数名称。
             WorkStepInputParameters.Clear();
             WorkStepReturnParameters.Clear();
             if (_selectedSchemeStep is not null)
             {
-                // 每次切换方案工步都重新加载工步配置，确保参数结构来自当前最新内置工步。
+                // 每次切换方案业务都重新加载业务配置，确保参数结构来自当前最新内置业务。
                 RefreshBuiltInWorkSteps();
                 SelectBuiltInWorkStep(_selectedSchemeStep.StepType);
                 if (_selectedSchemeStep.InputParameters.Count > 0)
@@ -462,9 +462,9 @@ public sealed class SchemeConfigurationViewModel : ViewModelProperties
 
     #endregion
 
-    #region 方案工步启用列头的全选状态
+    #region 方案业务启用列头的全选状态
     /// <summary>
-    /// 方案工步启用列头的全选状态。
+    /// 方案业务启用列头的全选状态。
     /// </summary>
     public bool AreAllSchemeStepsStartupEnabled
     {
@@ -520,42 +520,42 @@ public sealed class SchemeConfigurationViewModel : ViewModelProperties
     public ICommand OpenConditionEditorCommand { get; private set; } = null!;
 
     /// <summary>
-    /// 向当前方案新增一个工步。
+    /// 向当前方案新增一个业务。
     /// </summary>
     public ICommand AddWorkStepToSchemeCommand { get; private set; } = null!;
 
     /// <summary>
-    /// 打开批量工步浏览抽屉。
+    /// 打开批量业务浏览抽屉。
     /// </summary>
     public ICommand OpenBatchWorkStepDrawerCommand { get; private set; } = null!;
 
     /// <summary>
-    /// 关闭批量工步浏览抽屉。
+    /// 关闭批量业务浏览抽屉。
     /// </summary>
     public ICommand CloseBatchWorkStepDrawerCommand { get; private set; } = null!;
 
     /// <summary>
-    /// 从当前方案移除选中的工步。
+    /// 从当前方案移除选中的业务。
     /// </summary>
     public ICommand RemoveWorkStepFromSchemeCommand { get; private set; } = null!;
 
     /// <summary>
-    /// 打开当前方案工步的参数配置抽屉。
+    /// 打开当前方案业务的参数配置抽屉。
     /// </summary>
     public ICommand OpenWorkStepParameterDrawerCommand { get; private set; } = null!;
 
     /// <summary>
-    /// 关闭方案工步参数配置抽屉。
+    /// 关闭方案业务参数配置抽屉。
     /// </summary>
     public ICommand CloseWorkStepParameterDrawerCommand { get; private set; } = null!;
 
     /// <summary>
-    /// 保存工步编辑副本，并在新建时插入方案集合。
+    /// 保存业务编辑副本，并在新建时插入方案集合。
     /// </summary>
     public ICommand SaveWorkStepParameterDrawerCommand { get; private set; } = null!;
 
     /// <summary>
-    /// 清理当前工步中已经标记为不使用的输入参数和返回参数。
+    /// 清理当前业务中已经标记为不使用的输入参数和返回参数。
     /// </summary>
     public ICommand CleanupUnusedParametersCommand { get; private set; } = null!;
 
@@ -589,7 +589,7 @@ public sealed class SchemeConfigurationViewModel : ViewModelProperties
     }
 
     /// <summary>
-    /// 当前选中方案工步变化时，同步右侧步骤编辑器与统计信息。
+    /// 当前选中方案业务变化时，同步右侧步骤编辑器与统计信息。
     /// </summary>
     private void SelectedSchemeStep_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
@@ -632,7 +632,7 @@ public sealed class SchemeConfigurationViewModel : ViewModelProperties
         Schemes.CollectionChanged += Schemes_CollectionChanged;
         SchemesView = CollectionViewSource.GetDefaultView(Schemes);
         SchemesView.Filter = FilterSchemes;
-        // 使用独立视图，避免抽屉筛选影响工步类型下拉框中的完整名称集合。
+        // 使用独立视图，避免抽屉筛选影响业务类型下拉框中的完整名称集合。
         BatchWorkStepsView = new CollectionViewSource { Source = WorkStepTypes }.View;
         BatchWorkStepsView.Filter = item => item is string workStepName &&
             (string.IsNullOrWhiteSpace(BatchWorkStepSearchText) ||
@@ -664,11 +664,11 @@ public sealed class SchemeConfigurationViewModel : ViewModelProperties
                         SelectedScheme = scheme;
                     }
 
-                    // 右侧参数表格使用独立页面集合，打开判断条件前先回写当前方案工步。
+                    // 右侧参数表格使用独立页面集合，打开判断条件前先回写当前方案业务。
                     SaveDisplayedParametersToSelectedSchemeStep();
                     if (SelectedScheme is not null)
                     {
-                        // 判断条件配置面向方案中的全部工步，打开前重新读取工步配置，确保新增参数能够立即参与合并。
+                        // 判断条件配置面向方案中的全部业务，打开前重新读取业务配置，确保新增参数能够立即参与合并。
                         RefreshBuiltInWorkSteps();
                         LoadingOverlayService.Show("正在加载判断条件配置…");
                         try
@@ -730,7 +730,7 @@ public sealed class SchemeConfigurationViewModel : ViewModelProperties
     #region 判断条件参数同步
 
     /// <summary>
-    /// 判断条件保存后刷新当前选中工步的页面参数副本，避免保存方案时旧副本覆盖新值。
+    /// 判断条件保存后刷新当前选中业务的页面参数副本，避免保存方案时旧副本覆盖新值。
     /// </summary>
     private void ConditionEditor_ParametersSaved(SchemeProfile scheme)
     {
@@ -757,7 +757,7 @@ public sealed class SchemeConfigurationViewModel : ViewModelProperties
     #region 方案配置命令
 
     /// <summary>
-    /// 清理切换内置工步后遗留且不再使用的输入参数和返回参数。
+    /// 清理切换内置业务后遗留且不再使用的输入参数和返回参数。
     /// </summary>
     private void CleanupUnusedParameters()
     {
@@ -806,7 +806,7 @@ public sealed class SchemeConfigurationViewModel : ViewModelProperties
     }
 
     /// <summary>
-    /// 复制当前选中的方案及其工步。
+    /// 复制当前选中的方案及其业务。
     /// </summary>
     private void DuplicateSelectedScheme()
     {
@@ -846,7 +846,7 @@ public sealed class SchemeConfigurationViewModel : ViewModelProperties
     /// </summary>
     private void SaveSchemes()
     {
-        // 页面右侧参数表格不属于工步编辑抽屉，保存方案前同步当前显示参数。
+        // 页面右侧参数表格不属于业务编辑抽屉，保存方案前同步当前显示参数。
         SaveDisplayedParametersToSelectedSchemeStep();
         if (!ValidateSchemes(out string message))
         {
@@ -890,10 +890,10 @@ public sealed class SchemeConfigurationViewModel : ViewModelProperties
 
     #endregion
 
-    #region 方案工步命令
+    #region 方案业务命令
 
     /// <summary>
-    /// 在当前方案中新增工步。
+    /// 在当前方案中新增业务。
     /// </summary>
     private void AddWorkStepToScheme()
     {
@@ -906,7 +906,7 @@ public sealed class SchemeConfigurationViewModel : ViewModelProperties
         RefreshBuiltInWorkSteps();
         EditingSchemeWorkStep = new SchemeWorkStepItem
         {
-            StepName = GenerateUniqueSchemeStepName("工步"),
+            StepName = GenerateUniqueSchemeStepName("业务"),
             IsStartupEnabled = true
         };
         _originalSchemeWorkStep = null;
@@ -917,7 +917,7 @@ public sealed class SchemeConfigurationViewModel : ViewModelProperties
     }
 
     /// <summary>
-    /// 将右侧参数表格当前显示的数据回写到选中的方案工步实例。
+    /// 将右侧参数表格当前显示的数据回写到选中的方案业务实例。
     /// </summary>
     private void SaveDisplayedParametersToSelectedSchemeStep()
     {
@@ -933,11 +933,11 @@ public sealed class SchemeConfigurationViewModel : ViewModelProperties
     }
 
     /// <summary>
-    /// 将指定内置工步复制为方案工步，并按表格拖放位置插入当前方案。
+    /// 将指定内置业务复制为方案业务，并按表格拖放位置插入当前方案。
     /// </summary>
-    /// <param name="workStepName">内置工步名称。</param>
-    /// <param name="targetSchemeStep">拖放命中的目标方案工步；为空时追加到末尾。</param>
-    /// <param name="insertAfter">是否插入目标工步之后。</param>
+    /// <param name="workStepName">内置业务名称。</param>
+    /// <param name="targetSchemeStep">拖放命中的目标方案业务；为空时追加到末尾。</param>
+    /// <param name="insertAfter">是否插入目标业务之后。</param>
     public void AddBuiltInWorkStepToScheme(
         string workStepName,
         SchemeWorkStepItem? targetSchemeStep,
@@ -952,11 +952,11 @@ public sealed class SchemeConfigurationViewModel : ViewModelProperties
             string.Equals(workStep.Name, workStepName, StringComparison.OrdinalIgnoreCase));
         if (builtInWorkStep is null)
         {
-            SetPageStatus($"未找到内置工步：{workStepName}。", WarningBrush);
+            SetPageStatus($"未找到内置业务：{workStepName}。", WarningBrush);
             return;
         }
 
-        // 复用现有参数生成规则，并为方案工步保存独立副本，避免后续编辑影响内置工步配置。
+        // 复用现有参数生成规则，并为方案业务保存独立副本，避免后续编辑影响内置业务配置。
         SelectBuiltInWorkStep(builtInWorkStep.Name);
         SchemeWorkStepItem newWorkStep = new()
         {
@@ -977,12 +977,12 @@ public sealed class SchemeConfigurationViewModel : ViewModelProperties
         schemeSteps.Insert(insertIndex, newWorkStep);
         RefreshSchemeStepNumbers();
         SelectedSchemeStep = newWorkStep;
-        SetPageStatus($"已添加内置工步：{builtInWorkStep.Name}。", SuccessBrush);
+        SetPageStatus($"已添加内置业务：{builtInWorkStep.Name}。", SuccessBrush);
         RaiseCommandStatesChanged();
     }
 
     /// <summary>
-    /// 从工步配置重新加载内置工步及名称集合，确保方案新增、编辑时使用最新配置。
+    /// 从业务配置重新加载内置业务及名称集合，确保方案新增、编辑时使用最新配置。
     /// </summary>
     private void RefreshBuiltInWorkSteps()
     {
@@ -1004,7 +1004,7 @@ public sealed class SchemeConfigurationViewModel : ViewModelProperties
         }
     }
 
-    /// <summary>当前方案中的工步是否全部被勾选。</summary>
+    /// <summary>当前方案中的业务是否全部被勾选。</summary>
     public bool AreAllSchemeStepsChecked
     {
         get => SelectedScheme is not null && SelectedScheme.Steps.Count > 0 && SelectedScheme.Steps.All(step => step.IsChecked);
@@ -1018,14 +1018,14 @@ public sealed class SchemeConfigurationViewModel : ViewModelProperties
     }
 
     /// <summary>
-    /// 保存工步抽屉中的编辑副本；新增工步只在此处写入方案集合。
+    /// 保存业务抽屉中的编辑副本；新增业务只在此处写入方案集合。
     /// </summary>
     private void SaveWorkStepParameterDrawer()
     {
         if (SelectedScheme is null || EditingSchemeWorkStep is null ||
             string.IsNullOrWhiteSpace(EditingSchemeWorkStep.StepName))
         {
-            SetPageStatus("工步名称不能为空。", WarningBrush);
+            SetPageStatus("业务名称不能为空。", WarningBrush);
             return;
         }
 
@@ -1037,7 +1037,7 @@ public sealed class SchemeConfigurationViewModel : ViewModelProperties
                  selectedBuiltInWorkStepName,
                  StringComparison.OrdinalIgnoreCase));
 
-        // 新增工步或改变工步类型时，必须关联一个实际存在的内置工步。
+        // 新增业务或改变业务类型时，必须关联一个实际存在的内置业务。
         if (isBuiltInWorkStepChanged &&
             (string.IsNullOrWhiteSpace(selectedBuiltInWorkStepName) ||
              !_workStepProfiles.Any(workStep => string.Equals(
@@ -1045,11 +1045,11 @@ public sealed class SchemeConfigurationViewModel : ViewModelProperties
                  selectedBuiltInWorkStepName,
                  StringComparison.OrdinalIgnoreCase))))
         {
-            SetPageStatus("请选择内置工步后再保存。", WarningBrush);
+            SetPageStatus("请选择内置业务后再保存。", WarningBrush);
             return;
         }
 
-        // 下拉框改变时不立即影响参数；确认保存后再合并新内置工步与已有参数。
+        // 下拉框改变时不立即影响参数；确认保存后再合并新内置业务与已有参数。
         if (isBuiltInWorkStepChanged)
         {
             SwitchBuiltInWorkStep(selectedBuiltInWorkStepName);
@@ -1078,7 +1078,7 @@ public sealed class SchemeConfigurationViewModel : ViewModelProperties
             MoveSchemeStepToNumber(_originalSchemeWorkStep, targetNumber);
         }
 
-        SetPageStatus($"已保存工步：{EditingSchemeWorkStep.StepName}。", SuccessBrush);
+        SetPageStatus($"已保存业务：{EditingSchemeWorkStep.StepName}。", SuccessBrush);
         CloseWorkStepParameterDrawer();
     }
 
@@ -1094,7 +1094,7 @@ public sealed class SchemeConfigurationViewModel : ViewModelProperties
     }
 
     /// <summary>
-    /// 删除当前选中的方案工步。
+    /// 删除当前选中的方案业务。
     /// </summary>
     private void RemoveSelectedSchemeStep()
     {
@@ -1113,11 +1113,11 @@ public sealed class SchemeConfigurationViewModel : ViewModelProperties
             : SelectedScheme.Steps[Math.Clamp(index, 0, SelectedScheme.Steps.Count - 1)];
 
         RefreshSchemeStepNumbers();
-        SetPageStatus($"已删除 {stepsToRemove.Count} 个方案工步。", WarningBrush);
+        SetPageStatus($"已删除 {stepsToRemove.Count} 个方案业务。", WarningBrush);
     }
 
     /// <summary>
-    /// 调整方案工步顺序。
+    /// 调整方案业务顺序。
     /// </summary>
     public void MoveSchemeStep(SchemeWorkStepItem draggedSchemeStep, SchemeWorkStepItem targetSchemeStep, bool insertAfter)
     {
@@ -1149,13 +1149,13 @@ public sealed class SchemeConfigurationViewModel : ViewModelProperties
         steps.Move(oldIndex, newIndex);
         RefreshSchemeStepNumbers();
         SelectedSchemeStep = draggedSchemeStep;
-        SetPageStatus("已调整工步顺序。", SuccessBrush);
+        SetPageStatus("已调整业务顺序。", SuccessBrush);
         RaiseCommandStatesChanged();
     }
 
     /// <summary>
-    /// 将编辑工步输入的序号解释为目标位置，并在移动后统一生成连续序号。
-    /// 处理方式与工步配置页面的步骤序号排序保持一致。
+    /// 将编辑业务输入的序号解释为目标位置，并在移动后统一生成连续序号。
+    /// 处理方式与业务配置页面的步骤序号排序保持一致。
     /// </summary>
     public void MoveSchemeStepToNumber(SchemeWorkStepItem workStep, int targetNumber)
     {
@@ -1177,7 +1177,7 @@ public sealed class SchemeConfigurationViewModel : ViewModelProperties
         SelectedSchemeStep = workStep;
     }
 
-    /// <summary>按照当前集合顺序连续刷新方案工步序号。</summary>
+    /// <summary>按照当前集合顺序连续刷新方案业务序号。</summary>
     private void RefreshSchemeStepNumbers()
     {
         if (SelectedScheme is null) return;
@@ -1222,7 +1222,7 @@ public sealed class SchemeConfigurationViewModel : ViewModelProperties
             {
                 if (string.IsNullOrWhiteSpace(schemeStep.StepName))
                 {
-                    message = $"方案“{scheme.SchemeName}”存在未命名工步。";
+                    message = $"方案“{scheme.SchemeName}”存在未命名业务。";
                     return false;
                 }
             }
@@ -1268,7 +1268,7 @@ public sealed class SchemeConfigurationViewModel : ViewModelProperties
     #region 工厂与命名
 
     /// <summary>
-    /// 深拷贝指定方案及其方案工步。
+    /// 深拷贝指定方案及其方案业务。
     /// </summary>
     private SchemeProfile CreateCopyScheme(SchemeProfile source)
     {
@@ -1355,7 +1355,7 @@ public sealed class SchemeConfigurationViewModel : ViewModelProperties
     }
 
     /// <summary>
-    /// 根据前缀生成目标方案内唯一的方案工步名称。
+    /// 根据前缀生成目标方案内唯一的方案业务名称。
     /// </summary>
     private string GenerateUniqueSchemeStepName(string prefix, SchemeProfile? targetScheme = null)
     {
@@ -1364,7 +1364,7 @@ public sealed class SchemeConfigurationViewModel : ViewModelProperties
             scheme?.Steps.Select(step => step.StepName) ?? Enumerable.Empty<string>(),
             StringComparer.OrdinalIgnoreCase);
 
-        string baseName = string.IsNullOrWhiteSpace(prefix) ? "工步" : prefix.Trim();
+        string baseName = string.IsNullOrWhiteSpace(prefix) ? "业务" : prefix.Trim();
         string candidate = baseName;
         int index = 1;
 

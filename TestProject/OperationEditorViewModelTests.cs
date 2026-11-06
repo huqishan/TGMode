@@ -196,7 +196,7 @@ public sealed class OperationEditorViewModelTests
     }
 
     /// <summary>
-    /// 验证工步值参数显示当前工步所有步骤中工步值类型的参数值。
+    /// 验证业务值参数显示当前业务所有步骤中业务值类型的参数值。
     /// </summary>
     [Test]
     public void Open_OperationWithWorkStepValueParameter_ShowsPreviousWorkStepValuesOnly()
@@ -206,7 +206,7 @@ public sealed class OperationEditorViewModelTests
             ReturnValue = "不应显示的返回值集合名",
             Parameters = new ObservableCollection<InputParameter>
             {
-                new() { ParameterType = "工步值", ParameterName = "不应显示的参数名", Value = "前置工步参数值" },
+                new() { ParameterType = "业务值", ParameterName = "不应显示的参数名", Value = "前置业务参数值" },
                 new() { ParameterType = "设置值", ParameterName = "普通参数名", Value = "普通参数值" }
             }
         };
@@ -214,14 +214,14 @@ public sealed class OperationEditorViewModelTests
         {
             Parameters = new ObservableCollection<InputParameter>
             {
-                new() { ParameterType = "工步值", ParameterName = "输入" }
+                new() { ParameterType = "业务值", ParameterName = "输入" }
             }
         };
         WorkStepOperation later = new()
         {
             Parameters = new ObservableCollection<InputParameter>
             {
-                new() { ParameterType = "工步值", ParameterName = "后续参数名", Value = "后续工步参数值" }
+                new() { ParameterType = "业务值", ParameterName = "后续参数名", Value = "后续业务参数值" }
             }
         };
         ObservableCollection<WorkStepOperation> operations = new() { first, current, later };
@@ -232,16 +232,16 @@ public sealed class OperationEditorViewModelTests
         IEnumerable<string> options = viewModel.WorkStepValueOptions;
         Assert.Multiple(() =>
         {
-            Assert.That(options, Does.Contain("前置工步参数值"));
+            Assert.That(options, Does.Contain("前置业务参数值"));
             Assert.That(options, Does.Not.Contain("不应显示的返回值集合名"));
             Assert.That(options, Does.Not.Contain("不应显示的参数名"));
             Assert.That(options, Does.Not.Contain("普通参数值"));
-            Assert.That(options, Does.Contain("后续工步参数值"));
+            Assert.That(options, Does.Contain("后续业务参数值"));
         });
     }
 
     /// <summary>
-    /// 验证连续新增时，上一步骤中工步值类型输入的参数值会立即进入下拉候选。
+    /// 验证连续新增时，上一步骤中业务值类型输入的参数值会立即进入下拉候选。
     /// </summary>
     [Test]
     public void Save_NewOperation_RefreshesWorkStepValueOptionsFromSavedInputParameterValues()
@@ -256,9 +256,9 @@ public sealed class OperationEditorViewModelTests
             {
                 new()
                 {
-                    ParameterType = "工步值",
+                    ParameterType = "业务值",
                     ParameterName = "测试参数",
-                    Value = "用户输入的工步值"
+                    Value = "用户输入的业务值"
                 }
             }
         };
@@ -266,11 +266,11 @@ public sealed class OperationEditorViewModelTests
         viewModel.Open(operation, isNewOperation: true, operations);
         viewModel.Save();
 
-        Assert.That(viewModel.WorkStepValueOptions, Does.Contain("用户输入的工步值"));
+        Assert.That(viewModel.WorkStepValueOptions, Does.Contain("用户输入的业务值"));
     }
 
     /// <summary>
-    /// 验证工步值候选按当前工步内所有步骤及其输入参数的顺序显示，不按名称排序。
+    /// 验证业务值候选按当前业务内所有步骤及其输入参数的顺序显示，不按名称排序。
     /// </summary>
     [Test]
     public void Open_WorkStepValueOptions_PreservePreviousStepAndParameterOrder()
@@ -279,23 +279,23 @@ public sealed class OperationEditorViewModelTests
         {
             Parameters = new ObservableCollection<InputParameter>
             {
-                new() { Num = 1, ParameterType = "工步值", Value = "Z-第一步第一个" },
-                new() { Num = 2, ParameterType = "工步值", Value = "A-第一步第二个" }
+                new() { Num = 1, ParameterType = "业务值", Value = "Z-第一步第一个" },
+                new() { Num = 2, ParameterType = "业务值", Value = "A-第一步第二个" }
             }
         };
         WorkStepOperation second = new()
         {
             Parameters = new ObservableCollection<InputParameter>
             {
-                new() { Num = 1, ParameterType = "工步值", Value = "M-第二步" },
-                new() { Num = 2, ParameterType = "工步值", Value = "Z-第一步第一个" }
+                new() { Num = 1, ParameterType = "业务值", Value = "M-第二步" },
+                new() { Num = 2, ParameterType = "业务值", Value = "Z-第一步第一个" }
             }
         };
         WorkStepOperation current = new()
         {
             Parameters = new ObservableCollection<InputParameter>
             {
-                new() { ParameterType = "工步值" }
+                new() { ParameterType = "业务值" }
             }
         };
         OperationEditorViewModel viewModel = new();
@@ -345,7 +345,7 @@ public sealed class OperationEditorViewModelTests
     }
 
     /// <summary>
-    /// 验证条件执行左右参数按类型装载与输入参数相同的返回值和工步值候选。
+    /// 验证条件执行左右参数按类型装载与输入参数相同的返回值和业务值候选。
     /// </summary>
     [Test]
     public void Open_ConditionParameterTypes_LoadMatchingValueOptions()
@@ -355,7 +355,7 @@ public sealed class OperationEditorViewModelTests
             ReturnValue = "前步骤",
             Parameters = new ObservableCollection<InputParameter>
             {
-                new() { ParameterType = "工步值", Value = "工步参数值" }
+                new() { ParameterType = "业务值", Value = "业务参数值" }
             },
             ReturnValues = new ObservableCollection<ReturnValue>
             {
@@ -367,7 +367,7 @@ public sealed class OperationEditorViewModelTests
             ConditionExecution = new ConditionExecution
             {
                 LeftParameterType = "返回值",
-                RightParameterType = "工步值"
+                RightParameterType = "业务值"
             }
         };
         OperationEditorViewModel viewModel = new();
@@ -377,7 +377,7 @@ public sealed class OperationEditorViewModelTests
         Assert.Multiple(() =>
         {
             Assert.That(viewModel.ParameterReturnValueOptions, Is.EqualTo(new[] { "前步骤_结果" }));
-            Assert.That(viewModel.WorkStepValueOptions, Is.EqualTo(new[] { "工步参数值" }));
+            Assert.That(viewModel.WorkStepValueOptions, Is.EqualTo(new[] { "业务参数值" }));
         });
     }
 
@@ -396,7 +396,7 @@ public sealed class OperationEditorViewModelTests
             ConditionExecution = new ConditionExecution
             {
                 IsEnabled = true,
-                LeftParameterType = "工步值",
+                LeftParameterType = "业务值",
                 LeftValue = "左参数值",
                 RightParameterType = "设置值",
                 RightValue = "右参数值"
@@ -416,7 +416,7 @@ public sealed class OperationEditorViewModelTests
     }
 
     /// <summary>
-    /// 验证当前编辑步骤新增工步值后，无需保存即可刷新共享候选集合。
+    /// 验证当前编辑步骤新增业务值后，无需保存即可刷新共享候选集合。
     /// </summary>
     [Test]
     public void RefreshWorkStepValueOptions_UsesUnsavedEditingParameterValue()
@@ -431,20 +431,20 @@ public sealed class OperationEditorViewModelTests
         ObservableCollection<WorkStepOperation> operations = new() { operation };
         OperationEditorViewModel viewModel = new();
         viewModel.Open(operation, isNewOperation: false, operations);
-        viewModel.EditingOperation.Parameters[0].ParameterType = "工步值";
-        viewModel.EditingOperation.Parameters[0].Value = "未保存的新工步值";
+        viewModel.EditingOperation.Parameters[0].ParameterType = "业务值";
+        viewModel.EditingOperation.Parameters[0].Value = "未保存的新业务值";
 
         viewModel.RefreshWorkStepValueOptionsFromEditingOperation();
 
         Assert.Multiple(() =>
         {
-            Assert.That(viewModel.WorkStepValueOptions, Does.Contain("未保存的新工步值"));
+            Assert.That(viewModel.WorkStepValueOptions, Does.Contain("未保存的新业务值"));
             Assert.That(viewModel.WorkStepValueOptions, Does.Not.Contain("原参数值"));
         });
     }
 
     /// <summary>
-    /// 验证条件执行左右参数新增的工步值名称无需保存即可进入共享候选集合。
+    /// 验证条件执行左右参数新增的业务值名称无需保存即可进入共享候选集合。
     /// </summary>
     [Test]
     public void RefreshWorkStepValueOptions_IncludesUnsavedConditionValues()
@@ -453,14 +453,14 @@ public sealed class OperationEditorViewModelTests
         {
             Parameters = new ObservableCollection<InputParameter>
             {
-                new() { ParameterType = "工步值", Value = "输入参数工步值" }
+                new() { ParameterType = "业务值", Value = "输入参数业务值" }
             },
             ConditionExecution = new ConditionExecution
             {
-                LeftParameterType = "工步值",
-                LeftValue = "左参数新工步值",
-                RightParameterType = "工步值",
-                RightValue = "右参数新工步值"
+                LeftParameterType = "业务值",
+                LeftValue = "左参数新业务值",
+                RightParameterType = "业务值",
+                RightValue = "右参数新业务值"
             }
         };
         OperationEditorViewModel viewModel = new();
@@ -470,9 +470,9 @@ public sealed class OperationEditorViewModelTests
 
         Assert.That(viewModel.WorkStepValueOptions, Is.EqualTo(new[]
         {
-            "输入参数工步值",
-            "左参数新工步值",
-            "右参数新工步值"
+            "输入参数业务值",
+            "左参数新业务值",
+            "右参数新业务值"
         }));
     }
 }

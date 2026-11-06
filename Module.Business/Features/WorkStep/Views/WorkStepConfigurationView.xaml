@@ -1,4 +1,4 @@
-<UserControl x:Class="Module.Business.Features.WorkStep.Views.WorkStepConfigurationView"
+﻿<UserControl x:Class="Module.Business.Features.WorkStep.Views.WorkStepConfigurationView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
@@ -17,7 +17,7 @@
             <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
 
-        <!-- 左侧沿用方案配置的卡片、搜索和列表排版，仅展示工步自身信息。 -->
+        <!-- 左侧沿用方案配置的卡片、搜索和列表排版，仅展示业务自身信息。 -->
         <Border Grid.Column="0" Style="{StaticResource CardBorderStyle}">
             <Grid>
                 <Grid.RowDefinitions>
@@ -28,16 +28,16 @@
                 </Grid.RowDefinitions>
 
                 <StackPanel>
-                    <TextBlock Style="{StaticResource SectionTitleStyle}" Text="工步配置" />
+                    <TextBlock Style="{StaticResource SectionTitleStyle}" Text="业务配置" />
                     <TextBlock Margin="0,8,0,0"
                                Foreground="{DynamicResource AppMutedTextBrush}"
-                               Text="维护可被方案复用的工步及操作步骤。"
+                               Text="维护可被方案复用的业务及操作步骤。"
                                TextWrapping="Wrap" />
                 </StackPanel>
 
                 <searchBox:SearchBox Grid.Row="1"
                                      Margin="0,16,0,0"
-                                     PlaceholderText="搜索工步配置..."
+                                     PlaceholderText="搜索业务配置..."
                                      Text="{Binding SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
 
                 <UniformGrid Grid.Row="2" Columns="4" Margin="0,16,0,16">
@@ -100,7 +100,7 @@
                     <StackPanel>
                         <TextBlock FontSize="15" FontWeight="SemiBold"
                                    Foreground="{DynamicResource AppContentTextBrush}"
-                                   Text="{Binding SelectedWorkStep.Name, TargetNullValue=未选择工步}" />
+                                   Text="{Binding SelectedWorkStep.Name, TargetNullValue=未选择业务}" />
                         <TextBlock Margin="0,6,0,0"
                                    Foreground="{DynamicResource AppMutedTextBrush}"
                                    Text="双击步骤可打开完整编辑，拖拽可调整顺序。" />

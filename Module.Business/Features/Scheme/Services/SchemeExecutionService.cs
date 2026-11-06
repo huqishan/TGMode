@@ -1,4 +1,4 @@
-using ControlLibrary.Models.EventsModels.Test;
+﻿using ControlLibrary.Models.EventsModels.Test;
 using ControlLibrary.Models.MediatorModels.Communication;
 using Module.Business.Models;
 using Module.Business.Services.BusinessOperations;
@@ -24,7 +24,7 @@ using System.Threading.Tasks;
 namespace Module.Business.Services;
 
 /// <summary>
-/// 方案执行服务，负责按工位编排方案、工步及步骤执行，并提供暂停、继续、停止和状态通知能力。
+/// 方案执行服务，负责按工位编排方案、业务及步骤执行，并提供暂停、继续、停止和状态通知能力。
 /// </summary>
 public static class SchemeExecutionService
 {
@@ -43,11 +43,11 @@ public static class SchemeExecutionService
     private static IEventAggregator? _eventAggregator;
     /// <summary>用于向通信模块发送请求的中介器。</summary>
     private static IMediator? _mediator;
-    /// <summary>当前异步执行链的受控上下文，供嵌套业务工步复用暂停和取消状态。</summary>
+    /// <summary>当前异步执行链的受控上下文，供嵌套业务业务复用暂停和取消状态。</summary>
     private static readonly AsyncLocal<IControlledExecutionContext?> CurrentExecutionContext = new();
-    /// <summary>当前异步执行链的方案工步，供嵌套业务工步解析工步输入参数。</summary>
+    /// <summary>当前异步执行链的方案业务，供嵌套业务业务解析业务输入参数。</summary>
     private static readonly AsyncLocal<SchemeWorkStepItem?> CurrentSchemeStep = new();
-    /// <summary>当前异步执行链中正在展开的工步名称，用于阻止配置循环递归。</summary>
+    /// <summary>当前异步执行链中正在展开的业务名称，用于阻止配置循环递归。</summary>
     private static readonly AsyncLocal<IReadOnlyList<string>?> ActiveNamedWorkSteps = new();
 
     #endregion
@@ -75,13 +75,13 @@ public static class SchemeExecutionService
     /// <summary>方案执行完成事件，包含执行结果和时间信息。</summary>
     public static event EventHandler<SchemeExecutionEventArgs>? AfterSchemeExecuted;
 
-    /// <summary>工步执行前事件，可由订阅方取消执行。</summary>
+    /// <summary>业务执行前事件，可由订阅方取消执行。</summary>
     public static event EventHandler<SchemeExecutionEventArgs>? BeforeWorkStepExecuting;
 
-    /// <summary>工步开始执行事件。</summary>
+    /// <summary>业务开始执行事件。</summary>
     public static event EventHandler<SchemeExecutionEventArgs>? WorkStepExecuting;
 
-    /// <summary>工步执行完成事件，包含执行结果和时间信息。</summary>
+    /// <summary>业务执行完成事件，包含执行结果和时间信息。</summary>
     public static event EventHandler<SchemeExecutionEventArgs>? AfterWorkStepExecuted;
 
     /// <summary>步骤执行前事件，可由订阅方取消执行。</summary>
@@ -208,7 +208,7 @@ public static class SchemeExecutionService
             context.Dispose();
         }
     }
-    /// <summary>按方案与工步标识执行选中的单个工步。</summary>
+    /// <summary>按方案与业务标识执行选中的单个业务。</summary>
     public static async Task<SchemeExecutionResult> ExecuteWorkStepAsync(
         string stationNo,
         string schemeId,
@@ -223,7 +223,7 @@ public static class SchemeExecutionService
             string.IsNullOrWhiteSpace(normalizedWorkStepId))
         {
             return SchemeExecutionResult.CreateFailure(
-                "工位、方案和工步标识不能为空。",
+                "工位、方案和业务标识不能为空。",
                 startTime: startTime,
                 endTime: DateTime.Now);
         }
@@ -278,7 +278,7 @@ public static class SchemeExecutionService
 
             if (schemeStep is null)
             {
-                string message = $"方案 {scheme.SchemeName} 中未找到选中的工步。";
+                string message = $"方案 {scheme.SchemeName} 中未找到选中的业务。";
                 PublishSchemeStatus(normalizedStationNo, "执行失败", scheme, message, false);
                 return SchemeExecutionResult.CreateFailure(message, context.Logs, startTime, DateTime.Now);
             }
@@ -289,12 +289,12 @@ public static class SchemeExecutionService
                 string.Equals(item.Name, schemeStep.StepType, StringComparison.OrdinalIgnoreCase));
             if (configuredWorkStep is null || configuredWorkStep.Operations.Count == 0)
             {
-                string message = $"工步 {schemeStep.StepName} 未配置可执行步骤。";
+                string message = $"业务 {schemeStep.StepName} 未配置可执行步骤。";
                 PublishSchemeStatus(normalizedStationNo, "执行失败", scheme, message, false);
                 return SchemeExecutionResult.CreateFailure(message, context.Logs, startTime, DateTime.Now);
             }
 
-            PublishSchemeStatus(normalizedStationNo, "单步测试中", scheme, $"开始执行工步：{schemeStep.StepName}");
+            PublishSchemeStatus(normalizedStationNo, "单步测试中", scheme, $"开始执行业务：{schemeStep.StepName}");
             SchemeExecutionResult result = await ExecuteWorkStepAsync(
                     context,
                     scheme,
@@ -309,13 +309,13 @@ public static class SchemeExecutionService
         }
         catch (OperationCanceledException)
         {
-            string message = $"工位 {normalizedStationNo} 的工步执行已停止。";
+            string message = $"工位 {normalizedStationNo} 的业务执行已停止。";
             PublishSchemeStatus(normalizedStationNo, "单步测试已停止", scheme, message, false);
             return SchemeExecutionResult.CreateCanceled(message, context.Logs, startTime, DateTime.Now);
         }
         catch (Exception ex)
         {
-            string message = $"工步 {scheme.SchemeName} 执行失败：{ex.Message}";
+            string message = $"业务 {scheme.SchemeName} 执行失败：{ex.Message}";
             PublishSchemeStatus(normalizedStationNo, "单步测试失败", scheme, message, false);
             return SchemeExecutionResult.CreateFailure(message, context.Logs, startTime, DateTime.Now);
         }
@@ -399,9 +399,9 @@ public static class SchemeExecutionService
 
     #endregion
 
-    #region 方案、工步与步骤执行编排
+    #region 方案、业务与步骤执行编排
 
-    /// <summary>按顺序执行方案中的全部工步，并汇总方案级执行结果。</summary>
+    /// <summary>按顺序执行方案中的全部业务，并汇总方案级执行结果。</summary>
     private static async Task<SchemeExecutionResult> ExecuteSchemeAsync(
         SchemeExecutionContext context,
         SchemeProfile scheme,
@@ -499,7 +499,7 @@ public static class SchemeExecutionService
         return SchemeExecutionResult.CreateSuccess(message, context.Logs, startTime, endTime);
     }
 
-    /// <summary>执行单个工步中的步骤集合，并处理工步级事件、日志和失败结果。</summary>
+    /// <summary>执行单个业务中的步骤集合，并处理业务级事件、日志和失败结果。</summary>
     private static async Task<SchemeExecutionResult> ExecuteWorkStepAsync(
         SchemeExecutionContext context,
         SchemeProfile scheme,
@@ -536,9 +536,9 @@ public static class SchemeExecutionService
             startTime: startTime));
         PublishSchemeStatus(
             context.Key.StationNo,
-            "工步执行中",
+            "业务执行中",
             scheme,
-            $"正在执行工步 {workStepIndex}：{schemeStep.StepName}");
+            $"正在执行业务 {workStepIndex}：{schemeStep.StepName}");
 
         Dictionary<string, string> returnValues = new(StringComparer.OrdinalIgnoreCase);
         for (int stepIndex = 0; stepIndex < operations.Count; stepIndex++)
@@ -742,25 +742,25 @@ public static class SchemeExecutionService
         return output;
     }
 
-    /// <summary>根据工步配置名称执行其中的全部操作，并复用当前执行链的控制状态。</summary>
+    /// <summary>根据业务配置名称执行其中的全部操作，并复用当前执行链的控制状态。</summary>
     internal static async Task ExecuteWorkStepByNameAsync(string workStepName)
     {
         string normalizedWorkStepName = NormalizeRequiredText(workStepName);
         if (string.IsNullOrWhiteSpace(normalizedWorkStepName))
         {
-            throw new ArgumentException("工步名称不能为空。", nameof(workStepName));
+            throw new ArgumentException("业务名称不能为空。", nameof(workStepName));
         }
 
         IControlledExecutionContext? context = CurrentExecutionContext.Value;
         if (context is null)
         {
-            throw new InvalidOperationException("只能在受控的方案或流程图执行过程中调用此工步操作。");
+            throw new InvalidOperationException("只能在受控的方案或流程图执行过程中调用此业务操作。");
         }
 
         IReadOnlyList<string> activeWorkSteps = ActiveNamedWorkSteps.Value ?? Array.Empty<string>();
         if (activeWorkSteps.Contains(normalizedWorkStepName, StringComparer.OrdinalIgnoreCase))
         {
-            throw new InvalidOperationException($"检测到工步递归调用：{normalizedWorkStepName}。");
+            throw new InvalidOperationException($"检测到业务递归调用：{normalizedWorkStepName}。");
         }
 
         IReadOnlyList<string> previousWorkSteps = ActiveNamedWorkSteps.Value ?? Array.Empty<string>();
@@ -777,12 +777,12 @@ public static class SchemeExecutionService
                 string.Equals(item.Name?.Trim(), normalizedWorkStepName, StringComparison.OrdinalIgnoreCase));
             if (workStep is null)
             {
-                throw new InvalidOperationException($"未找到工步：{normalizedWorkStepName}。");
+                throw new InvalidOperationException($"未找到业务：{normalizedWorkStepName}。");
             }
 
             if (workStep.Operations.Count == 0)
             {
-                throw new InvalidOperationException($"工步“{normalizedWorkStepName}”没有可执行操作。");
+                throw new InvalidOperationException($"业务“{normalizedWorkStepName}”没有可执行操作。");
             }
 
             SchemeWorkStepItem schemeStep = CurrentSchemeStep.Value ?? CreateStandaloneSchemeStep();
@@ -801,7 +801,7 @@ public static class SchemeExecutionService
                 if (!output.IsSuccess)
                 {
                     throw new InvalidOperationException(
-                        $"工步“{normalizedWorkStepName}”执行失败：{output.Message}");
+                        $"业务“{normalizedWorkStepName}”执行失败：{output.Message}");
                 }
             }
         }
@@ -1008,7 +1008,7 @@ public static class SchemeExecutionService
 
     #region 步骤参数解析与返回值处理
 
-    /// <summary>根据参数类型从设置值、工步值、返回值或全局值中解析实际值。</summary>
+    /// <summary>根据参数类型从设置值、业务值、返回值或全局值中解析实际值。</summary>
     private static string ResolveParameterValue(
         InputParameter parameter,
         SchemeWorkStepItem schemeStep,
@@ -1020,14 +1020,14 @@ public static class SchemeExecutionService
         return type switch
         {
             "设置值" => value,
-            "工步值" => ResolveSchemeStepParameterValue(parameter, schemeStep),
+            "业务值" => ResolveSchemeStepParameterValue(parameter, schemeStep),
             "返回值" => returnValues.TryGetValue(value, out string? returnValue) ? returnValue : string.Empty,
             "全局值" => string.Empty,
             _ => value
         };
     }
 
-    /// <summary>从当前方案工步的输入参数中解析指定工步值。</summary>
+    /// <summary>从当前方案业务的输入参数中解析指定业务值。</summary>
     private static string ResolveSchemeStepParameterValue(
         InputParameter parameter,
         SchemeWorkStepItem schemeStep)
@@ -1060,7 +1060,7 @@ public static class SchemeExecutionService
         }
     }
 
-    /// <summary>创建流程图独立步骤执行时使用的临时工步上下文。</summary>
+    /// <summary>创建流程图独立步骤执行时使用的临时业务上下文。</summary>
     private static SchemeWorkStepItem CreateStandaloneSchemeStep()
     {
         return new SchemeWorkStepItem
@@ -1370,7 +1370,7 @@ public static class SchemeExecutionService
 
 #region 执行结果与事件模型
 
-/// <summary>方案、工步和步骤生命周期事件共用的事件参数。</summary>
+/// <summary>方案、业务和步骤生命周期事件共用的事件参数。</summary>
 public sealed class SchemeExecutionEventArgs : EventArgs
 {
     /// <summary>创建方案执行事件参数。</summary>
@@ -1409,13 +1409,13 @@ public sealed class SchemeExecutionEventArgs : EventArgs
     /// <summary>获取方案名称。</summary>
     public string SchemeName { get; }
 
-    /// <summary>获取工步名称。</summary>
+    /// <summary>获取业务名称。</summary>
     public string WorkStepName { get; }
 
     /// <summary>获取步骤名称。</summary>
     public string StepName { get; }
 
-    /// <summary>获取工步序号。</summary>
+    /// <summary>获取业务序号。</summary>
     public int WorkStepIndex { get; }
 
     /// <summary>获取步骤序号。</summary>
@@ -1465,7 +1465,7 @@ public sealed class SchemeExecutionEventArgs : EventArgs
             endTime);
     }
 
-    /// <summary>创建工步级生命周期事件参数。</summary>
+    /// <summary>创建业务级生命周期事件参数。</summary>
     internal static SchemeExecutionEventArgs CreateWorkStep(
         string stationNo,
         SchemeProfile scheme,
@@ -1519,7 +1519,7 @@ public sealed class SchemeExecutionEventArgs : EventArgs
     }
 }
 
-/// <summary>方案或工步执行完成后的统一结果。</summary>
+/// <summary>方案或业务执行完成后的统一结果。</summary>
 public sealed class SchemeExecutionResult
 {
     /// <summary>创建方案执行结果。</summary>

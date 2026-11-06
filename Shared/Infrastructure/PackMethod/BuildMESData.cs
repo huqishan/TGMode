@@ -525,7 +525,7 @@ namespace Shared.Infrastructure.PackMethod
         }
 
         /// <summary>
-        /// 按 JSON StepModel 的工步名称定位规则构建重复的 SOAP 工步模型元素。
+        /// 按 JSON StepModel 的业务名称定位规则构建重复的 SOAP 业务模型元素。
         /// </summary>
         private static IEnumerable<XElement> BuildStepSoapModels(TreeModel layout, BuildContext context)
         {

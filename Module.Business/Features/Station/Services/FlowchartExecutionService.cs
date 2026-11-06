@@ -1,4 +1,4 @@
-using ControlLibrary.Controls.FlowchartEditor.Models;
+﻿using ControlLibrary.Controls.FlowchartEditor.Models;
 using Module.Business.Models;
 using Module.Business.Features.StationConfiguration;
 using Module.Business.Features.Scheme.ViewModels.PresentationModels;
@@ -666,7 +666,7 @@ public static class FlowchartExecutionService
     }
 
     /// <summary>
-    /// 根据条件参数类型解析判断值；返回值和工步值从当前流程返回值上下文读取，其余类型使用配置值。
+    /// 根据条件参数类型解析判断值；返回值和业务值从当前流程返回值上下文读取，其余类型使用配置值。
     /// </summary>
     private static string ResolveConditionValue(
         string? parameterType,
@@ -675,7 +675,7 @@ public static class FlowchartExecutionService
     {
         string type = parameterType?.Trim() ?? string.Empty;
         string value = configuredValue?.Trim() ?? string.Empty;
-        return type is "返回值" or "工步值"
+        return type is "返回值" or "业务值"
             ? returnValues.TryGetValue(value, out string? runtimeValue) ? runtimeValue : string.Empty
             : value;
     }
