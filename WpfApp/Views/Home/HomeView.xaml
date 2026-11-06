@@ -1,5 +1,4 @@
 <UserControl x:Class="WpfApp.Views.Home.HomeView"
-             x:Name="DashboardRoot"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
@@ -9,6 +8,7 @@
              VerticalAlignment="Stretch"
              d:DesignHeight="900"
              d:DesignWidth="1500">
+<Grid>
     <ScrollViewer HorizontalScrollBarVisibility="Disabled"
                   VerticalScrollBarVisibility="Auto">
         <Grid>
@@ -281,9 +281,19 @@
                                        Text="{Binding TotalDeviceCount, StringFormat='/ {0}'}"/>
                         </StackPanel>
                         <StackPanel Grid.Row="2" Orientation="Horizontal">
-                            <TextBlock Foreground="{StaticResource HomeNgBrush}"
-                                       FontSize="11"
-                                       Text="{Binding OfflineDeviceSummaryText}" />
+                                <TextBlock FontSize="11"
+                                       Text="{Binding OfflineDeviceSummaryText}">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Foreground" Value="{StaticResource HomeNgBrush}" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding OfflineDeviceSummaryText}" Value="全部正常">
+                                                    <Setter Property="Foreground" Value="{StaticResource HomeGoodBrush}" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
                         </StackPanel>
                     </Grid>
                 </Button>
@@ -584,127 +594,212 @@
             </Grid>
             <!-- #endregion -->
 
-            <!-- #region 设备状态侧滑弹框 -->
-            <Popup x:Name="DeviceStatusPopup"
-                   PlacementTarget="{Binding ElementName=DashboardRoot}"
-                   DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}"
-                   Placement="Custom"
-                   AllowsTransparency="True"
-                   PopupAnimation="None"
-                   StaysOpen="False"
-                   Opened="DeviceStatusPopup_Opened"
-                   IsOpen="{Binding IsDeviceStatusPopupOpen, Mode=TwoWay}">
-                <Border x:Name="DeviceStatusPopupPanel"
-                        Style="{StaticResource HomeDevicePopupBorderStyle}">
-                    <Border.RenderTransform>
-                        <TranslateTransform />
-                    </Border.RenderTransform>
-                    <Grid>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="1" />
-                            <RowDefinition Height="*" />
-                        </Grid.RowDefinitions>
-                        <Grid Margin="0,0,0,12">
-                            <StackPanel>
-                                <TextBlock Style="{StaticResource HomeSectionTitleStyle}" Text="设备连接状态" />
-                                <TextBlock Margin="0,4,0,0"
-                                           Style="{StaticResource HomeMutedTextStyle}"
-                                           Text="{Binding DeviceInitializationStatusText}" />
-                            </StackPanel>
+        </Grid>
+    </ScrollViewer>
+
+    <!-- #region 设备连接状态抽屉 -->
+    <Grid x:Name="DeviceStatusDrawerHost"
+          Panel.ZIndex="10"
+          Opacity="0"
+          IsHitTestVisible="False">
+        <Button Background="#3A000000"
+                Command="{Binding CloseDeviceStatusPopupCommand}"
+                Style="{StaticResource DrawerBackdropButtonStyle}"
+                AutomationProperties.Name="关闭设备连接状态详情" />
+
+        <Border Margin="0,150,0,0" Style="{StaticResource DrawerBorderStyle}">
+            <Border.RenderTransform>
+                <TranslateTransform x:Name="DeviceStatusDrawerTranslateTransform" Y="56" />
+            </Border.RenderTransform>
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="1" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+                <Grid Margin="0,0,0,12">
+                        <StackPanel HorizontalAlignment="Right"
+            VerticalAlignment="Center"
+            Orientation="Horizontal">
+                            <Ellipse Width="8" Height="8" Fill="{StaticResource HomeGoodBrush}" Margin="0,2,0,0"/>
+                            <TextBlock Margin="8,0,5,0" VerticalAlignment="Center"
+               Foreground="{DynamicResource AppContentTextBrush}"
+               FontSize="12"
+               FontWeight="SemiBold"
+               Text="{Binding OnlineDeviceCount}" />
+                            <TextBlock Margin="4,0,0,0" VerticalAlignment="Center"
+               Foreground="{DynamicResource AppMutedTextBrush}"
+               FontSize="11"
+               Text="{Binding TotalDeviceCount, StringFormat='/ {0} 在线'}"/>
+                            <TextBlock Margin="14,0,14,0" VerticalAlignment="Center"
+               FontSize="11"
+               Text="{Binding OfflineDeviceSummaryText}">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Foreground" Value="{StaticResource HomeNgBrush}" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding OfflineDeviceSummaryText}" Value="全部正常">
+                                                <Setter Property="Foreground" Value="{StaticResource HomeGoodBrush}" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
                             <Button Width="28"
-                                    Height="28"
-                                    HorizontalAlignment="Right"
-                                    VerticalAlignment="Top"
-                                    Command="{Binding CloseDeviceStatusPopupCommand}"
-                                    Style="{StaticResource HomePopupCloseButtonStyle}"
-                                    ToolTip="关闭">
+        Height="28"
+        HorizontalAlignment="Right"
+        Command="{Binding CloseDeviceStatusPopupCommand}"
+        Style="{StaticResource HomePopupCloseButtonStyle}"
+        ToolTip="关闭">
                                 <Path Width="12"
-                                      Height="12"
-                                      Data="M2,2 L10,10 M10,2 L2,10"
-                                      Stroke="{DynamicResource AppMutedTextBrush}"
-                                      StrokeEndLineCap="Round"
-                                      StrokeStartLineCap="Round"
-                                      StrokeThickness="1.4" />
+          Height="12"
+          Data="M2,2 L10,10 M10,2 L2,10"
+          Stroke="{DynamicResource AppMutedTextBrush}"
+          StrokeEndLineCap="Round"
+          StrokeStartLineCap="Round"
+          StrokeThickness="1.4" />
                             </Button>
-                        </Grid>
-                        <Border Grid.Row="1" Background="{DynamicResource TabItemBorderBrush}" />
-                        <Grid Grid.Row="2" Margin="0,8,0,0">
-                            <TextBlock Style="{StaticResource HomeDeviceEmptyStateStyle}"
-                                       Text="设备管理中暂无设备" />
-                            <ScrollViewer MaxHeight="340"
-                                          VerticalScrollBarVisibility="Auto"
-                                          HorizontalScrollBarVisibility="Disabled">
-                                <ItemsControl ItemsSource="{Binding Devices}">
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate>
-                                            <Grid Margin="0,8,0,0"
-                                                  ToolTip="{Binding ConnectionDetail}">
+                        </StackPanel>
+                        <DockPanel LastChildFill="False">
+                            <Border Style="{StaticResource HomeKpiIconBorderStyle}">
+                                <Path Width="15"
+          Height="14"
+          HorizontalAlignment="Center"
+          VerticalAlignment="Center"
+          Data="M1,2 L15,2 L15,11 L1,11 Z M5,14 L11,14 M8,11 L8,14 M4,5 L4.1,5 M8,5 L8.1,5 M12,5 L12.1,5"
+          Stroke="{DynamicResource AppMutedTextBrush}"
+          StrokeEndLineCap="Round"
+          StrokeStartLineCap="Round"
+          StrokeThickness="1.2" />
+                            </Border>
+                            <TextBlock VerticalAlignment="Center" Margin="5,0,0,0" Style="{StaticResource SectionTitleStyle}" Text="设备连接状态" />
+                    </DockPanel>
+                    </Grid>
+                <ScrollViewer Grid.Row="2"
+                              Margin="0,14,0,0"
+                              HorizontalScrollBarVisibility="Disabled"
+                              VerticalScrollBarVisibility="Auto">
+                    <Grid>
+                        <TextBlock Style="{StaticResource HomeDeviceEmptyStateStyle}"
+                                   Text="设备管理中暂无设备" />
+                            <ItemsControl Grid.Row="2"
+      HorizontalAlignment="Stretch"
+      ItemsSource="{Binding Devices}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <WrapPanel Orientation="Horizontal"
+                                                   HorizontalAlignment="Left" />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Margin="0,0,12,12"
+                                                Padding="16,12"
+                                                Width="350"
+                                                MinHeight="136"
+                                                Style="{StaticResource HomePanelBorderStyle}">
+                                            <Grid>
                                                 <Grid.RowDefinitions>
                                                     <RowDefinition Height="Auto" />
                                                     <RowDefinition Height="Auto" />
                                                     <RowDefinition Height="Auto" />
-                                                    <RowDefinition Height="1" />
+                                                    <RowDefinition Height="Auto" />
+                                                    <RowDefinition Height="Auto" />
                                                 </Grid.RowDefinitions>
                                                 <Grid>
-                                                    <TextBlock Margin="0,0,12,0"
-                                                               VerticalAlignment="Center"
-                                                               FontSize="12"
-                                                               FontWeight="SemiBold"
-                                                               Foreground="{DynamicResource AppContentTextBrush}"
-                                                               Text="{Binding Name}"
-                                                               TextTrimming="CharacterEllipsis" />
+                                                    <TextBlock Margin="0,0,8,0"
+                           VerticalAlignment="Center"
+                           FontSize="12"
+                           FontWeight="SemiBold"
+                           Foreground="{DynamicResource AppContentTextBrush}"
+                           Text="{Binding Name}"
+                           TextTrimming="CharacterEllipsis" />
                                                     <StackPanel HorizontalAlignment="Right"
-                                                                VerticalAlignment="Center"
-                                                                Orientation="Horizontal">
-                                                        <Ellipse Width="6"
-                                                                 Height="6"
-                                                                 Style="{StaticResource HomeDeviceStatusDotStyle}" />
-                                                        <TextBlock Margin="6,0,0,0"
-                                                                   Style="{StaticResource HomeDeviceStatusTextStyle}"
-                                                                   Text="{Binding StatusText}" />
+                            VerticalAlignment="Center"
+                            Orientation="Horizontal">
+                                                        <Ellipse Width="6" Height="6">
+                                                            <Ellipse.Style>
+                                                                <Style TargetType="Ellipse">
+                                                                    <Setter Property="Fill" Value="{StaticResource HomeGoodBrush}" />
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding IsOnline}" Value="False">
+                                                                            <Setter Property="Fill" Value="{StaticResource HomeNgBrush}" />
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </Ellipse.Style>
+                                                        </Ellipse>
+                                                        <TextBlock Margin="6,0,0,0" FontSize="11" Text="{Binding StatusText}">
+                                                            <TextBlock.Style>
+                                                                <Style TargetType="TextBlock">
+                                                                    <Setter Property="Foreground" Value="{StaticResource HomeGoodBrush}" />
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding IsOnline}" Value="False">
+                                                                            <Setter Property="Foreground" Value="{StaticResource HomeNgBrush}" />
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </TextBlock.Style>
+                                                        </TextBlock>
                                                     </StackPanel>
                                                 </Grid>
                                                 <TextBlock Grid.Row="1"
-                                                           Margin="0,4,0,0"
-                                                           Style="{StaticResource HomeMutedTextStyle}"
-                                                           Text="{Binding Description}"
-                                                           TextTrimming="CharacterEllipsis" />
-                                                <Grid Grid.Row="2" Margin="0,6,0,8">
+                       Margin="0,5,0,0"
+                       Style="{StaticResource HomeMutedTextStyle}"
+                       Text="{Binding Description}" />
+                                                <Grid Grid.Row="2" Margin="0,5,0,0">
                                                     <Grid.ColumnDefinitions>
-                                                        <ColumnDefinition Width="Auto" />
                                                         <ColumnDefinition Width="*" />
                                                         <ColumnDefinition Width="Auto" />
-                                                        <ColumnDefinition Width="Auto" />
+                                                        <ColumnDefinition Width="*" />
                                                     </Grid.ColumnDefinitions>
                                                     <TextBlock Style="{StaticResource HomeMutedTextStyle}"
-                                                               Text="{Binding MetricLabel}" />
+                           Text="{Binding MetricLabel}" />
                                                     <TextBlock Grid.Column="1"
-                                                               Margin="8,0,0,0"
-                                                               Foreground="{DynamicResource AppContentTextBrush}"
-                                                               FontSize="11"
-                                                               Text="{Binding MetricValue}"
-                                                               TextTrimming="CharacterEllipsis" />
+                           Foreground="{DynamicResource AppContentTextBrush}"
+                           FontSize="11"
+                           FontWeight="SemiBold"
+                           Text="{Binding MetricValue}" />
                                                     <TextBlock Grid.Column="2"
-                                                               Margin="12,0,0,0"
-                                                               Style="{StaticResource HomeMutedTextStyle}"
-                                                               Text="最近变化" />
-                                                    <TextBlock Grid.Column="3"
-                                                               Margin="6,0,0,0"
-                                                               Style="{StaticResource HomeMutedTextStyle}"
-                                                               Text="{Binding UpdateText}" />
+                           HorizontalAlignment="Right"
+                           Style="{StaticResource HomeMutedTextStyle}"
+                           Text="{Binding UpdateText}" />
                                                 </Grid>
-                                                <Border Grid.Row="3" Background="{DynamicResource TabItemBorderBrush}" />
+                                                <Border Grid.Row="3" Margin="0,5,0,0" Height="1" Background="{DynamicResource TabItemBorderBrush}" />
+                                                <ItemsControl Grid.Row="4"
+                                                              Margin="0,5,0,0"
+                                                              ItemsSource="{Binding DeviceData}">
+                                                    <ItemsControl.ItemsPanel>
+                                                        <ItemsPanelTemplate>
+                                                            <WrapPanel Orientation="Horizontal"
+                   HorizontalAlignment="Left" />
+                                                        </ItemsPanelTemplate>
+                                                    </ItemsControl.ItemsPanel>
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate>
+                                                            <StackPanel Margin="0,0,10,0" Orientation="Horizontal">
+                                                                <TextBlock Style="{StaticResource HomeMutedTextStyle}"
+                                                                           Text="{Binding DataName, StringFormat={}{0}：}" />
+                                                                <TextBlock Grid.Column="1"
+                                                                           MaxWidth="175"
+                                                                           HorizontalAlignment="Right"
+                                                                           Style="{StaticResource HomeDeviceDataValueTextStyle}"
+                                                                           Text="{Binding DataValue}"
+                                                                           ToolTip="{Binding RangeOrCondition}" />
+                                                            </StackPanel>
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
                                             </Grid>
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
-                            </ScrollViewer>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
                         </Grid>
-                    </Grid>
-                </Border>
-            </Popup>
-            <!-- #endregion -->
-        </Grid>
-    </ScrollViewer>
+                </ScrollViewer>
+            </Grid>
+        </Border>
+    </Grid>
+    <!-- #endregion -->
+</Grid>
 </UserControl>

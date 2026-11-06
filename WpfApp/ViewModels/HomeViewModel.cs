@@ -246,7 +246,8 @@ public sealed class HomeViewModel : ViewModelProperties
                 HomeDeviceStatusItem item = new(
                     profile.LocalName,
                     $"{profile.TypeDisplayName} · {profile.Summary}",
-                    profile.TypeDisplayName);
+                    profile.TypeDisplayName,
+                    Devices.Count);
                 Devices.Add(item);
                 _deviceItemsByName[profile.LocalName] = item;
             }
@@ -434,11 +435,17 @@ public sealed class HomeDeviceStatusItem : ViewModelProperties
     #region 初始化
 
     /// <summary>创建设备状态项并保存设备名称、通信说明和通信类型。</summary>
-    public HomeDeviceStatusItem(string name, string description, string communicationType)
+    public HomeDeviceStatusItem(string name, string description, string communicationType, int deviceIndex)
     {
         Name = name;
         Description = description;
         CommunicationType = communicationType;
+        DeviceData = new ObservableCollection<HomeDeviceDataItem>
+        {
+            new("运行状态", "运行中", "条件：运行状态 = 运行中", false),
+            new("响应时间", $"{28 + deviceIndex * 11} ms", "范围：0 ~ 100 ms", true),
+            new("采集温度", deviceIndex % 2 == 0 ? "26.4 ℃" : "86.7 ℃", "范围：0 ~ 80 ℃", deviceIndex % 2 == 0)
+        };
     }
 
     /// <summary>更新设备连接状态、最近变化时间及状态说明。</summary>
@@ -521,6 +528,42 @@ public sealed class HomeDeviceStatusItem : ViewModelProperties
 
     /// <summary>设备使用的通信类型。</summary>
     public string CommunicationType { get; }
+
+    /// <summary>设备当前展示的静态采集数据，后续可替换为实际通信数据。</summary>
+    public ObservableCollection<HomeDeviceDataItem> DeviceData { get; }
+
+    #endregion
+}
+
+/// <summary>首页设备连接状态抽屉中显示的单项设备数据。</summary>
+public sealed class HomeDeviceDataItem
+{
+    #region 初始化
+
+    /// <summary>创建设备数据项并保存名称、值、范围或判断条件及校验结果。</summary>
+    public HomeDeviceDataItem(string dataName, string dataValue, string rangeOrCondition, bool isWithinRangeOrCondition)
+    {
+        DataName = dataName;
+        DataValue = dataValue;
+        RangeOrCondition = rangeOrCondition;
+        IsWithinRangeOrCondition = isWithinRangeOrCondition;
+    }
+
+    #endregion
+
+    #region 绑定属性
+
+    /// <summary>数据名称。</summary>
+    public string DataName { get; }
+
+    /// <summary>当前数据值。</summary>
+    public string DataValue { get; }
+
+    /// <summary>用于悬停提示的范围或判断条件。</summary>
+    public string RangeOrCondition { get; }
+
+    /// <summary>数据值是否处于有效范围或满足判断条件。</summary>
+    public bool IsWithinRangeOrCondition { get; }
 
     #endregion
 }

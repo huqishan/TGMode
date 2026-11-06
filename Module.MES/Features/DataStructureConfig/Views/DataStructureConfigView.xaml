@@ -12,19 +12,6 @@
              d:DesignWidth="1600">
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter" />
-        <Style x:Key="DrawerBackdropButtonStyle" TargetType="{x:Type Button}">
-            <Setter Property="Padding" Value="0" />
-            <Setter Property="BorderThickness" Value="0" />
-            <Setter Property="Focusable" Value="False" />
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="{x:Type Button}">
-                        <Border Background="{TemplateBinding Background}" />
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
         <Style x:Key="DataStructureTreeViewItemStyle" TargetType="{x:Type TreeViewItem}">
             <Setter Property="Foreground" Value="{DynamicResource AppContentTextBrush}" />
             <Setter Property="Background" Value="Transparent" />

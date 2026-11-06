@@ -17,7 +17,6 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
-using System.Reflection;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
@@ -44,6 +43,12 @@ public static class SchemeExecutionService
     private static IEventAggregator? _eventAggregator;
     /// <summary>用于向通信模块发送请求的中介器。</summary>
     private static IMediator? _mediator;
+    /// <summary>当前异步执行链的受控上下文，供嵌套业务工步复用暂停和取消状态。</summary>
+    private static readonly AsyncLocal<IControlledExecutionContext?> CurrentExecutionContext = new();
+    /// <summary>当前异步执行链的方案工步，供嵌套业务工步解析工步输入参数。</summary>
+    private static readonly AsyncLocal<SchemeWorkStepItem?> CurrentSchemeStep = new();
+    /// <summary>当前异步执行链中正在展开的工步名称，用于阻止配置循环递归。</summary>
+    private static readonly AsyncLocal<IReadOnlyList<string>?> ActiveNamedWorkSteps = new();
 
     #endregion
 
@@ -703,10 +708,11 @@ public static class SchemeExecutionService
     internal static async Task<SchemeStepExecutionOutput> ExecuteStandaloneStepAsync(
         IControlledExecutionContext context,
         WorkStepOperation operation,
-        Dictionary<string, string> returnValues)
+        Dictionary<string, string> returnValues,
+        SchemeWorkStepItem? schemeStep = null)
     {
-        SchemeWorkStepItem standaloneStep = CreateStandaloneSchemeStep();
-        SchemeStepExecutionOutput output = await ExecuteOperationAsync(context, operation, standaloneStep, returnValues)
+        SchemeWorkStepItem executionStep = schemeStep ?? CreateStandaloneSchemeStep();
+        SchemeStepExecutionOutput output = await ExecuteOperationAsync(context, operation, executionStep, returnValues)
             .ConfigureAwait(false);
 
         string resultText = output.Result?.ToString() ?? string.Empty;
@@ -736,7 +742,76 @@ public static class SchemeExecutionService
         return output;
     }
 
-    /// <summary>根据操作对象类型将步骤分派到 Lua、判断、系统方法或设备通信执行器。</summary>
+    /// <summary>根据工步配置名称执行其中的全部操作，并复用当前执行链的控制状态。</summary>
+    internal static async Task ExecuteWorkStepByNameAsync(string workStepName)
+    {
+        string normalizedWorkStepName = NormalizeRequiredText(workStepName);
+        if (string.IsNullOrWhiteSpace(normalizedWorkStepName))
+        {
+            throw new ArgumentException("工步名称不能为空。", nameof(workStepName));
+        }
+
+        IControlledExecutionContext? context = CurrentExecutionContext.Value;
+        if (context is null)
+        {
+            throw new InvalidOperationException("只能在受控的方案或流程图执行过程中调用此工步操作。");
+        }
+
+        IReadOnlyList<string> activeWorkSteps = ActiveNamedWorkSteps.Value ?? Array.Empty<string>();
+        if (activeWorkSteps.Contains(normalizedWorkStepName, StringComparer.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException($"检测到工步递归调用：{normalizedWorkStepName}。");
+        }
+
+        IReadOnlyList<string> previousWorkSteps = ActiveNamedWorkSteps.Value ?? Array.Empty<string>();
+        ActiveNamedWorkSteps.Value = previousWorkSteps
+            .Append(normalizedWorkStepName)
+            .ToArray();
+
+        try
+        {
+            context.ThrowIfCancellationRequested();
+            IReadOnlyCollection<WorkStepProfile> configuredWorkSteps = await Task.Run(WorkStepConfigurationStore.Load)
+                .ConfigureAwait(false);
+            WorkStepProfile? workStep = configuredWorkSteps.FirstOrDefault(item =>
+                string.Equals(item.Name?.Trim(), normalizedWorkStepName, StringComparison.OrdinalIgnoreCase));
+            if (workStep is null)
+            {
+                throw new InvalidOperationException($"未找到工步：{normalizedWorkStepName}。");
+            }
+
+            if (workStep.Operations.Count == 0)
+            {
+                throw new InvalidOperationException($"工步“{normalizedWorkStepName}”没有可执行操作。");
+            }
+
+            SchemeWorkStepItem schemeStep = CurrentSchemeStep.Value ?? CreateStandaloneSchemeStep();
+            Dictionary<string, string> returnValues = new(StringComparer.OrdinalIgnoreCase);
+            foreach (WorkStepOperation operation in workStep.Operations)
+            {
+                await context.WaitIfPausedAsync().ConfigureAwait(false);
+                context.ThrowIfCancellationRequested();
+
+                SchemeStepExecutionOutput output = await ExecuteStandaloneStepAsync(
+                        context,
+                        operation,
+                        returnValues,
+                        schemeStep)
+                    .ConfigureAwait(false);
+                if (!output.IsSuccess)
+                {
+                    throw new InvalidOperationException(
+                        $"工步“{normalizedWorkStepName}”执行失败：{output.Message}");
+                }
+            }
+        }
+        finally
+        {
+            ActiveNamedWorkSteps.Value = previousWorkSteps;
+        }
+    }
+
+    /// <summary>根据操作对象类型将步骤分派到 Lua、判断、业务目录或设备通信执行器。</summary>
     private static async Task<SchemeStepExecutionOutput> ExecuteOperationAsync(
         IControlledExecutionContext context,
         WorkStepOperation operation,
@@ -746,7 +821,7 @@ public static class SchemeExecutionService
         return operation.OperationObjectName switch
         {
             "Lua" => ExecuteLua(operation, schemeStep, returnValues),
-            "System" => await ExecuteSystemMethodAsync(operation, schemeStep, returnValues).ConfigureAwait(false),
+            "System" => await ExecuteCatalogBusinessOperationAsync(context,operation,schemeStep,returnValues,"System",operation.PCommandName?.Trim() ?? string.Empty).ConfigureAwait(false),
             "判断" => ExecuteJudge(operation, schemeStep, returnValues),
             _ => TryResolveBusinessOperation(operation, out string deviceId, out string operationId)
                 ? await ExecuteCatalogBusinessOperationAsync(context, operation, schemeStep, returnValues, deviceId, operationId).ConfigureAwait(false)
@@ -815,47 +890,28 @@ public static class SchemeExecutionService
             ? null
             : operation.OperationObjectName.Trim();
 
-        BusinessOperationInvocationResult result = await BusinessOperationInvoker
-            .InvokeAsync(deviceId, operationId, parameterValues, operationObjectName, context.CancellationToken)
-            .ConfigureAwait(false);
+        IControlledExecutionContext? previousContext = CurrentExecutionContext.Value;
+        SchemeWorkStepItem? previousSchemeStep = CurrentSchemeStep.Value;
+        CurrentExecutionContext.Value = context;
+        CurrentSchemeStep.Value = schemeStep;
+        BusinessOperationInvocationResult result;
+        try
+        {
+            result = await BusinessOperationInvoker
+                .InvokeAsync(deviceId, operationId, parameterValues, operationObjectName, context.CancellationToken)
+                .ConfigureAwait(false);
+        }
+        finally
+        {
+            CurrentExecutionContext.Value = previousContext;
+            CurrentSchemeStep.Value = previousSchemeStep;
+        }
+
         context.ThrowIfCancellationRequested();
 
         return result.IsSuccess
             ? SchemeStepExecutionOutput.Success(result.Result)
             : SchemeStepExecutionOutput.Failure(result.Message, result.Result);
-    }
-
-    /// <summary>通过反射执行兼容的系统方法，并按配置构造方法参数。</summary>
-    private static async Task<SchemeStepExecutionOutput> ExecuteSystemMethodAsync(
-        WorkStepOperation operation,
-        SchemeWorkStepItem schemeStep,
-        IReadOnlyDictionary<string, string> returnValues)
-    {
-        string methodName = operation.PCommandName?.Trim() ?? string.Empty;
-        if (string.IsNullOrWhiteSpace(methodName) || string.Equals(methodName, "等待", StringComparison.OrdinalIgnoreCase))
-        {
-            return SchemeStepExecutionOutput.Success(string.Empty);
-        }
-
-        MethodInfo? method = typeof(Module.Business.Business.System)
-            .GetMethods(BindingFlags.Public | BindingFlags.Static)
-            .FirstOrDefault(item => string.Equals(item.Name, methodName, StringComparison.OrdinalIgnoreCase));
-        if (method is null)
-        {
-            return SchemeStepExecutionOutput.Failure($"System method '{methodName}' was not found.");
-        }
-
-        object?[] args = BuildMethodArguments(method, operation, schemeStep, returnValues);
-        object? value = method.Invoke(null, args);
-        if (value is Task task)
-        {
-            await task.ConfigureAwait(false);
-            value = task.GetType().IsGenericType
-                ? task.GetType().GetProperty("Result")?.GetValue(task)
-                : null;
-        }
-
-        return SchemeStepExecutionOutput.Success(value);
     }
 
     /// <summary>根据判断操作的关系符和参数计算布尔结果。</summary>
@@ -950,41 +1006,7 @@ public static class SchemeExecutionService
 
     #endregion
 
-    #region 系统参数解析与返回值处理
-
-    /// <summary>依据反射参数定义和步骤配置构造系统方法调用参数。</summary>
-    private static object?[] BuildMethodArguments(
-        MethodInfo method,
-        WorkStepOperation operation,
-        SchemeWorkStepItem schemeStep,
-        IReadOnlyDictionary<string, string> returnValues)
-    {
-        Dictionary<string, InputParameter> configuredParameters = operation.Parameters
-            .Where(parameter => !string.IsNullOrWhiteSpace(parameter.ParameterName))
-            .GroupBy(parameter => parameter.ParameterName.Trim(), StringComparer.OrdinalIgnoreCase)
-            .ToDictionary(group => group.Key, group => group.First(), StringComparer.OrdinalIgnoreCase);
-
-        List<InputParameter> orderedParameters = operation.Parameters
-            .OrderBy(parameter => parameter.Num)
-            .ToList();
-
-        ParameterInfo[] methodParameters = method.GetParameters();
-        object?[] args = new object?[methodParameters.Length];
-        for (int index = 0; index < methodParameters.Length; index++)
-        {
-            ParameterInfo parameterInfo = methodParameters[index];
-            InputParameter? configuredParameter =
-                configuredParameters.TryGetValue(parameterInfo.Name ?? string.Empty, out InputParameter? matched)
-                    ? matched
-                    : orderedParameters.ElementAtOrDefault(index);
-            string value = configuredParameter is null
-                ? string.Empty
-                : ResolveParameterValue(configuredParameter, schemeStep, returnValues);
-            args[index] = ConvertToParameterType(value, parameterInfo.ParameterType);
-        }
-
-        return args;
-    }
+    #region 步骤参数解析与返回值处理
 
     /// <summary>根据参数类型从设置值、工步值、返回值或全局值中解析实际值。</summary>
     private static string ResolveParameterValue(
@@ -1141,45 +1163,6 @@ public static class SchemeExecutionService
             schemeName,
             string.Empty,
             message);
-    }
-
-    /// <summary>将文本参数转换为目标方法声明所需的运行时类型。</summary>
-    private static object? ConvertToParameterType(string value, Type targetType)
-    {
-        Type type = Nullable.GetUnderlyingType(targetType) ?? targetType;
-        if (type == typeof(string))
-        {
-            return value;
-        }
-
-        if (type == typeof(int))
-        {
-            return int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out int result) ? result : 0;
-        }
-
-        if (type == typeof(double))
-        {
-            return double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out double result) ? result : 0d;
-        }
-
-        if (type == typeof(decimal))
-        {
-            return decimal.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out decimal result) ? result : 0m;
-        }
-
-        if (type == typeof(bool))
-        {
-            return bool.TryParse(value, out bool result) && result;
-        }
-
-        if (type.IsEnum)
-        {
-            return Enum.TryParse(type, value, true, out object? enumValue)
-                ? enumValue
-                : Activator.CreateInstance(type);
-        }
-
-        return Convert.ChangeType(value, type, CultureInfo.InvariantCulture);
     }
 
     /// <summary>将两个文本按十进制数值进行比较。</summary>
