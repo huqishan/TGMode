@@ -3,14 +3,17 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:local="clr-namespace:Module.Business.Features.OperationEditing.Views">
+    <!-- 操作编辑抽屉：宿主 Grid 控制透明度、命中与位移动画 -->
     <Grid x:Name="DrawerHost"
           Width="840"
           HorizontalAlignment="Left"
           Opacity="0"
           IsHitTestVisible="False">
+        <!-- 抽屉遮罩层：点击关闭抽屉 -->
         <Border Background="#3A000000"
                 MouseLeftButtonDown="DrawerBackdrop_MouseLeftButtonDown" />
 
+        <!-- 抽屉面板：通过位移变换实现滑入滑出 -->
         <Border Style="{StaticResource DrawerBorderStyle}">
             <Border.RenderTransform>
                 <TranslateTransform x:Name="DrawerTranslateTransform" X="-56" />
@@ -22,6 +25,7 @@
                     <RowDefinition Height="*" />
                 </Grid.RowDefinitions>
 
+                <!-- 抽屉标题区：标题、宿主业务名称与关闭/主操作按钮 -->
                 <DockPanel LastChildFill="False">
                     <StackPanel DockPanel.Dock="Left">
                         <TextBlock Style="{StaticResource SectionTitleStyle}"
@@ -42,6 +46,7 @@
                     </StackPanel>
                 </DockPanel>
 
+                <!-- 操作编辑主体：数据上下文指向绑定的编辑器 ViewModel -->
                 <local:OperationEditorView Grid.Row="1"
                                            DataContext="{Binding Editor, ElementName=Root}" />
             </Grid>

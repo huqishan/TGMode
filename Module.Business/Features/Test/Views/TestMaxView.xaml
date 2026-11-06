@@ -6,6 +6,7 @@
              xmlns:testControls="clr-namespace:ControlLibrary.Controls.TestDataTable.Control;assembly=ControlLibrary"
              mc:Ignorable="d">
     <UserControl.Resources>
+        <!-- 状态颜色资源：NG 红 / OK 绿 / 待机深蓝 -->
         <SolidColorBrush x:Key="StationNgBrush" Color="#D14343" />
         <SolidColorBrush x:Key="StationOkBrush" Color="#18A058" />
         <SolidColorBrush x:Key="StationIdleBrush" Color="#223044" />
@@ -101,6 +102,7 @@
             </Setter>
         </Style>
 
+        <!-- 方案下拉框样式：自绘选择区展示“方案”标签与当前方案名，弹出层列出候选方案 -->
         <Style x:Key="StationSchemeComboBoxStyle" TargetType="{x:Type ComboBox}">
             <Setter Property="Foreground" Value="{DynamicResource AppContentTextBrush}" />
             <Setter Property="Background" Value="Transparent" />
@@ -204,6 +206,7 @@
             </Setter>
         </Style>
 
+        <!-- 业务流程节点样式：圆点按结果 OK/NG/当前业务变色 -->
         <Style x:Key="WorkStepDotStyle" TargetType="{x:Type Ellipse}">
             <Setter Property="Width" Value="12" />
             <Setter Property="Height" Value="12" />
@@ -273,6 +276,7 @@
             </Setter>
         </Style>
 
+        <!-- 工位日志页签样式：页签栏 + 内容卡片 -->
         <Style x:Key="StationLogTabControlStyle" TargetType="{x:Type TabControl}">
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="BorderThickness" Value="0" />
@@ -382,6 +386,7 @@
         </Style>
     </UserControl.Resources>
 
+    <!-- 单工位测试面板：状态头 / 方案与操作栏 / 业务流程与测试数据 / 日志页签 -->
     <Border Background="{DynamicResource TabCardBackgroundBrush}"
             BorderBrush="{DynamicResource TabItemBorderBrush}"
             BorderThickness="1"
@@ -395,6 +400,7 @@
                 <RowDefinition Height="200" />
             </Grid.RowDefinitions>
 
+            <!-- 状态头：工位名、运行状态与整体执行时间，背景色随测试状态变化 -->
             <Border Grid.Row="0"
                     Background="{Binding StatusBrush}"
                     CornerRadius="8"
@@ -429,6 +435,7 @@ Text="{Binding ElapsedTimeText}" />
                 </DockPanel>
             </Border>
 
+            <!-- 操作栏：方案选择下拉 + 单步/连续/暂停/停止按钮 -->
             <Grid Grid.Row="1" Margin="0,10,0,0">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="282" />
@@ -475,6 +482,7 @@ Text="{Binding ElapsedTimeText}" />
                 </StackPanel>
             </Grid>
 
+            <!-- 主体区域：左侧业务流程列表 + 右侧当前业务与测试数据表格 -->
             <Grid Grid.Row="2" Margin="0,10,0,0">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="182" />
@@ -482,6 +490,7 @@ Text="{Binding ElapsedTimeText}" />
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
 
+                <!-- 业务流程列表：竖线串联节点，圆点与文字标识各业务执行状态 -->
                 <Border Style="{StaticResource StationInnerPanelStyle}">
                     <Grid>
                         <Grid.RowDefinitions>
@@ -524,6 +533,7 @@ Text="{Binding ElapsedTimeText}" />
                     </Grid>
                 </Border>
 
+                <!-- 测试数据区域：当前业务名称、业务执行时间与测试数据表格 -->
                 <Border Grid.Column="2"
                         Style="{StaticResource StationInnerPanelStyle}"
                         Padding="10">
@@ -565,6 +575,7 @@ Text="{Binding ElapsedTimeText}" />
                 </Border>
             </Grid>
 
+            <!-- 日志区域：运行/MES/异常/功能四类日志页签 -->
             <Border Grid.Row="3" Margin="0,10,0,0"
                     Style="{StaticResource StationInnerPanelStyle}"
                     Padding="0">

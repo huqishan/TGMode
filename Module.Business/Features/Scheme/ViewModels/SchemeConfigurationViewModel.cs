@@ -3,8 +3,8 @@ using ControlLibrary.Controls.Loading;
 using Module.Business.Models;
 using Module.Business.Features.OperationEditing.ViewModels.PresentationModels;
 using Module.Business.Features.Scheme.ViewModels.PresentationModels;
-using Module.Business.Features.WorkStep.Services;
-using Module.Business.Features.WorkStep.ViewModels.PresentationModels;
+using Module.Business.Features.BusinessConfiguration.Services;
+using Module.Business.Features.BusinessConfiguration.ViewModels.PresentationModels;
 using Module.Business.Services;
 using System;
 using System.Collections.Generic;
@@ -43,7 +43,7 @@ public sealed class SchemeConfigurationViewModel : ViewModelProperties
     private SchemeWorkStepItem? _editingSchemeWorkStep;
     private SchemeWorkStepItem? _originalSchemeWorkStep;
     private bool _isNewSchemeWorkStep;
-    private readonly ObservableCollection<WorkStepProfile> _workStepProfiles = WorkStepConfigurationStore.Load();
+    private readonly ObservableCollection<BusinessProfile> _workStepProfiles = BusinessConfigurationStore.Load();
 
     #endregion
 
@@ -60,7 +60,7 @@ public sealed class SchemeConfigurationViewModel : ViewModelProperties
     /// 业务配置中已有的业务名称集合，供方案业务类型下拉选择。
     /// </summary>
     public ObservableCollection<string> WorkStepTypes { get; } = new(
-        WorkStepConfigurationStore.Load()
+        BusinessConfigurationStore.Load()
             .Select(workStep => workStep.Name)
             .Where(name => !string.IsNullOrWhiteSpace(name))
             .Distinct(StringComparer.OrdinalIgnoreCase)
@@ -96,7 +96,7 @@ public sealed class SchemeConfigurationViewModel : ViewModelProperties
     {
         WorkStepInputParameters.Clear();
         WorkStepReturnParameters.Clear();
-        WorkStepProfile? workStep = _workStepProfiles.FirstOrDefault(item =>
+        BusinessProfile? workStep = _workStepProfiles.FirstOrDefault(item =>
             string.Equals(item.Name, workStepName, StringComparison.OrdinalIgnoreCase));
         if (workStep is null)
         {
@@ -948,7 +948,7 @@ public sealed class SchemeConfigurationViewModel : ViewModelProperties
             return;
         }
 
-        WorkStepProfile? builtInWorkStep = _workStepProfiles.FirstOrDefault(workStep =>
+        BusinessProfile? builtInWorkStep = _workStepProfiles.FirstOrDefault(workStep =>
             string.Equals(workStep.Name, workStepName, StringComparison.OrdinalIgnoreCase));
         if (builtInWorkStep is null)
         {
@@ -986,9 +986,9 @@ public sealed class SchemeConfigurationViewModel : ViewModelProperties
     /// </summary>
     private void RefreshBuiltInWorkSteps()
     {
-        ObservableCollection<WorkStepProfile> latestWorkSteps = WorkStepConfigurationStore.Load();
+        ObservableCollection<BusinessProfile> latestWorkSteps = BusinessConfigurationStore.Load();
         _workStepProfiles.Clear();
-        foreach (WorkStepProfile workStep in latestWorkSteps)
+        foreach (BusinessProfile workStep in latestWorkSteps)
         {
             _workStepProfiles.Add(workStep);
         }

@@ -7,6 +7,7 @@
              mc:Ignorable="d"
              d:DesignHeight="900"
              d:DesignWidth="1600">
+    <!-- 通信测试主界面：顶部标题栏 + 工位测试卡片网格 -->
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -14,6 +15,7 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
+        <!-- 标题栏：界面标题、说明与工位数量统计 -->
         <Border Grid.Row="0"
                 Style="{StaticResource CardBorderStyle}"
                 Padding="18,14">
@@ -36,6 +38,7 @@
             </DockPanel>
         </Border>
 
+        <!-- 工位卡片区域：UniformGrid 布局，卡片高度随可视区域与工位数量自适应 -->
         <ScrollViewer x:Name="StationsScrollViewer"
                       Grid.Row="2"
                       HorizontalScrollBarVisibility="Disabled"

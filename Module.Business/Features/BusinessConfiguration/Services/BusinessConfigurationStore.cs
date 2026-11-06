@@ -1,4 +1,4 @@
-﻿using Module.Business.Features.WorkStep.ViewModels.PresentationModels;
+﻿using Module.Business.Features.BusinessConfiguration.ViewModels.PresentationModels;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -7,17 +7,22 @@ using System.Linq;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 
-namespace Module.Business.Features.WorkStep.Services;
+namespace Module.Business.Features.BusinessConfiguration.Services;
 
 /// <summary>
 /// 独立业务配置存储。每个业务使用单独文件，便于后续按 WorkStepId 查询引用和生成执行快照。
 /// </summary>
-public static class WorkStepConfigurationStore
+public static class BusinessConfigurationStore
 {
     #region 配置与公开入口
 
-    private static readonly string WorkStepDirectory = Path.Combine(AppContext.BaseDirectory, "Config", "WorkStep");
-    private const string FileSearchPattern = "*.workstep.json";
+    /// <summary>业务配置文件目录。</summary>
+    private static readonly string WorkStepDirectory = Path.Combine(AppContext.BaseDirectory, "Config", "BusinessConfiguration");
+
+    /// <summary>业务配置文件搜索模式。</summary>
+    private const string FileSearchPattern = "*.businessconfiguration.json";
+
+    /// <summary>JSON 序列化选项：缩进输出、忽略只读属性、中文不转义。</summary>
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         WriteIndented = true,
@@ -25,9 +30,14 @@ public static class WorkStepConfigurationStore
         Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
     };
 
-    public static ObservableCollection<WorkStepProfile> Load()
+    /// <summary>
+    /// 加载全部业务配置。
+    /// 目录不存在时返回空集合；单个文件损坏时跳过，不影响其他业务加载。
+    /// </summary>
+    /// <returns>业务配置集合，加载后重置变更标记。</returns>
+    public static ObservableCollection<BusinessProfile> Load()
     {
-        ObservableCollection<WorkStepProfile> workSteps = new();
+        ObservableCollection<BusinessProfile> workSteps = new();
         if (!Directory.Exists(WorkStepDirectory))
         {
             return workSteps;
@@ -37,7 +47,7 @@ public static class WorkStepConfigurationStore
         {
             try
             {
-                WorkStepProfile? workStep = JsonSerializer.Deserialize<WorkStepProfile>(File.ReadAllText(filePath), JsonOptions);
+                BusinessProfile? workStep = JsonSerializer.Deserialize<BusinessProfile>(File.ReadAllText(filePath), JsonOptions);
                 if (workStep is null)
                 {
                     continue;
@@ -55,14 +65,19 @@ public static class WorkStepConfigurationStore
         return workSteps;
     }
 
-    public static void Save(ObservableCollection<WorkStepProfile> workSteps)
+    /// <summary>
+    /// 保存全部业务配置，以业务 Id 命名独立文件写入磁盘；
+    /// 磁盘上已不在集合中的文件视为已删除业务，保存时一并清理。
+    /// </summary>
+    /// <param name="workSteps">待保存的业务配置集合。</param>
+    public static void Save(ObservableCollection<BusinessProfile> workSteps)
     {
         Directory.CreateDirectory(WorkStepDirectory);
         HashSet<string> currentFiles = new(StringComparer.OrdinalIgnoreCase);
 
-        foreach (WorkStepProfile workStep in workSteps)
+        foreach (BusinessProfile workStep in workSteps)
         {
-            string filePath = Path.Combine(WorkStepDirectory, $"{workStep.Id}.workstep.json");
+            string filePath = Path.Combine(WorkStepDirectory, $"{workStep.Id}.businessconfiguration.json");
             File.WriteAllText(filePath, JsonSerializer.Serialize(workStep, JsonOptions));
             currentFiles.Add(filePath);
         }

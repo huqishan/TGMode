@@ -1,6 +1,6 @@
 ﻿using Module.Business.Features.OperationEditing.ViewModels.PresentationModels;
-using Module.Business.Features.WorkStep.ViewModels;
-using Module.Business.Features.WorkStep.ViewModels.PresentationModels;
+using Module.Business.Features.BusinessConfiguration.ViewModels;
+using Module.Business.Features.BusinessConfiguration.ViewModels.PresentationModels;
 using System.Collections.ObjectModel;
 
 namespace TestProject;
@@ -8,7 +8,7 @@ namespace TestProject;
 /// <summary>
 /// 业务配置步骤排序回归测试。
 /// </summary>
-public sealed class WorkStepConfigurationViewModelTests
+public sealed class BusinessConfigurationViewModelTests
 {
     #region 序号排序
 
@@ -18,12 +18,12 @@ public sealed class WorkStepConfigurationViewModelTests
         WorkStepOperation first = new() { Num = 1, Summary = "第一步" };
         WorkStepOperation second = new() { Num = 2, Summary = "第二步" };
         WorkStepOperation third = new() { Num = 3, Summary = "第三步" };
-        WorkStepProfile workStep = new()
+        BusinessProfile workStep = new()
         {
             Name = "排序测试业务",
             Operations = new ObservableCollection<WorkStepOperation> { first, second, third }
         };
-        WorkStepConfigurationViewModel viewModel = new();
+        BusinessConfigurationViewModel viewModel = new();
         viewModel.WorkSteps.Clear();
         viewModel.WorkSteps.Add(workStep);
         viewModel.SelectedWorkStep = workStep;

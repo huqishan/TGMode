@@ -16,42 +16,108 @@ using System.Windows.Media;
 
 namespace Module.Business.Test.ViewModels;
 
+/// <summary>
+/// 单工位通信测试 ViewModel。
+/// 展示工位的测试状态、产品信息、方案业务列表与测试数据，
+/// 支持单步/连续测试、停止测试，并订阅执行状态事件同步界面展示。
+/// </summary>
 public sealed class TestMaxViewModel : ViewModelProperties, IDisposable
 {
+    #region 静态资源与字段
+
+    /// <summary>待机状态颜色。</summary>
     private static readonly Brush IdleBrush = CreateBrush("#24C8F2");
+
+    /// <summary>测试中状态颜色。</summary>
     private static readonly Brush RunningBrush = CreateBrush("#F59E0B");
+
+    /// <summary>测试通过状态颜色。</summary>
     private static readonly Brush SuccessBrush = CreateBrush("#18A058");
+
+    /// <summary>测试失败状态颜色。</summary>
     private static readonly Brush FailureBrush = CreateBrush("#D14343");
 
+    /// <summary>事件聚合器，用于订阅业务执行状态变化事件。</summary>
     private readonly IEventAggregator _eventAggregator;
+
+    /// <summary>中介者，用于查询方案列表。</summary>
     private readonly IMediator _mediator;
+
+    /// <summary>测试计时器，用于展示整体耗时。</summary>
     private readonly Stopwatch _elapsedStopwatch = new();
+
+    /// <summary>工位名称。</summary>
     private string _stationName;
+
+    /// <summary>线体名称。</summary>
     private string _lineName;
+
+    /// <summary>测试状态文案。</summary>
     private string _testStatus = "待机";
+
+    /// <summary>产品名称。</summary>
     private string _productName = "产品名称";
+
+    /// <summary>产品条码。</summary>
     private string _productBarcode = "未读码";
+
+    /// <summary>当前方案名称。</summary>
     private string _schemeName = "未选择方案";
+
+    /// <summary>工单号。</summary>
     private string _workOrderNo = "未下发";
+
+    /// <summary>界面选中的产品名称。</summary>
     private string _selectedProductName = string.Empty;
+
+    /// <summary>当前选中的方案选项。</summary>
     private TestProfileOption? _selectedProfile;
+
+    /// <summary>当前选中的业务条目。</summary>
     private TestDataDisplayItem? _selectedWorkStep;
+
+    /// <summary>运行状态文案（测试中/测试OK/测试NG/待机）。</summary>
     private string _runStateText = "待机";
+
+    /// <summary>整体耗时文案。</summary>
     private string _elapsedTimeText = "0.0 s";
+
+    /// <summary>当前执行的业务名称。</summary>
     private string _currentWorkStepName = "等待启动";
+
+    /// <summary>当前业务耗时文案。</summary>
     private string _currentWorkStepElapsedTimeText = "0.0 s";
+
+    /// <summary>状态指示颜色。</summary>
     private Brush _statusBrush = IdleBrush;
+
     /// <summary>当前单步测试是否正在执行。</summary>
     private bool _isBusy;
+
+    /// <summary>是否已释放，保证 Dispose 幂等。</summary>
     private bool _disposed;
+
     /// <summary>防止同一工位重复启动单步测试的异步命令。</summary>
     private readonly AsyncRelayCommand _singleStepTestCommand;
 
+    #endregion
+
+    #region 构造函数
+
+    /// <summary>
+    /// 使用默认工位名“工位 1”构造，便于设计期与简单场景使用。
+    /// </summary>
     public TestMaxViewModel(IEventAggregator eventAggregator, IMediator mediator)
         : this("工位 1", eventAggregator, mediator)
     {
     }
 
+    /// <summary>
+    /// 构造函数，初始化命令、默认数据与集合，并订阅业务执行状态事件。
+    /// </summary>
+    /// <param name="stationName">工位名称。</param>
+    /// <param name="eventAggregator">事件聚合器。</param>
+    /// <param name="mediator">中介者。</param>
     public TestMaxViewModel(string stationName, IEventAggregator eventAggregator, IMediator mediator)
     {
         _stationName = string.IsNullOrWhiteSpace(stationName) ? "未命名工位" : stationName.Trim();
@@ -86,48 +152,60 @@ public sealed class TestMaxViewModel : ViewModelProperties, IDisposable
             .Subscribe(ApplyStatus, ThreadOption.UIThread, true);
     }
 
+    #endregion
+
+    #region 界面绑定属性
+
+    /// <summary>工位名称。</summary>
     public string StationName
     {
         get => _stationName;
         set => SetField(ref _stationName, value ?? string.Empty, true);
     }
 
+    /// <summary>线体名称。</summary>
     public string LineName
     {
         get => _lineName;
         set => SetField(ref _lineName, value ?? string.Empty, true);
     }
 
+    /// <summary>测试状态文案。</summary>
     public string TestStatus
     {
         get => _testStatus;
         private set => SetField(ref _testStatus, value);
     }
 
+    /// <summary>产品名称。</summary>
     public string ProductName
     {
         get => _productName;
         private set => SetField(ref _productName, value);
     }
 
+    /// <summary>产品条码。</summary>
     public string ProductBarcode
     {
         get => _productBarcode;
         private set => SetField(ref _productBarcode, value);
     }
 
+    /// <summary>当前方案名称。</summary>
     public string SchemeName
     {
         get => _schemeName;
         private set => SetField(ref _schemeName, value);
     }
 
+    /// <summary>工单号。</summary>
     public string WorkOrderNo
     {
         get => _workOrderNo;
         set => SetField(ref _workOrderNo, value ?? string.Empty, true);
     }
 
+    /// <summary>界面选中的产品名称，变化时同步到产品名称展示。</summary>
     public string SelectedProductName
     {
         get => _selectedProductName;
@@ -140,6 +218,7 @@ public sealed class TestMaxViewModel : ViewModelProperties, IDisposable
         }
     }
 
+    /// <summary>当前选中的方案选项，变化时刷新业务列表与命令可用状态。</summary>
     public TestProfileOption? SelectedProfile
     {
         get => _selectedProfile;
@@ -166,24 +245,28 @@ public sealed class TestMaxViewModel : ViewModelProperties, IDisposable
         }
     }
 
+    /// <summary>状态指示颜色。</summary>
     public Brush StatusBrush
     {
         get => _statusBrush;
         private set => SetField(ref _statusBrush, value);
     }
 
+    /// <summary>运行状态文案（测试中/测试OK/测试NG/待机）。</summary>
     public string RunStateText
     {
         get => _runStateText;
         private set => SetField(ref _runStateText, value);
     }
 
+    /// <summary>整体耗时文案。</summary>
     public string ElapsedTimeText
     {
         get => _elapsedTimeText;
         private set => SetField(ref _elapsedTimeText, value);
     }
 
+    /// <summary>当前执行的业务名称，变化时刷新业务高亮标记。</summary>
     public string CurrentWorkStepName
     {
         get => _currentWorkStepName;
@@ -196,16 +279,20 @@ public sealed class TestMaxViewModel : ViewModelProperties, IDisposable
         }
     }
 
+    /// <summary>当前业务耗时文案。</summary>
     public string CurrentWorkStepElapsedTimeText
     {
         get => _currentWorkStepElapsedTimeText;
         private set => SetField(ref _currentWorkStepElapsedTimeText, value);
     }
 
+    /// <summary>测试数据展示集合。</summary>
     public ObservableCollection<TestDataDisplayItem> TestData { get; }
 
+    /// <summary>方案业务列表集合。</summary>
     public ObservableCollection<TestDataDisplayItem> WorkSteps { get; }
 
+    /// <summary>当前选中的业务条目，变化时同步当前业务名称与耗时。</summary>
     public TestDataDisplayItem? SelectedWorkStep
     {
         get => _selectedWorkStep;
@@ -216,28 +303,47 @@ public sealed class TestMaxViewModel : ViewModelProperties, IDisposable
         }
     }
 
+    /// <summary>产品名称候选列表。</summary>
     public ObservableCollection<string> ProductOptions { get; }
 
+    /// <summary>可选方案列表。</summary>
     public ObservableCollection<TestProfileOption> ProfilesView { get; }
 
+    /// <summary>运行日志集合，最新日志插入顶部。</summary>
     public ObservableCollection<string> RunningLogs { get; }
 
+    /// <summary>MES 上传日志集合。</summary>
     public ObservableCollection<string> MesLogs { get; }
 
+    /// <summary>异常日志集合。</summary>
     public ObservableCollection<string> ExceptionLogs { get; }
 
+    /// <summary>功能日志集合。</summary>
     public ObservableCollection<string> FunctionLogs { get; }
 
+    /// <summary>单步测试命令。</summary>
     public ICommand SingleStepTestCommand { get; }
 
+    /// <summary>连续测试命令。</summary>
     public ICommand ContinuousTestCommand { get; }
 
+    /// <summary>停止测试命令。</summary>
     public ICommand StopTestCommand { get; }
 
+    /// <summary>刷新产品候选命令。</summary>
     public ICommand RefreshProductsCommand { get; }
 
+    /// <summary>刷新方案列表命令。</summary>
     public ICommand RefreshSchemesCommand { get; }
 
+    #endregion
+
+    #region 公开方法
+
+    /// <summary>
+    /// 从方案配置加载可选方案列表，并尽量保持当前选中项；
+    /// 无可选方案时回退为未选择方案状态并加载默认展示数据。
+    /// </summary>
     public async Task LoadSchemesAsync()
     {
         GetBusinessSchemesResponse response = await _mediator.Send(new GetBusinessSchemesRequest());
@@ -261,6 +367,11 @@ public sealed class TestMaxViewModel : ViewModelProperties, IDisposable
         }
     }
 
+    #endregion
+
+    /// <summary>
+    /// 取消订阅业务执行状态事件，界面卸载时调用。
+    /// </summary>
     public void Dispose()
     {
         if (_disposed)
@@ -331,11 +442,13 @@ public sealed class TestMaxViewModel : ViewModelProperties, IDisposable
         }
     }
 
+    /// <summary>启动连续测试：从首个未通过业务开始顺序执行。</summary>
     private void StartContinuousTest()
     {
         StartTest("连续测试", null);
     }
 
+    /// <summary>停止当前工位的测试：通知执行服务停止并复位状态与计时。</summary>
     private void StopTest()
     {
         if (IsBusy)
@@ -354,6 +467,7 @@ public sealed class TestMaxViewModel : ViewModelProperties, IDisposable
         AddLog(RunningLogs, $"{DateTime.Now:HH:mm:ss} {StationName} 已停止，进入待机。");
     }
 
+    /// <summary>测试开始时的公共处理：切换状态、设定当前业务并重置计时。</summary>
     private void StartTest(string statusText, TestDataDisplayItem? targetWorkStep)
     {
         TestStatus = statusText;
@@ -368,17 +482,25 @@ public sealed class TestMaxViewModel : ViewModelProperties, IDisposable
 
     #endregion
 
+    /// <summary>根据计时器刷新整体耗时与当前业务耗时文案。</summary>
     private void UpdateElapsedTime()
     {
         ElapsedTimeText = $"{_elapsedStopwatch.Elapsed.TotalSeconds:0.0} s";
         CurrentWorkStepElapsedTimeText = ElapsedTimeText;
     }
 
+    /// <summary>把当前业务耗时同步到当前业务条目。</summary>
+    /// <param name="elapsedTimeText">耗时文案。</param>
     private void ApplyCurrentWorkStepElapsedTime(string elapsedTimeText)
     {
         ApplyCurrentWorkStepElapsedTime(elapsedTimeText, null);
     }
 
+    /// <summary>
+    /// 把耗时文案写入指定业务条目；集合元素为不可变记录，通过替换元素触发界面刷新。
+    /// </summary>
+    /// <param name="elapsedTimeText">耗时文案。</param>
+    /// <param name="targetWorkStep">目标业务条目，为空时按当前业务名匹配。</param>
     private void ApplyCurrentWorkStepElapsedTime(string elapsedTimeText, TestDataDisplayItem? targetWorkStep)
     {
         string workStepName = ResolveCurrentWorkStepName(targetWorkStep);
@@ -410,6 +532,7 @@ public sealed class TestMaxViewModel : ViewModelProperties, IDisposable
         }
     }
 
+    /// <summary>刷新产品候选列表：集合为空时填充默认产品，并保证存在选中项。</summary>
     private void RefreshProducts()
     {
         if (ProductOptions.Count == 0)
@@ -426,6 +549,11 @@ public sealed class TestMaxViewModel : ViewModelProperties, IDisposable
         }
     }
 
+    /// <summary>
+    /// 处理业务执行状态变化事件：按工位名过滤后同步状态、产品信息，
+    /// 并依据成功/失败/停止/运行中更新运行状态与指示颜色。
+    /// </summary>
+    /// <param name="message">执行状态消息。</param>
     private void ApplyStatus(TestExecutionStatusMessage message)
     {
         if (!string.IsNullOrWhiteSpace(message.StationName) &&
@@ -469,6 +597,7 @@ public sealed class TestMaxViewModel : ViewModelProperties, IDisposable
         }
     }
 
+    /// <summary>应用选中的方案：刷新方案名称、重建业务列表与测试数据，未选中时加载默认数据。</summary>
     private void ApplySelectedProfile()
     {
         SchemeName = SelectedProfile?.WorkStepName ?? "未选择方案";
@@ -503,11 +632,16 @@ public sealed class TestMaxViewModel : ViewModelProperties, IDisposable
         CurrentWorkStepElapsedTimeText = "0.0 s";
     }
 
+    /// <summary>解析当前业务名称：默认取首个未通过的业务。</summary>
     private string ResolveCurrentWorkStepName()
     {
         return ResolveCurrentWorkStepName(null);
     }
 
+    /// <summary>
+    /// 解析当前业务名称：优先取指定条目，其次取首个未通过业务，再退回首条，最后返回占位文案。
+    /// </summary>
+    /// <param name="targetWorkStep">指定业务条目。</param>
     private string ResolveCurrentWorkStepName(TestDataDisplayItem? targetWorkStep)
     {
         if (targetWorkStep is not null && WorkSteps.Contains(targetWorkStep))
@@ -522,6 +656,7 @@ public sealed class TestMaxViewModel : ViewModelProperties, IDisposable
                "等待启动";
     }
 
+    /// <summary>加载默认的业务列表与测试数据，用于未选择方案时的界面展示。</summary>
     private void LoadDefaultTestData()
     {
         WorkSteps.Clear();
@@ -542,6 +677,7 @@ public sealed class TestMaxViewModel : ViewModelProperties, IDisposable
         CurrentWorkStepElapsedTimeText = "0.0 s";
     }
 
+    /// <summary>刷新业务列表的“当前业务”高亮标记，并同步选中项。</summary>
     private void RefreshCurrentWorkStepMarkers()
     {
         TestDataDisplayItem? currentWorkStep = _selectedWorkStep is not null && WorkSteps.Contains(_selectedWorkStep)
@@ -557,6 +693,7 @@ public sealed class TestMaxViewModel : ViewModelProperties, IDisposable
         SetField(ref _selectedWorkStep, currentWorkStep, nameof(SelectedWorkStep));
     }
 
+    /// <summary>处理业务条目选中变化：同步选中项、当前业务名称与耗时展示。</summary>
     private void SelectWorkStep(TestDataDisplayItem? workStep)
     {
         if (workStep is null)
@@ -574,6 +711,7 @@ public sealed class TestMaxViewModel : ViewModelProperties, IDisposable
         RefreshCurrentWorkStepMarkers();
     }
 
+    /// <summary>清空并写入各日志面板的初始占位内容。</summary>
     private void LoadDefaultLogs()
     {
         RunningLogs.Clear();
@@ -588,6 +726,7 @@ public sealed class TestMaxViewModel : ViewModelProperties, IDisposable
         FunctionLogs.Add($"{DateTime.Now:HH:mm:ss} 测试模块初始化完成。");
     }
 
+    /// <summary>写入日志：新日志插入顶部，超出 50 条时移除最旧的日志。</summary>
     private static void AddLog(ObservableCollection<string> logs, string message)
     {
         logs.Insert(0, message);
@@ -597,6 +736,7 @@ public sealed class TestMaxViewModel : ViewModelProperties, IDisposable
         }
     }
 
+    /// <summary>判断状态文案是否属于运行中（包含测试/执行/运行关键字）。</summary>
     private static bool IsRunningStatus(string status)
     {
         return !string.IsNullOrWhiteSpace(status) &&
@@ -605,16 +745,19 @@ public sealed class TestMaxViewModel : ViewModelProperties, IDisposable
                 status.Contains("运行", StringComparison.OrdinalIgnoreCase));
     }
 
+    /// <summary>按十六进制颜色文本创建画刷。</summary>
     private static Brush CreateBrush(string colorText)
     {
         return (Brush)new BrushConverter().ConvertFromString(colorText)!;
     }
 
+    /// <summary>取非空文本，为空时回退到当前值，避免事件消息覆盖界面已有展示。</summary>
     private static string UseFallback(string value, string fallback)
     {
         return string.IsNullOrWhiteSpace(value) ? fallback : value.Trim();
     }
 
+    /// <summary>创建未选择方案时展示的默认测试数据。</summary>
     private static TestDataDisplayItem[] CreateDefaultTestData()
     {
         return
@@ -654,6 +797,7 @@ public sealed class TestMaxViewModel : ViewModelProperties, IDisposable
         ];
     }
 
+    /// <summary>创建未选择方案时展示的默认业务列表。</summary>
     private static TestDataDisplayItem[] CreateDefaultWorkSteps()
     {
         return
@@ -685,6 +829,7 @@ public sealed class TestMaxViewModel : ViewModelProperties, IDisposable
         ];
     }
 
+    /// <summary>创建默认的产品名称候选列表。</summary>
     private static string[] CreateDefaultProductOptions()
     {
         return
@@ -696,8 +841,13 @@ public sealed class TestMaxViewModel : ViewModelProperties, IDisposable
     }
 }
 
+/// <summary>
+/// 测试界面的方案选项。
+/// 封装方案基本信息与其包含的业务列表，由方案信息转换而来。
+/// </summary>
 public sealed class TestProfileOption
 {
+    /// <summary>私有构造函数，外部统一通过 FromScheme 创建。</summary>
     private TestProfileOption(
         string schemeId,
         string workStepName,
@@ -712,16 +862,25 @@ public sealed class TestProfileOption
         WorkSteps = workSteps;
     }
 
+    /// <summary>方案唯一标识。</summary>
     public string SchemeId { get; }
 
+    /// <summary>方案名称。</summary>
     public string WorkStepName { get; }
 
+    /// <summary>类型展示文案（业务数量）。</summary>
     public string TypeDisplayName { get; }
 
+    /// <summary>方案摘要（业务名称拼接）。</summary>
     public string Summary { get; }
 
+    /// <summary>方案包含的业务选项列表。</summary>
     public IReadOnlyList<TestProfileWorkStepOption> WorkSteps { get; }
 
+    /// <summary>
+    /// 由方案信息构建测试方案选项，业务按展示顺序排序。
+    /// </summary>
+    /// <param name="scheme">方案信息。</param>
     public static TestProfileOption FromScheme(BusinessSchemeInfo scheme)
     {
         TestProfileWorkStepOption[] workSteps = scheme.WorkSteps
@@ -740,8 +899,13 @@ public sealed class TestProfileOption
     }
 }
 
+/// <summary>
+/// 测试界面的业务选项。
+/// 封装方案内单个业务的标识、顺序、名称与操作数量，供单步测试定位执行目标。
+/// </summary>
 public sealed class TestProfileWorkStepOption
 {
+    /// <summary>私有构造函数，外部统一通过 FromWorkStep 创建。</summary>
     private TestProfileWorkStepOption(
         string id,
         int displayOrder,
@@ -756,16 +920,25 @@ public sealed class TestProfileWorkStepOption
         OperationCount = operationCount;
     }
 
+    /// <summary>业务唯一标识。</summary>
     public string Id { get; }
 
+    /// <summary>展示顺序。</summary>
     public int DisplayOrder { get; }
 
+    /// <summary>业务名称。</summary>
     public string WorkStepName { get; }
 
+    /// <summary>业务步骤名称，为空时回退为业务名称。</summary>
     public string StepName { get; }
 
+    /// <summary>业务包含的操作数量。</summary>
     public int OperationCount { get; }
 
+    /// <summary>
+    /// 由方案业务信息构建业务选项，空名称时相互回退。
+    /// </summary>
+    /// <param name="workStep">方案业务信息。</param>
     public static TestProfileWorkStepOption FromWorkStep(BusinessSchemeWorkStepInfo workStep)
     {
         string stepName = string.IsNullOrWhiteSpace(workStep.StepName)

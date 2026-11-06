@@ -1,8 +1,8 @@
 ﻿using ControlLibrary;
 using Module.Business.Features.OperationEditing.ViewModels;
 using Module.Business.Features.OperationEditing.ViewModels.PresentationModels;
-using Module.Business.Features.WorkStep.Services;
-using Module.Business.Features.WorkStep.ViewModels.PresentationModels;
+using Module.Business.Features.BusinessConfiguration.Services;
+using Module.Business.Features.BusinessConfiguration.ViewModels.PresentationModels;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -12,32 +12,50 @@ using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
 
-namespace Module.Business.Features.WorkStep.ViewModels;
+namespace Module.Business.Features.BusinessConfiguration.ViewModels;
 
 /// <summary>
 /// 业务配置页面视图模型，独立维护业务模板并组合现有步骤编辑器。
 /// </summary>
-public sealed class WorkStepConfigurationViewModel : ViewModelProperties
+public sealed class BusinessConfigurationViewModel : ViewModelProperties
 {
     #region 状态字段
 
+    /// <summary>成功状态提示颜色。</summary>
     private static readonly Brush SuccessBrush = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#16A34A"));
+
+    /// <summary>警告状态提示颜色。</summary>
     private static readonly Brush WarningBrush = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#EA580C"));
+
+    /// <summary>中性状态提示颜色。</summary>
     private static readonly Brush NeutralBrush = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#64748B"));
+
+    /// <summary>剪贴板中复制的操作步骤，供粘贴到其他业务。</summary>
     private readonly List<WorkStepOperation> _copiedOperations = new();
-    private WorkStepProfile? _selectedWorkStep;
+
+    /// <summary>当前选中的业务。</summary>
+    private BusinessProfile? _selectedWorkStep;
+
+    /// <summary>当前选中的操作步骤。</summary>
     private WorkStepOperation? _selectedOperation;
+
+    /// <summary>搜索关键字。</summary>
     private string _searchText = string.Empty;
+
+    /// <summary>页面状态提示文案。</summary>
     private string _pageStatusText = "等待编辑";
+
+    /// <summary>页面状态提示颜色。</summary>
     private Brush _pageStatusBrush = NeutralBrush;
 
     #endregion
 
     #region 构造与集合
 
-    public WorkStepConfigurationViewModel()
+    /// <summary>构造函数：从磁盘加载业务配置、初始化编辑器与命令，并选中首个业务。</summary>
+    public BusinessConfigurationViewModel()
     {
-        WorkSteps = WorkStepConfigurationStore.Load();
+        WorkSteps = BusinessConfigurationStore.Load();
         WorkStepsView = CollectionViewSource.GetDefaultView(WorkSteps);
         WorkStepsView.Filter = FilterWorkSteps;
         OperationEditor = new OperationEditorViewModel();
@@ -57,17 +75,21 @@ public sealed class WorkStepConfigurationViewModel : ViewModelProperties
         SetStatus(WorkSteps.Count == 0 ? "暂无业务配置，请点击新建。" : $"已加载 {WorkSteps.Count} 个业务。", NeutralBrush);
     }
 
-    public ObservableCollection<WorkStepProfile> WorkSteps { get; }
+    /// <summary>业务配置集合。</summary>
+    public ObservableCollection<BusinessProfile> WorkSteps { get; }
 
+    /// <summary>业务列表视图，支持按关键字过滤。</summary>
     public ICollectionView WorkStepsView { get; }
 
+    /// <summary>操作步骤编辑器。</summary>
     public OperationEditorViewModel OperationEditor { get; }
 
     #endregion
 
     #region 页面属性
 
-    public WorkStepProfile? SelectedWorkStep
+    /// <summary>当前选中的业务，变化时同步选中操作并刷新命令状态。</summary>
+    public BusinessProfile? SelectedWorkStep
     {
         get => _selectedWorkStep;
         set
@@ -86,6 +108,7 @@ public sealed class WorkStepConfigurationViewModel : ViewModelProperties
         }
     }
 
+    /// <summary>当前选中的操作步骤。</summary>
     public WorkStepOperation? SelectedOperation
     {
         get => _selectedOperation;
@@ -102,8 +125,10 @@ public sealed class WorkStepConfigurationViewModel : ViewModelProperties
         }
     }
 
+    /// <summary>选中业务的操作步骤集合，供界面绑定。</summary>
     public ObservableCollection<WorkStepOperation>? StepCollection => SelectedWorkStep?.Operations;
 
+    /// <summary>搜索关键字，变化时刷新业务列表过滤。</summary>
     public string SearchText
     {
         get => _searchText;
@@ -116,18 +141,21 @@ public sealed class WorkStepConfigurationViewModel : ViewModelProperties
         }
     }
 
+    /// <summary>页面状态提示文案。</summary>
     public string PageStatusText
     {
         get => _pageStatusText;
         private set => SetField(ref _pageStatusText, value);
     }
 
+    /// <summary>页面状态提示颜色。</summary>
     public Brush PageStatusBrush
     {
         get => _pageStatusBrush;
         private set => SetField(ref _pageStatusBrush, value);
     }
 
+    /// <summary>当前业务操作是否全部勾选，支持表头全选/全不选。</summary>
     public bool AreAllStepsChecked
     {
         get => SelectedWorkStep is not null && SelectedWorkStep.Operations.Count > 0 &&
@@ -153,22 +181,38 @@ public sealed class WorkStepConfigurationViewModel : ViewModelProperties
 
     #region 命令
 
+    /// <summary>新建业务命令。</summary>
     public ICommand NewWorkStepCommand { get; }
+
+    /// <summary>复制业务命令。</summary>
     public ICommand DuplicateWorkStepCommand { get; }
+
+    /// <summary>删除业务命令。</summary>
     public ICommand DeleteWorkStepCommand { get; }
+
+    /// <summary>保存全部业务命令。</summary>
     public ICommand SaveWorkStepsCommand { get; }
+
+    /// <summary>新建操作步骤命令。</summary>
     public ICommand AddStepCommand { get; }
+
+    /// <summary>复制操作步骤命令。</summary>
     public ICommand CopyStepCommand { get; }
+
+    /// <summary>粘贴操作步骤命令。</summary>
     public ICommand PasteStepCommand { get; }
+
+    /// <summary>删除操作步骤命令。</summary>
     public ICommand DeleteStepCommand { get; }
 
     #endregion
 
     #region 业务管理
 
+    /// <summary>新建业务：以不重复的默认名称加入集合并选中。</summary>
     private void NewWorkStep()
     {
-        WorkStepProfile workStep = new() { Name = GenerateUniqueName("业务") };
+        BusinessProfile workStep = new() { Name = GenerateUniqueName("业务") };
         WorkSteps.Add(workStep);
         SearchText = string.Empty;
         WorkStepsView.Refresh();
@@ -176,6 +220,7 @@ public sealed class WorkStepConfigurationViewModel : ViewModelProperties
         SetStatus("已新增业务，保存后生效。", SuccessBrush);
     }
 
+    /// <summary>复制当前业务：深拷贝并重新生成业务、操作与参数的唯一标识。</summary>
     private void DuplicateWorkStep()
     {
         if (SelectedWorkStep is null)
@@ -183,7 +228,7 @@ public sealed class WorkStepConfigurationViewModel : ViewModelProperties
             return;
         }
 
-        WorkStepProfile copy = SelectedWorkStep.Clone();
+        BusinessProfile copy = SelectedWorkStep.Clone();
         copy.Id = Guid.NewGuid().ToString("N");
         copy.Name = GenerateUniqueName($"{SelectedWorkStep.Name} 副本");
         foreach (WorkStepOperation operation in copy.Operations)
@@ -208,6 +253,7 @@ public sealed class WorkStepConfigurationViewModel : ViewModelProperties
         SetStatus($"已复制业务：{copy.Name}。", SuccessBrush);
     }
 
+    /// <summary>删除当前选中业务，并就近选中相邻业务。</summary>
     private void DeleteWorkStep()
     {
         if (SelectedWorkStep is null)
@@ -221,6 +267,7 @@ public sealed class WorkStepConfigurationViewModel : ViewModelProperties
         SetStatus("已删除业务，保存后生效。", WarningBrush);
     }
 
+    /// <summary>保存全部业务：先校验名称唯一性，统一刷新修改时间后写盘，失败时回滚时间与修改标记。</summary>
     private void SaveWorkSteps()
     {
         // 业务名称作为方案配置引用内置业务的标识，保存前按去除首尾空格且忽略大小写的规则判重。
@@ -236,27 +283,27 @@ public sealed class WorkStepConfigurationViewModel : ViewModelProperties
         }
 
         DateTime savedAt = DateTime.Now;
-        List<(WorkStepProfile WorkStep, DateTime PreviousTime)> modified = WorkSteps
+        List<(BusinessProfile WorkStep, DateTime PreviousTime)> modified = WorkSteps
             .Where(workStep => workStep.IsModified)
             .Select(workStep => (workStep, workStep.LastModifiedAt))
             .ToList();
 
-        foreach ((WorkStepProfile workStep, _) in modified)
+        foreach ((BusinessProfile workStep, _) in modified)
         {
             workStep.LastModifiedAt = savedAt;
         }
 
         try
         {
-            WorkStepConfigurationStore.Save(WorkSteps);
-            foreach ((WorkStepProfile workStep, _) in modified)
+            BusinessConfigurationStore.Save(WorkSteps);
+            foreach ((BusinessProfile workStep, _) in modified)
             {
                 workStep.AcceptChanges(savedAt);
             }
         }
         catch
         {
-            foreach ((WorkStepProfile workStep, DateTime previousTime) in modified)
+            foreach ((BusinessProfile workStep, DateTime previousTime) in modified)
             {
                 workStep.LastModifiedAt = previousTime;
                 workStep.MarkModified();
@@ -272,6 +319,7 @@ public sealed class WorkStepConfigurationViewModel : ViewModelProperties
 
     #region 步骤编辑
 
+    /// <summary>新建操作步骤：以空白操作打开编辑抽屉。</summary>
     private void OpenNewOperation()
     {
         if (SelectedWorkStep is null)
@@ -284,6 +332,8 @@ public sealed class WorkStepConfigurationViewModel : ViewModelProperties
         SetStatus("正在新建步骤。", NeutralBrush);
     }
 
+    /// <summary>编辑既有操作步骤：以该操作打开编辑抽屉（供界面双击调用）。</summary>
+    /// <param name="operation">待编辑的操作步骤。</param>
     public void OpenOperationEditorForEdit(WorkStepOperation operation)
     {
         if (SelectedWorkStep is null || !SelectedWorkStep.Operations.Contains(operation))
@@ -296,6 +346,7 @@ public sealed class WorkStepConfigurationViewModel : ViewModelProperties
         SetStatus("正在编辑步骤。", NeutralBrush);
     }
 
+    /// <summary>编辑器保存回调：新增则追加，编辑则替换原位置，随后统一重新编号。</summary>
     private void OperationEditor_OperationSaved(object? sender, OperationEditorSavedEventArgs e)
     {
         if (SelectedWorkStep is null)
@@ -322,6 +373,10 @@ public sealed class WorkStepConfigurationViewModel : ViewModelProperties
         SetStatus("步骤内容已更新，保存业务后生效。", SuccessBrush);
     }
 
+    /// <summary>拖拽移动操作步骤到目标位置（目标行前/后），完成后重新编号。</summary>
+    /// <param name="source">拖拽的操作步骤。</param>
+    /// <param name="target">目标操作步骤。</param>
+    /// <param name="insertAfter">是否插入到目标之后。</param>
     public void MoveOperation(WorkStepOperation source, WorkStepOperation target, bool insertAfter)
     {
         if (SelectedWorkStep is null)
@@ -375,6 +430,7 @@ public sealed class WorkStepConfigurationViewModel : ViewModelProperties
         SetStatus("已按序号重新排列步骤。", SuccessBrush);
     }
 
+    /// <summary>删除勾选的操作步骤；无勾选时删除当前选中步骤，完成后重新编号。</summary>
     private void DeleteOperations()
     {
         if (SelectedWorkStep is null)
@@ -398,6 +454,7 @@ public sealed class WorkStepConfigurationViewModel : ViewModelProperties
         SetStatus(selected.Count > 0 ? $"已删除 {selected.Count} 个步骤。" : "未选择步骤。", WarningBrush);
     }
 
+    /// <summary>复制勾选（或当前选中）的操作步骤到内部剪贴板。</summary>
     private void CopyOperations()
     {
         List<WorkStepOperation> selected = GetOperationsForClipboard();
@@ -407,6 +464,7 @@ public sealed class WorkStepConfigurationViewModel : ViewModelProperties
         SetStatus($"已复制 {selected.Count} 个步骤。", SuccessBrush);
     }
 
+    /// <summary>粘贴剪贴板中的操作步骤：逐个克隆并重新生成标识，插入到当前步骤之后。</summary>
     private void PasteOperations()
     {
         if (SelectedWorkStep is null || _copiedOperations.Count == 0)
@@ -429,6 +487,7 @@ public sealed class WorkStepConfigurationViewModel : ViewModelProperties
         SetStatus($"已粘贴 {_copiedOperations.Count} 个步骤。", SuccessBrush);
     }
 
+    /// <summary>获取参与复制/剪贴的操作步骤：优先取勾选项，无勾选时取当前选中项。</summary>
     private List<WorkStepOperation> GetOperationsForClipboard()
     {
         if (SelectedWorkStep is null)
@@ -442,6 +501,7 @@ public sealed class WorkStepConfigurationViewModel : ViewModelProperties
             : SelectedOperation is null ? new List<WorkStepOperation>() : new List<WorkStepOperation> { SelectedOperation };
     }
 
+    /// <summary>按集合顺序重新生成连续序号，并刷新命令状态。</summary>
     private void RenumberOperations()
     {
         if (SelectedWorkStep is null)
@@ -462,11 +522,12 @@ public sealed class WorkStepConfigurationViewModel : ViewModelProperties
 
     #region 搜索与界面辅助
 
+    /// <summary>业务列表过滤：按名称或操作摘要匹配搜索关键字（忽略大小写）。</summary>
     private bool FilterWorkSteps(object item)
     {
-        if (item is not WorkStepProfile workStep || string.IsNullOrWhiteSpace(SearchText))
+        if (item is not BusinessProfile workStep || string.IsNullOrWhiteSpace(SearchText))
         {
-            return item is WorkStepProfile;
+            return item is BusinessProfile;
         }
 
         string keyword = SearchText.Trim();
@@ -474,6 +535,7 @@ public sealed class WorkStepConfigurationViewModel : ViewModelProperties
                workStep.Operations.Any(operation => operation.Summary.Contains(keyword, StringComparison.OrdinalIgnoreCase));
     }
 
+    /// <summary>生成不与现有业务重名的名称：重名时追加递增序号。</summary>
     private string GenerateUniqueName(string baseName)
     {
         string normalizedBaseName = string.IsNullOrWhiteSpace(baseName) ? "业务" : baseName.Trim();
@@ -492,12 +554,14 @@ public sealed class WorkStepConfigurationViewModel : ViewModelProperties
         }
     }
 
+    /// <summary>更新页面状态提示的文案与颜色。</summary>
     private void SetStatus(string text, Brush brush)
     {
         PageStatusText = text;
         PageStatusBrush = brush;
     }
 
+    /// <summary>统一刷新各命令的可用状态。</summary>
     private void RaiseCommandStatesChanged()
     {
         foreach (ICommand command in new[]

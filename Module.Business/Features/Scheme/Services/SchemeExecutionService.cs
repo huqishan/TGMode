@@ -4,8 +4,8 @@ using Module.Business.Models;
 using Module.Business.Services.BusinessOperations;
 using Module.Business.Features.Scheme.ViewModels.PresentationModels;
 using Module.Business.Features.OperationEditing.ViewModels.PresentationModels;
-using Module.Business.Features.WorkStep.Services;
-using Module.Business.Features.WorkStep.ViewModels.PresentationModels;
+using Module.Business.Features.BusinessConfiguration.Services;
+using Module.Business.Features.BusinessConfiguration.ViewModels.PresentationModels;
 using Shared.Infrastructure.Communication;
 using Shared.Infrastructure.Events;
 using Shared.Infrastructure.Lua;
@@ -167,7 +167,7 @@ public static class SchemeExecutionService
                     endTime: DateTime.Now);
             }
 
-            return await ExecuteSchemeAsync(context, scheme.Clone(), WorkStepConfigurationStore.Load())
+            return await ExecuteSchemeAsync(context, scheme.Clone(), BusinessConfigurationStore.Load())
                 .ConfigureAwait(false);
         }
         catch (OperationCanceledException)
@@ -283,9 +283,9 @@ public static class SchemeExecutionService
                 return SchemeExecutionResult.CreateFailure(message, context.Logs, startTime, DateTime.Now);
             }
 
-            IReadOnlyCollection<WorkStepProfile> configuredWorkSteps = await Task.Run(WorkStepConfigurationStore.Load)
+            IReadOnlyCollection<BusinessProfile> configuredWorkSteps = await Task.Run(BusinessConfigurationStore.Load)
                 .ConfigureAwait(false);
-            WorkStepProfile? configuredWorkStep = configuredWorkSteps.FirstOrDefault(item =>
+            BusinessProfile? configuredWorkStep = configuredWorkSteps.FirstOrDefault(item =>
                 string.Equals(item.Name, schemeStep.StepType, StringComparison.OrdinalIgnoreCase));
             if (configuredWorkStep is null || configuredWorkStep.Operations.Count == 0)
             {
@@ -405,7 +405,7 @@ public static class SchemeExecutionService
     private static async Task<SchemeExecutionResult> ExecuteSchemeAsync(
         SchemeExecutionContext context,
         SchemeProfile scheme,
-        IReadOnlyCollection<WorkStepProfile> configuredWorkSteps)
+        IReadOnlyCollection<BusinessProfile> configuredWorkSteps)
     {
         DateTime startTime = DateTime.Now;
         SchemeExecutionEventArgs beforeSchemeArgs = SchemeExecutionEventArgs.CreateScheme(
@@ -444,7 +444,7 @@ public static class SchemeExecutionService
                 continue;
             }
 
-            WorkStepProfile? configuredWorkStep = configuredWorkSteps.FirstOrDefault(item => string.Equals(
+            BusinessProfile? configuredWorkStep = configuredWorkSteps.FirstOrDefault(item => string.Equals(
                 item.Name,
                 schemeStep.StepType,
                 StringComparison.OrdinalIgnoreCase));
@@ -771,9 +771,9 @@ public static class SchemeExecutionService
         try
         {
             context.ThrowIfCancellationRequested();
-            IReadOnlyCollection<WorkStepProfile> configuredWorkSteps = await Task.Run(WorkStepConfigurationStore.Load)
+            IReadOnlyCollection<BusinessProfile> configuredWorkSteps = await Task.Run(BusinessConfigurationStore.Load)
                 .ConfigureAwait(false);
-            WorkStepProfile? workStep = configuredWorkSteps.FirstOrDefault(item =>
+            BusinessProfile? workStep = configuredWorkSteps.FirstOrDefault(item =>
                 string.Equals(item.Name?.Trim(), normalizedWorkStepName, StringComparison.OrdinalIgnoreCase));
             if (workStep is null)
             {

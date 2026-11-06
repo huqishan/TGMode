@@ -10,6 +10,7 @@
 
     </UserControl.Resources>
 
+    <!-- Lua 脚本管理界面：左侧脚本列表 + 右侧脚本编辑 -->
     <Grid Background="{x:Null}">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="400" />
@@ -17,6 +18,7 @@
             <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
         
+        <!-- 脚本列表区域：标题说明、新建/复制/删除/保存按钮与脚本列表 -->
         <Border Grid.Column="0" Style="{StaticResource CardBorderStyle}">
             <Grid>
                 <Grid.RowDefinitions>
@@ -48,6 +50,7 @@
                     Style="{StaticResource ActionButtonStyle}"/>
                 </UniformGrid>
 
+                <!-- 脚本列表：展示脚本名称与摘要，单击选中后右侧联动编辑 -->
                 <ListBox Grid.Row="2"
                  BorderThickness="0"
                  Background="Transparent"
@@ -71,6 +74,7 @@
                 </ListBox>
             </Grid>
         </Border>
+        <!-- 脚本编辑区域：当前脚本信息卡片 + 脚本编辑编译控件 -->
         <Grid Grid.Column="2"
       HorizontalAlignment="Stretch"
       VerticalAlignment="Stretch">
@@ -79,6 +83,7 @@
                 <RowDefinition Height="16" />
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
+            <!-- 当前脚本信息：脚本状态、名称编辑与摘要 -->
             <Border Grid.Row="0"
                     MinHeight="130"
                     HorizontalAlignment="Stretch"
@@ -113,6 +118,7 @@ CornerRadius="999">
                     </StackPanel>
                 </Grid>
             </Border>
+            <!-- 脚本编辑与编译执行控件：双向绑定当前脚本正文 -->
             <controls:LuaScriptCompilerView Grid.Row="2"
                                       ScriptText="{Binding SelectedProfile.ScriptText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
         </Grid>

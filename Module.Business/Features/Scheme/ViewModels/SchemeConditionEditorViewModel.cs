@@ -1,7 +1,7 @@
 ﻿using ControlLibrary;
 using Module.Business.Features.OperationEditing.ViewModels.PresentationModels;
 using Module.Business.Features.Scheme.ViewModels.PresentationModels;
-using Module.Business.Features.WorkStep.ViewModels.PresentationModels;
+using Module.Business.Features.BusinessConfiguration.ViewModels.PresentationModels;
 using System.Collections.ObjectModel;
 using System.Windows.Input;
 using System.Threading.Tasks;
@@ -94,7 +94,7 @@ public sealed class SchemeConditionEditorViewModel : ViewModelProperties
     /// <summary>
     /// 打开编辑器并从方案业务实例生成连续分组参数行。
     /// </summary>
-    public async Task OpenAsync(SchemeProfile scheme, IReadOnlyCollection<WorkStepProfile> configuredWorkSteps)
+    public async Task OpenAsync(SchemeProfile scheme, IReadOnlyCollection<BusinessProfile> configuredWorkSteps)
     {
         ArgumentNullException.ThrowIfNull(scheme);
         ArgumentNullException.ThrowIfNull(configuredWorkSteps);
@@ -103,7 +103,7 @@ public sealed class SchemeConditionEditorViewModel : ViewModelProperties
         // 已从内置业务删除的遗留参数继续保留但标记为停用，因此不会进入判断条件配置界面。
         foreach (SchemeWorkStepItem workStep in scheme.Steps)
         {
-            WorkStepProfile? configuredWorkStep = configuredWorkSteps.FirstOrDefault(item => string.Equals(
+            BusinessProfile? configuredWorkStep = configuredWorkSteps.FirstOrDefault(item => string.Equals(
                 item.Name,
                 workStep.StepType,
                 StringComparison.OrdinalIgnoreCase));
@@ -197,7 +197,7 @@ public sealed class SchemeConditionEditorViewModel : ViewModelProperties
             List<SchemeConditionWorkStepGroup> groups = new();
             foreach (SchemeWorkStepItem workStep in scheme.Steps.OrderBy(item => item.Num))
             {
-                WorkStepProfile? configuredWorkStep = configuredWorkSteps.FirstOrDefault(item => string.Equals(
+                BusinessProfile? configuredWorkStep = configuredWorkSteps.FirstOrDefault(item => string.Equals(
                     item.Name,
                     workStep.StepType,
                     StringComparison.OrdinalIgnoreCase));
