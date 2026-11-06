@@ -8,9 +8,11 @@
         xmlns:loading="clr-namespace:ControlLibrary.Controls.Loading;assembly=ControlLibrary"
         xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
         mc:Ignorable="d"
-        Width="1900" WindowStyle="None"
-        Height="1060"
+        Width="1700" WindowStyle="None"
+        Height="800"
         ResizeMode="CanResize"
+        WindowState="Maximized"
+        WindowStartupLocation="CenterScreen"
         Background="{DynamicResource AppBackgroundBrush}">
     <shell:WindowChrome.WindowChrome>
         <shell:WindowChrome CaptionHeight="0"

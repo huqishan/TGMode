@@ -111,7 +111,7 @@
                          ItemContainerStyle="{StaticResource ListBoxItemStyle}">
                     <ListBox.ItemTemplate>
                         <DataTemplate>
-                            <StackPanel Width="320">
+                            <StackPanel>
                                 <DockPanel LastChildFill="True">
                                     <TextBlock FontSize="15"
                                                FontWeight="SemiBold"
@@ -246,10 +246,21 @@ Drop="SupportedProtocolsDataGrid_Drop">
                 <Border Grid.Column="0"
                         Style="{StaticResource CardBorderStyle}"
                         ToolTip="{Binding ProtocolConfigurationEditHint}">
-                    <StackPanel IsEnabled="{Binding IsProtocolConfigurationEditable}">
-                        <DockPanel>
+                    <!-- “连接参数”标题固定在卡片顶部，不参与滚动；字段区域超出卡片高度时使用 ScrollViewer 显示滚动条 -->
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+
+                        <DockPanel Grid.Row="0">
                             <TextBlock Style="{StaticResource SectionTitleStyle}" Text="{DynamicResource 连接参数}" />
                         </DockPanel>
+
+                        <ScrollViewer Grid.Row="1"
+                                      VerticalScrollBarVisibility="Auto"
+                                      HorizontalScrollBarVisibility="Disabled">
+                            <StackPanel IsEnabled="{Binding IsProtocolConfigurationEditable}">
 
                         <TextBlock Style="{StaticResource FieldLabelStyle}" Text="{DynamicResource 配置名称}" />
                         <TextBox Style="{StaticResource InputTextBoxStyle}"
@@ -310,7 +321,9 @@ Drop="SupportedProtocolsDataGrid_Drop">
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
 
-                    </StackPanel>
+                            </StackPanel>
+                        </ScrollViewer>
+                    </Grid>
                 </Border>
                 <!--通信测试-->
                 <Grid Grid.Column="2">

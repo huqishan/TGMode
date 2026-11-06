@@ -286,7 +286,11 @@
             </Grid>
         </Border>
 
-        <Grid Grid.Column="2">
+        <!-- 右侧配置区域：内容超出窗口高度时显示垂直滚动条，避免界面显示不全 -->
+        <ScrollViewer Grid.Column="2"
+                      VerticalScrollBarVisibility="Auto"
+                      HorizontalScrollBarVisibility="Disabled">
+            <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="16" />
@@ -604,7 +608,7 @@ IsChecked="{Binding SelectedProfile.IsCommunicationQueryVisible, Mode=TwoWay}" /
                 </Grid>
             </Border>
 
-            <Border Grid.Row="4" Style="{StaticResource CardBorderStyle}" x:Name="SendAndResult">
+            <Border Grid.Row="4" Style="{StaticResource CardBorderStyle}" x:Name="SendAndResult" MinHeight="600" MaxHeight="800">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
@@ -751,7 +755,6 @@ IsChecked="{Binding SelectedProfile.IsCommunicationQueryVisible, Mode=TwoWay}" /
                 </Border>
             </Grid>
 
-
             <Grid x:Name="CommandDrawerHost" Grid.Row="2" Grid.RowSpan="4"
                       Panel.ZIndex="10"
                       Opacity="0"
@@ -787,7 +790,8 @@ IsChecked="{Binding SelectedProfile.IsCommunicationQueryVisible, Mode=TwoWay}" /
                     </Grid>
                 </Border>
             </Grid>
-        </Grid>
+            </Grid>
+        </ScrollViewer>
 
     </Grid>
 </UserControl>
